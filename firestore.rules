@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        request.auth.token.email == "madakamal16491@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION BLUEPRINTS ---
+    function isValidIntegration(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.provider in ['gemini', 'openai', 'anthropic', 'custom'] &&
+             data.status in ['active', 'disabled', 'error'] &&
+             (data.keys().hasAll(['apiKey']) ? data.apiKey is string : true);
+    }
+
+    function isValidSystemConfig(data) {
+      return data.activeStudios is list && data.activeStudios.size() <= 20 &&
+             (data.keys().hasAll(['maintenanceMode']) ? data.maintenanceMode is bool : true);
+    }
+
+    function isValidUserProfile(data) {
+      return data.email is string && data.email.size() > 0 &&
+             (data.keys().hasAll(['role']) ? data.role in ['user', 'admin'] : true);
+    }
+
+    function isValidHistory(data) {
+      return data.userId == request.auth.uid &&
+             data.type in ['image', 'audio', 'video', 'text'] &&
+             data.studio is string;
+    }
+
+    function isValidProject(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             isValidId(data.ownerId) &&
+             data.studioType is string &&
+             data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+             data.status in ['active', 'completed', 'on_hold', 'archived'];
+    }
+
+    function isValidSmartAsset(data) {
+      return data.userId == request.auth.uid &&
+             data.type in ['image', 'audio', 'video', 'text', 'document'] &&
+             data.name is string && data.name.size() <= 256 &&
+             data.tags is list && data.colors is list &&
+             data.category is string;
+    }
+
+    function isValidAssistantMessage(data) {
+      return data.role in ['user', 'assistant', 'model', 'system'] &&
+             data.content is string && data.content.size() <= 6000 &&
+             data.userId == request.auth.uid &&
+             isValidId(data.userId);
+    }
+
+    function isValidAIModel(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.provider in ['google', 'openai', 'anthropic', 'custom'] &&
+             data.modelId is string && data.modelId.size() > 0 &&
+             (data.keys().hasAll(['studios']) ? data.studios is list : true);
+    }
+
+    // --- COLLECTIONS ---
+
+    match /projects/{projectId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if isEmailVerified() && isValidId(projectId) && isValidProject(incoming()) && incoming().ownerId == request.auth.uid;
+      allow update: if (isAdmin() || (isSignedIn() && existing().ownerId == request.auth.uid)) && 
+                     isValidProject(incoming()) && 
+                     incoming().ownerId == existing().ownerId;
+      allow delete: if isAdmin() || (isSignedIn() && existing().ownerId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /assistant_sessions/{messageId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidAssistantMessage(incoming());
+      allow update, delete: if false; // Neural history audit integrity
+    }
+
+    match /vault_assets/{assetId} {
+      allow read, list, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidSmartAsset(incoming());
+      allow update: if (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid)) && isValidSmartAsset(incoming());
+    }
+
+    match /integrations/{integrationId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidId(integrationId) && isValidIntegration(incoming());
+      allow update: if isAdmin() && isValidIntegration(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAny(['status', 'apiKey', 'endpoint', 'lastUsed', 'updatedAt'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /apiLogs/{logId} {
+      allow read: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && incoming().timestamp == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if isEmailVerified() && request.auth.token.email == "madakamal16491@gmail.com";
+    }
+
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(configId) && isValidSystemConfig(incoming());
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow list: if isAdmin();
+    }
+
+    match /history/{historyId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidHistory(incoming()) && incoming().timestamp == request.time;
+      allow delete: if isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /models/{modelId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(modelId) && isValidAIModel(incoming());
+    }
+
+    match /presence/{userId} {
+      allow read, list: if isSignedIn();
+      allow write, delete: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}
