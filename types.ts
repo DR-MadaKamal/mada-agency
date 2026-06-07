@@ -498,7 +498,7 @@ export interface MarketingStudioState {
     seoFocus?: string;
     conversionGoal?: string;
     
-    activeTab?: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan';
+    activeTab?: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan' | 'content';
     
     // New Studio Modules
     marketResearch: string | null;
@@ -516,6 +516,14 @@ export interface MarketingStudioState {
     socialBios: { platform: string, bio: string }[] | null;
     hashtags: string[] | null;
     customerJourney: { stage: string, action: string, message: string }[] | null;
+    
+    // Content & Copy Tools (evolved — 11 sections, ~132 tools)
+    contentSection: string;
+    contentSubTab: string;
+    contentResults: Record<string, string | null>;
+    contentIsGenerating: boolean;
+    contentError: string | null;
+    
     isGenerating: boolean;
     error: string | null;
 }

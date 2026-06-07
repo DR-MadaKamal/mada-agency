@@ -23,6 +23,7 @@ import { CommentsOverlay } from './CommentsOverlay';
 import { VersionTimeline } from './VersionTimeline';
 import { TemplatePicker } from './TemplatePicker';
 import { Plus } from 'lucide-react';
+import { ContentTools } from './ContentTools';
 
 const MarketingIcon = () => <Share2 className="w-5 h-5 inline mr-2 text-[var(--color-accent)]" />;
 const CopyIcon = () => <Copy className="h-4 w-4 mr-1.5" />;
@@ -438,6 +439,12 @@ const MarketingStudio: React.FC<{
                 >
                     Marketing Plan
                 </button>
+                <button 
+                    onClick={() => setTab('content')}
+                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'content' ? 'bg-[var(--color-accent)] text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                >
+                    Content
+                </button>
             </div>
 
             {/* Control Center */}
@@ -471,6 +478,18 @@ const MarketingStudio: React.FC<{
 
                 <div className="grid grid-cols-1 gap-12">
                     {/* Tab Selection Content */}
+                    {activeTab === 'content' ? (
+                        <ContentTools 
+                            project={project}
+                            setProject={setProject}
+                            brandName={project.brandName || project.websiteLink || 'Brand'}
+                            specialty={project.specialty || 'Industry'}
+                            goal={project.campaignGoal || 'brand awareness'}
+                            brief={project.brief || ''}
+                            language={project.language}
+                            aiConfig={project.aiConfig || { provider: 'google', modelId: 'gemini-2.1-flash' }}
+                        />
+                    ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                         {/* Left Column: Context / Brand Info (Shared or Tab Specific) */}
                         <div className="lg:col-span-5 space-y-8">
@@ -946,9 +965,10 @@ const MarketingStudio: React.FC<{
                                 >
                                     {project.isGenerating ? 'Synthesizing Intelligence...' : 'Compute Growth Strategy'}
                                 </button>
-                            </div>
                         </div>
                     </div>
+                    </div>
+                )}  {/* end content tab ternary */}
                 </div>
             </div>
 
