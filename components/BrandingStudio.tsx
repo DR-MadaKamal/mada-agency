@@ -50,6 +50,7 @@ import { CommentsOverlay } from './CommentsOverlay';
 import { VersionTimeline } from './VersionTimeline';
 import { ShareableLink } from './ShareableLink';
 import { TemplatePicker } from './TemplatePicker';
+import { BrandTools } from './BrandTools';
 import { cn } from '../lib/utils';
 
 const MOCKUP_CATEGORIES: BrandingResultCategory[] = [
@@ -479,6 +480,7 @@ const BrandingStudio: React.FC<{
                         { id: 'naming', label: 'Naming', icon: Command },
                         { id: 'visuals', label: 'Visuals', icon: Palette },
                         { id: 'mockups', label: 'Mockups', icon: Layout },
+                        { id: 'tools', label: 'Tools', icon: Sparkles },
                         { id: 'guidelines', label: 'Guidelines', icon: BookOpen },
                         { id: 'history', label: 'History', icon: Briefcase }
                     ].map(tab => (
@@ -866,6 +868,27 @@ const BrandingStudio: React.FC<{
                                 </div>
                             </div>
                         </div>
+                    </motion.div>
+                )}
+
+                {project.activeTab === 'tools' && (
+                    <motion.div
+                        key="tools"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-8"
+                    >
+                        <BrandTools 
+                            project={project}
+                            setProject={setProject as any}
+                            brandName={project.name || 'Brand'}
+                            specialty={project.targetAudience || 'Industry'}
+                            audience={project.targetAudience || ''}
+                            voice={project.brandVoice || ''}
+                            language="en"
+                            aiConfig={project.aiConfig || { provider: 'google', modelId: 'gemini-2.1-flash' }}
+                        />
                     </motion.div>
                 )}
 
