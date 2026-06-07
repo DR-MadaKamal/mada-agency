@@ -7,7 +7,9 @@ interface Env {
 interface ProxyPayload {
   provider: 'gemini' | 'openai' | 'anthropic';
   modelId: string;
-  body: any;
+  body?: any;
+  prompt?: string;
+  systemInstruction?: string;
 }
 
 const PROVIDER_URLS: Record<string, (model: string) => string> = {
@@ -26,6 +28,32 @@ const PROVIDER_HEADERS: Record<string, (key: string) => Record<string, string>> 
   }),
 };
 
+function buildBody(provider: string, modelId: string, prompt: string): any {
+  switch (provider) {
+    case 'gemini':
+      return { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
+    case 'openai':
+      return { model: modelId, messages: [{ role: 'user', content: prompt }] };
+    case 'anthropic':
+      return { model: modelId, max_tokens: 4096, messages: [{ role: 'user', content: prompt }] };
+    default:
+      return { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
+  }
+}
+
+function extractText(provider: string, data: any): string {
+  switch (provider) {
+    case 'gemini':
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    case 'openai':
+      return data.choices?.[0]?.message?.content || '';
+    case 'anthropic':
+      return data.content?.[0]?.text || '';
+    default:
+      return JSON.stringify(data);
+  }
+}
+
 export const onRequest: any = async (context: any) => {
   const { request, env } = context;
   if (request.method !== 'POST') {
@@ -34,23 +62,27 @@ export const onRequest: any = async (context: any) => {
     });
   }
   try {
-    const { provider, modelId, body } = await request.json() as ProxyPayload;
-    const envKey = `${provider.toUpperCase()}_API_KEY`;
+    const parsed = await request.json() as ProxyPayload;
+    const { provider, modelId } = parsed;
+    const normalizedProvider = provider === 'google' ? 'gemini' : provider;
+    const envKey = `${normalizedProvider.toUpperCase()}_API_KEY`;
     const apiKey = (env as any)[envKey] as string | undefined;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: `API Key for ${provider} not found` }), {
+      return new Response(JSON.stringify({ error: `API Key for ${normalizedProvider} not found` }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const url = PROVIDER_URLS[provider]?.(modelId);
+    const url = PROVIDER_URLS[normalizedProvider]?.(modelId);
     if (!url) {
-      return new Response(JSON.stringify({ error: `Provider ${provider} not supported` }), {
+      return new Response(JSON.stringify({ error: `Provider ${normalizedProvider} not supported` }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const headers = PROVIDER_HEADERS[provider]?.(apiKey) || {};
+    const isSimpleMode = !!(parsed.prompt);
+    const body = parsed.body || buildBody(normalizedProvider, modelId, parsed.prompt || '');
+    const headers = PROVIDER_HEADERS[normalizedProvider]?.(apiKey) || {};
     const res = await fetch(url, {
       method: 'POST',
       headers,
@@ -58,8 +90,15 @@ export const onRequest: any = async (context: any) => {
     });
     const data = await res.json();
     if (!res.ok) {
-      return new Response(JSON.stringify({ error: data.error?.message || `${provider} call failed` }), {
+      return new Response(JSON.stringify({ error: data.error?.message || `${normalizedProvider} call failed` }), {
         status: res.status, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (isSimpleMode) {
+      const text = extractText(normalizedProvider, data);
+      return new Response(text, {
+        status: 200, headers: { 'Content-Type': 'text/plain' },
       });
     }
     return new Response(JSON.stringify(data), {

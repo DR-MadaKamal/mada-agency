@@ -5,7 +5,7 @@ interface AIOptions {
   onProgress?: (chunk: string) => void;
 }
 
-const PAGES_FUNCTION_URL = '/api/ai/call';
+const PAGES_FUNCTION_URL = '/api/ai/proxy';
 
 export async function callAI(prompt: string, options: AIOptions = {}): Promise<string> {
   const { provider = 'google', modelId, signal, onProgress } = options;
@@ -14,7 +14,7 @@ export async function callAI(prompt: string, options: AIOptions = {}): Promise<s
     const res = await fetch(PAGES_FUNCTION_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, provider, modelId }),
+      body: JSON.stringify({ provider, modelId: modelId || getDefaultModel(provider), prompt }),
       signal,
     });
 
@@ -45,6 +45,15 @@ export async function callAI(prompt: string, options: AIOptions = {}): Promise<s
       throw err;
     }
     throw err;
+  }
+}
+
+function getDefaultModel(provider: string): string {
+  switch (provider) {
+    case 'google': case 'gemini': return 'gemini-2.0-flash';
+    case 'openai': return 'gpt-4o';
+    case 'anthropic': return 'claude-3-5-sonnet-20240620';
+    default: return 'gemini-2.0-flash';
   }
 }
 

@@ -498,7 +498,7 @@ export interface MarketingStudioState {
     seoFocus?: string;
     conversionGoal?: string;
     
-    activeTab?: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan' | 'content';
+    activeTab?: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan' | 'content' | 'agents';
     
     // New Studio Modules
     marketResearch: string | null;
