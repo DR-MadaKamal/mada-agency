@@ -48,7 +48,6 @@ import {
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
 import { ShareableLink } from './ShareableLink';
-import { VersionTimeline } from './VersionTimeline';
 import { TemplatePicker } from './TemplatePicker';
 import { cn } from '../lib/utils';
 
@@ -455,7 +454,6 @@ const BrandingStudio: React.FC<{
 
                 <div className="flex items-center gap-3">
                     <ShareableLink projectId={project.id} />
-                    <VersionTimeline project={project} />
                     <button
                         onClick={() => setShowTemplatePicker(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"

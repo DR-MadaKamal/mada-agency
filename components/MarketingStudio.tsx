@@ -18,8 +18,7 @@ import { Share2, Download, Copy, Check, Target, TrendingUp, Megaphone, FileText,
 import AISelector from './AISelector';
 import { LOGO_IMAGE_URL } from '../constants';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
-import { ShareableLink } from '../lib/ShareableLink';
-import { CommentsOverlay } from '../lib/CommentsOverlay';
+import { ShareableLink } from './ShareableLink';
 
 const MarketingIcon = () => <Share2 className="w-5 h-5 inline mr-2 text-[var(--color-accent)]" />;
 const CopyIcon = () => <Copy className="h-4 w-4 mr-1.5" />;
@@ -438,7 +437,7 @@ const MarketingStudio: React.FC<{
                         </h2>
                         <p className="text-xs text-white/40 font-bold tracking-widest mt-1 ml-8 uppercase">STRATEGIC GROWTH ACCELERATOR</p>
                         </div>
-                        <ShareableLink data={{ project, result: activeTab === 'strategy' ? project.result : activeTab === 'digital' ? project.digitalStrategy : activeTab === 'traditional' ? project.traditionalStrategy : activeTab === 'research' ? project.marketResearch : activeTab === 'competitive' ? project.competitiveStudy : activeTab === 'swot' ? project.swotAnalysis : project.marketingPlan }} />
+                        <ShareableLink projectId={project.id} projectName={project.name || 'Marketing Strategy'} />
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10">
                             <button 
                                 onClick={() => setProject(s => ({ ...s, language: 'ar' }))}
