@@ -12,6 +12,7 @@ import {
     PenPath
 } from '../types';
 import { resizeImage, createThumbnail } from '../utils';
+import { editImage } from '../services/geminiService';
 import { logHistory } from '../lib/admin';
 import { 
     Layers, 
@@ -215,6 +216,10 @@ const EditStudio: React.FC<{
     const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
     const [isUpscaling, setIsUpscaling] = useState<string | null>(null);
+    const [isAIEditOpen, setIsAIEditOpen] = useState(false);
+    const [aiEditPrompt, setAIEditPrompt] = useState('');
+    const [aiEditError, setAIEditError] = useState<string | null>(null);
+    const aiEditAbortRef = useRef<AbortController | null>(null);
 
     const STYLES_PRESETS = {
         'Cyberpunk': { saturation: 1.5, contrast: 1.3, lut: 'neon', exposure: 0.1, warmth: -0.3, tint: 0.2, grain: 0.1 },
@@ -1025,6 +1030,45 @@ const EditStudio: React.FC<{
                 <Zap className="w-3.5 h-3.5 text-orange-400" />
                 <span>Smart Heal</span>
             </button>
+            <button 
+                onClick={() => setIsAIEditOpen(!isAIEditOpen)}
+                className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#2B2B2B] text-white/80 rounded shadow-lg flex items-center gap-2 text-[10px] font-bold border border-white/5 transition-all"
+            >
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span>AI Edit</span>
+            </button>
+            {isAIEditOpen && (
+                <div className="bg-[#1e1e1e] border border-white/10 rounded-lg p-3 shadow-xl w-72 space-y-2">
+                    <textarea 
+                        value={aiEditPrompt}
+                        onChange={e => setAIEditPrompt(e.target.value)}
+                        placeholder="Describe your edit (e.g. 'remove background', 'make it vibrant')..."
+                        className="w-full h-20 bg-black/40 border border-white/10 rounded-lg p-2 text-[11px] text-white outline-none focus:border-purple-500/50 transition-all resize-none"
+                    />
+                    {aiEditError && (
+                        <p className="text-[10px] text-red-400">{aiEditError}</p>
+                    )}
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={handleAIEdit}
+                            disabled={!aiEditPrompt.trim() || project.isProcessingAI}
+                            className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-30 text-white rounded text-[10px] font-black uppercase tracking-wider transition-all"
+                        >
+                            Edit with AI
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setIsAIEditOpen(false);
+                                setAIEditPrompt('');
+                                setAIEditError(null);
+                            }}
+                            className="py-2 px-3 bg-white/5 hover:bg-white/10 text-white/60 rounded text-[10px] font-black uppercase tracking-wider transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 
@@ -1688,6 +1732,46 @@ const EditStudio: React.FC<{
             setProject(s => ({ ...s, isProcessingAI: false }));
         } finally {
             setIsUpscaling(null);
+        }
+    };
+
+    const handleAIEdit = async () => {
+        if (activeSlotIdx === null) return;
+        const prompt = aiEditPrompt.trim();
+        if (!prompt) return;
+
+        setAIEditError(null);
+        const controller = new AbortController();
+        aiEditAbortRef.current = controller;
+        setProject(s => ({ ...s, isProcessingAI: true }));
+
+        try {
+            const baseImg = project.baseImages[activeSlotIdx];
+            if (!baseImg) throw new Error("No active image to edit");
+
+            const result = await editImage(baseImg, prompt, undefined, controller.signal);
+
+            setProject(s => {
+                const newBase = [...s.baseImages];
+                newBase[activeSlotIdx!] = result;
+                return { ...s, baseImages: newBase, isProcessingAI: false };
+            });
+
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `AI Edit: ${prompt}`,
+                prompt: prompt
+            });
+
+            setIsAIEditOpen(false);
+            setAIEditPrompt('');
+        } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') return;
+            setAIEditError(err instanceof Error ? err.message : String(err));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        } finally {
+            aiEditAbortRef.current = null;
         }
     };
 

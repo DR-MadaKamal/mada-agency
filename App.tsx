@@ -570,13 +570,26 @@ const createNewControllerProject = (projectCount: number, ownerId: string): Cont
     sourceImages: [],
     generatedImage: null,
     sliders: [
+        // Face
         { id: 'smile', label: 'Smile', value: 0, min: -1, max: 1, step: 0.1, category: 'Face' },
         { id: 'frown', label: 'Frown', value: 0, min: 0, max: 1, step: 0.1, category: 'Face' },
         { id: 'surprised', label: 'Surprised', value: 0, min: 0, max: 1, step: 0.1, category: 'Face' },
         { id: 'angry', label: 'Angry', value: 0, min: 0, max: 1, step: 0.1, category: 'Face' },
+        { id: 'eyebrow_raise', label: 'Eyebrow Raise', value: 0, min: -1, max: 1, step: 0.1, category: 'Face' },
+        { id: 'eye_direction', label: 'Eye Direction', value: 0, min: -1, max: 1, step: 0.1, category: 'Face' },
+        { id: 'mouth_open', label: 'Mouth Open', value: 0, min: 0, max: 1, step: 0.1, category: 'Face' },
+        { id: 'squint', label: 'Squint', value: 0, min: 0, max: 1, step: 0.1, category: 'Face' },
+        { id: 'age', label: 'Adjust Age', value: 0, min: -1, max: 1, step: 0.1, category: 'Face' },
+        // Head
         { id: 'head_yaw', label: 'Look Side-to-Side', value: 0, min: -1, max: 1, step: 0.1, category: 'Head' },
         { id: 'head_pitch', label: 'Look Up/Down', value: 0, min: -1, max: 1, step: 0.1, category: 'Head' },
-        { id: 'age', label: 'Adjust Age', value: 0, min: -1, max: 1, step: 0.1, category: 'Face' },
+        // Body
+        { id: 'shoulder_width', label: 'Shoulder Width', value: 0, min: -0.5, max: 0.5, step: 0.1, category: 'Body' },
+        { id: 'posture', label: 'Posture', value: 0, min: -0.5, max: 0.5, step: 0.1, category: 'Body' },
+        // Retouch
+        { id: 'smooth_skin', label: 'Smooth Skin', value: 0, min: 0, max: 1, step: 0.1, category: 'Retouch' },
+        { id: 'brightness', label: 'Brightness', value: 0, min: -0.5, max: 0.5, step: 0.1, category: 'Retouch' },
+        { id: 'contrast', label: 'Contrast', value: 0, min: -0.5, max: 0.5, step: 0.1, category: 'Retouch' },
     ],
     activeCategory: 'Face',
     isGenerating: false,
