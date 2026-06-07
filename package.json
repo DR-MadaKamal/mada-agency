@@ -14,9 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.91.1",
     "@cloudflare/ai-chat": "^0.8.4",
-    "@google/genai": "^1.20.0",
     "@types/express": "^5.0.6",
     "agents": "^0.14.5",
     "clsx": "^2.1.1",
@@ -24,7 +22,6 @@
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.11.0",
     "motion": "^12.38.0",
-    "openai": "^6.34.0",
     "react": "^19.1.1",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",

@@ -1,47 +1,36 @@
 
-import { GoogleGenAI, Modality, Part, GenerateContentResponse, HarmCategory, HarmBlockThreshold, Type } from "@google/genai";
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
 import { ImageFile, AudioFile, AIConfig } from '../types';
 import { logApiInteraction } from '../lib/admin';
 
-// Clients initialization (Lazy/Safe)
-let openaiClient: OpenAI | null = null;
-let anthropicClient: Anthropic | null = null;
-
-const getOpenAI = () => {
-    if (!openaiClient) {
-        const key = process.env.OPENAI_API_KEY;
-        if (!key) throw new Error("OPENAI_API_KEY is required for this model.");
-        openaiClient = new OpenAI({ apiKey: key, dangerouslyAllowBrowser: true });
-    }
-    return openaiClient;
-};
-
-const getAnthropic = () => {
-    if (!anthropicClient) {
-        const key = process.env.ANTHROPIC_API_KEY;
-        if (!key) throw new Error("ANTHROPIC_API_KEY is required for this model.");
-        anthropicClient = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-    }
-    return anthropicClient;
-};
-
-if (!process.env.GEMINI_API_KEY) {
-  console.warn("GEMINI_API_KEY environment variable not set. Falling back to API_KEY if available.");
-}
-
-const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY || process.env.API_KEY || "dummy") as string });
-
-// Helper for Google AI calls (Correct SDK syntax)
 async function googleAICall(modelId: string, contents: any, config: any = {}, signal?: AbortSignal) {
-  const response = await ai.models.generateContent({
-    model: modelId,
+  const body: any = {
     contents: Array.isArray(contents) ? contents : [contents],
-    config: { ...config, safetySettings },
+    safetySettings,
+  };
+  if (config && Object.keys(config).length > 0) {
+    const topLevelKeys = ['systemInstruction'];
+    for (const [k, v] of Object.entries(config)) {
+      if (topLevelKeys.includes(k)) {
+        body[k] = v;
+      } else {
+        if (!body.generationConfig) body.generationConfig = {};
+        body.generationConfig[k] = v;
+      }
+    }
+  }
+  const res = await fetch('/api/ai/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: 'gemini', modelId, body }),
     signal,
   });
-  return response;
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Gemini call failed');
+  }
+  const data = await res.json();
+  data.text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('') || '';
+  return data;
 }
 
 // Helpers for unified calling
@@ -77,7 +66,7 @@ export async function callAIWithImages(
 
     try {
         if (provider === 'google' || provider === 'gemini') {
-            const parts: Part[] = [
+            const parts: any[] = [
                 ...images.map(img => ({
                     inlineData: {
                         data: img.base64,
@@ -104,25 +93,13 @@ export async function callAIWithImages(
 }
 
 const safetySettings = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
 ];
 
-const handleApiResponse = (response: GenerateContentResponse): ImageFile => {
+const handleApiResponse = (response: any): ImageFile => {
     for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData) {
             return {
@@ -150,7 +127,7 @@ export async function generateImage(
   signal?: AbortSignal
 ): Promise<ImageFile> {
   const model = config?.modelId || 'gemini-2.0-flash';
-  const parts: Part[] = [];
+  const parts: any[] = [];
   const startTime = Date.now();
 
   // Add product references if they exist
@@ -202,7 +179,7 @@ export async function editImage(
 ): Promise<ImageFile> {
   const model = config?.modelId || 'gemini-2.0-flash';
 
-  const parts: Part[] = [
+  const parts: any[] = [
     {
       inlineData: {
         data: baseImage.base64,
@@ -237,7 +214,7 @@ export async function analyzeImageForPrompt(
   signal?: AbortSignal
 ): Promise<string> {
   const model = config?.modelId || 'gemini-2.0-flash';
-  const parts: Part[] = [];
+  const parts: any[] = [];
 
   images.forEach(image => {
     parts.push({
@@ -261,7 +238,7 @@ export async function analyzeImageForPrompt(
 
 export async function analyzeStyleImage(images: ImageFile[], signal?: AbortSignal): Promise<string> {
   const model = 'gemini-2.0-flash';
-  const parts: Part[] = images.map(img => ({
+  const parts: any[] = images.map(img => ({
     inlineData: {
       data: img.base64,
       mimeType: img.mimeType,
@@ -280,7 +257,7 @@ export async function analyzeStyleImage(images: ImageFile[], signal?: AbortSigna
 
 export async function analyzeLogoForBranding(images: ImageFile[], signal?: AbortSignal): Promise<{ colors: string[] }> {
   const model = 'gemini-2.0-flash';
-  const parts: Part[] = images.map(img => ({
+  const parts: any[] = images.map(img => ({
     inlineData: {
       data: img.base64,
       mimeType: img.mimeType,
@@ -292,11 +269,11 @@ export async function analyzeLogoForBranding(images: ImageFile[], signal?: Abort
     const response = await googleAICall(model, { parts: parts }, {
       responseMimeType: "application/json",
       responseSchema: {
-        type: Type.OBJECT,
+        type: "OBJECT",
         properties: {
           colors: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
+            type: "ARRAY",
+            items: { type: "STRING" },
             description: "Hex color codes representing the logo palette"
           }
         },
@@ -339,7 +316,7 @@ export async function generateSpeech(text: string, styleInstructions: string, vo
   
   try {
     const response = await googleAICall(model, { parts: [{ text: prompt }] }, {
-      responseModalities: [Modality.AUDIO],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName: voiceName },
@@ -371,7 +348,7 @@ export async function generateCampaignPlan(
     signal?: AbortSignal
 ): Promise<any[]> {
     const model = config?.modelId || 'gemini-2.0-flash';
-    const parts: Part[] = [];
+    const parts: any[] = [];
 
     if (productImages && productImages.length > 0) {
         productImages.forEach(img => parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
@@ -396,15 +373,15 @@ export async function generateCampaignPlan(
         const response = await googleAICall(model, { parts }, {
             responseMimeType: "application/json",
             responseSchema: {
-                type: Type.ARRAY,
+                type: "ARRAY",
                 items: {
-                    type: Type.OBJECT,
+                    type: "OBJECT",
                     properties: {
-                        id: { type: Type.STRING },
-                        scenario: { type: Type.STRING },
-                        caption: { type: Type.STRING },
-                        tov: { type: Type.STRING },
-                        schedule: { type: Type.STRING },
+                        id: { type: "STRING" },
+                        scenario: { type: "STRING" },
+                        caption: { type: "STRING" },
+                        tov: { type: "STRING" },
+                        schedule: { type: "STRING" },
                     },
                     required: ["id", "scenario", "caption", "tov", "schedule"]
                 }
@@ -420,7 +397,7 @@ export async function generateCampaignPlan(
 
 export async function analyzeProductForCampaign(productImages: ImageFile[], signal?: AbortSignal): Promise<string> {
     const model = 'gemini-2.0-flash';
-    const parts: Part[] = [];
+    const parts: any[] = [];
     productImages.forEach(img => parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
 
     const prompt = `Analyze these image(s) to identify the product/service category and its market positioning. 
@@ -785,15 +762,15 @@ export async function generateAdCopies(
 
     try {
         const responseText = await callAI(prompt, aiConfig, undefined, {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
                 ads: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            platform: { type: Type.STRING },
-                            copy: { type: Type.STRING }
+                            platform: { type: "STRING" },
+                            copy: { type: "STRING" }
                         },
                         required: ["platform", "copy"]
                     }
@@ -823,11 +800,11 @@ export async function generateMissionVisionValues(
 
     try {
         const responseText = await callAI(prompt, aiConfig, undefined, {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
-                mission: { type: Type.STRING },
-                vision: { type: Type.STRING },
-                values: { type: Type.ARRAY, items: { type: Type.STRING } }
+                mission: { type: "STRING" },
+                vision: { type: "STRING" },
+                values: { type: "ARRAY", items: { type: "STRING" } }
             },
             required: ["mission", "vision", "values"]
         });
@@ -852,15 +829,15 @@ export async function generateEmailSequence(
 
     try {
         const responseText = await callAI(prompt, aiConfig, undefined, {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
                 emails: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            subject: { type: Type.STRING },
-                            body: { type: Type.STRING }
+                            subject: { type: "STRING" },
+                            body: { type: "STRING" }
                         },
                         required: ["subject", "body"]
                     }
@@ -907,17 +884,17 @@ export async function generateInfluencerAndCalendar(
 
     try {
         const responseText = await callAI(prompt, aiConfig, undefined, {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
-                influencerStrategy: { type: Type.STRING },
+                influencerStrategy: { type: "STRING" },
                 contentCalendar: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            day: { type: Type.STRING },
-                            topic: { type: Type.STRING },
-                            format: { type: Type.STRING }
+                            day: { type: "STRING" },
+                            topic: { type: "STRING" },
+                            format: { type: "STRING" }
                         },
                         required: ["day", "topic", "format"]
                     }
@@ -944,22 +921,22 @@ export async function generateMarketingAssets(
 
     try {
         const resultText = await callAI(prompt, aiConfig, undefined, {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
                 socialBios: { 
-                    type: Type.ARRAY, 
+                    type: "ARRAY", 
                     items: { 
-                        type: Type.OBJECT, 
-                        properties: { platform: { type: Type.STRING }, bio: { type: Type.STRING } },
+                        type: "OBJECT", 
+                        properties: { platform: { type: "STRING" }, bio: { type: "STRING" } },
                         required: ["platform", "bio"]
                     } 
                 },
-                hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                hashtags: { type: "ARRAY", items: { type: "STRING" } },
                 customerJourney: { 
-                    type: Type.ARRAY, 
+                    type: "ARRAY", 
                     items: { 
-                        type: Type.OBJECT, 
-                        properties: { stage: { type: Type.STRING }, action: { type: Type.STRING }, message: { type: Type.STRING } },
+                        type: "OBJECT", 
+                        properties: { stage: { type: "STRING" }, action: { type: "STRING" }, message: { type: "STRING" } },
                         required: ["stage", "action", "message"]
                     } 
                 }
