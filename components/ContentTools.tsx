@@ -18,6 +18,48 @@ interface SectionDef {
 
 const SECTIONS: SectionDef[] = [
   {
+    id: 'content_copy', label: 'Content & Copy', icon: '✏️',
+    tools: [
+      { id: 'headline_tester', label: 'Headline Tester', prompt: `Generate 10 headline variants for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Include: headline, predicted CTR (Low/Med/High), emotional trigger, reason it works. Format as markdown table.` },
+      { id: 'short_scripts', label: 'Short-form Scripts', prompt: `Write short-form video scripts for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Create 3 scripts: 15 seconds (hook + quick payoff), 30 seconds (hook + problem + solution), 60 seconds (hook + story + benefit + CTA). Each: duration, hook line, full script, suggested visual notes. Format as markdown.` },
+      { id: 'sms_sequences', label: 'SMS Sequences', prompt: `Write a 5-message SMS marketing sequence for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Day 1: Welcome + intro offer. Day 2: Value tip. Day 3: Social proof. Day 4: Limited-time offer. Day 5: Final call + next steps.
+Each: day label, message body (≤160 chars), goal of message. Format as markdown table.` },
+      { id: 'landing_copy', label: 'Landing Page Copy', prompt: `Write complete landing page copy for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Sections: Hero headline + subheadline, Key benefits (3-5 bullets with brief explanation), Social proof snippet, CTA button copy (3 variants), FAQ (3 questions).
+Format as structured markdown per section.` },
+      { id: 'multi_language', label: 'Multi-language Translate', prompt: `Take this copy for {{brandName}} ({{specialty}}) and adapt it for 5 languages while preserving brand tone. Goal: {{goal}}.
+Original: "{{brief}}"
+Languages: Arabic (formal), Spanish (LATAM casual), French (European), German, Japanese.
+For each: translated version, back-translation to English, cultural adaptation notes. Format as markdown per language.` },
+      { id: 'email_copy', label: 'Email Copy Generator', prompt: `Write 3 email copy variants for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Variants: Promotional (new product/offer), Educational (value-driven), Re-engagement (win-back).
+Each: subject line (≤60 chars), preview text (≤100 chars), body (200-300 words), CTA button text. Format as markdown per variant.` },
+      { id: 'blog_outliner', label: 'Blog Post Outliner', prompt: `Create 5 SEO-optimized blog post outlines for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Each outline: Working title (with keyword), meta description (≤160 chars), H2/H3 outline with key points per section, suggested word count, internal link targets, target reader persona.
+Format as markdown per outline.` },
+      { id: 'ad_copy_ab', label: 'Ad Copy A/B Tester', prompt: `Generate 10 A/B ad copy pairs for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Pairs cover: Benefit vs feature, Emotional vs logical, Short vs long, Urgency vs social proof, Question vs statement.
+Each pair: Variant A, Variant B, predicted better performer, rationale. Format as markdown table.` },
+      { id: 'product_desc', label: 'Product Description Generator', prompt: `Write product descriptions for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Create 5 product descriptions: Short (50 words), Standard (150 words), Detailed (300 words), Bullet-point feature list, SEO-optimized (with schema-ready format).
+Each: title, description, key features, sensory language, target keyword. Format as markdown.` },
+      { id: 'ugc_scripts', label: 'UGC Script Writer', prompt: `Write 5 User-Generated Content briefs for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Brief types: Unboxing/review, Tutorial/how-to, Before/after transformation, Day in the life, Testimonial.
+Each: concept/logline, key talking points (3-5), visual directions, suggested duration, hook suggestion. Format as markdown per brief.` },
+      { id: 'press_release', label: 'Press Release', prompt: `Write a press release for {{brandName}} ({{specialty}}). Goal: {{goal}}. Language: {{language}}.
+Use this context: {{brief}}
+Structure: Headline (bold, news-worthy), Dateline, Lead paragraph (who/what/when/where/why), Body (details + quote from leadership), Boilerplate (about the company), Media contact info, ### marker.
+Format as complete press release in markdown.` },
+      { id: 'repurpose', label: 'Repurpose Engine', prompt: `Take this content and repurpose it into 8 formats for {{brandName}} ({{specialty}}). Language: {{language}}.
+Original content: "{{brief}}"
+Formats: Twitter/X thread (5 tweets), LinkedIn post, Instagram caption, TikTok script (30s), Email newsletter blurb, Blog post summary, Infographic outline, Podcast episode outline.
+Each: format label, repurposed content, platform-specific formatting notes. Format as markdown per format.` },
+    ]
+  },
+  {
     id: 'search_seo', label: 'Search & SEO', icon: '🔍',
     tools: [
       { id: 'keyword_research', label: 'Keyword Research', prompt: `Generate a keyword research report for {{brandName}} in {{specialty}}. Goal: {{goal}}. Brief: {{brief}}. Language: {{language}}.
