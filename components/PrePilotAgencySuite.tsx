@@ -52,10 +52,41 @@ const PrePilotAgencySuite: React.FC<{
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddingClient, setIsAddingClient] = useState(false);
     const [isAddingCampaign, setIsAddingCampaign] = useState(false);
+    const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+    const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+    const [selectMode, setSelectMode] = useState(false);
 
     const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
     const [isSimulating, setIsSimulating] = useState(false);
     const [agentError, setAgentError] = useState<string | null>(null);
+
+    const toggleSelectClient = (id: string) => {
+      setSelectedClientIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+    const toggleSelectCampaign = (id: string) => {
+      setSelectedCampaignIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+    const selectAllClients = () => {
+      setSelectedClientIds(project.clients.map(c => c.id));
+    };
+    const clearSelection = () => {
+      setSelectedClientIds([]);
+      setSelectedCampaignIds([]);
+    };
+    const batchDeleteClients = () => {
+      setProject(prev => ({
+        ...prev,
+        clients: prev.clients.filter(c => !selectedClientIds.includes(c.id)),
+      }));
+      setSelectedClientIds([]);
+    };
+    const batchDeleteCampaigns = () => {
+      setProject(prev => ({
+        ...prev,
+        campaigns: prev.campaigns.filter(c => !selectedCampaignIds.includes(c.id)),
+      }));
+      setSelectedCampaignIds([]);
+    };
 
     const syncAgentsFromWorker = useCallback(async () => {
       try {
@@ -463,6 +494,12 @@ const PrePilotAgencySuite: React.FC<{
                     />
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setSelectMode(!selectMode); setSelectedClientIds([]); setSelectedCampaignIds([]); }}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${selectMode ? 'bg-[var(--color-accent)] text-white' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                    >
+                      {selectMode ? 'Done' : 'Select'}
+                    </button>
                     <button className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all">
                         <Filter className="w-4 h-4 text-white/60" />
                     </button>
@@ -475,6 +512,25 @@ const PrePilotAgencySuite: React.FC<{
                 </div>
             </div>
 
+            {selectMode && (
+              <div className="flex items-center gap-2 px-1 mb-3">
+                <button onClick={selectAllClients} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
+                  Select All
+                </button>
+                <button onClick={clearSelection} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
+                  Clear
+                </button>
+                {selectedClientIds.length > 0 && (
+                  <>
+                    <span className="text-[9px] text-white/30 font-medium ml-2">{selectedClientIds.length} selected</span>
+                    <button onClick={batchDeleteClients} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500/30 transition-all">
+                      Delete Selected
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {project.clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map((client, i) => (
                     <motion.div 
@@ -485,6 +541,15 @@ const PrePilotAgencySuite: React.FC<{
                         className="group bg-white/5 border border-white/10 p-5 rounded-3xl hover:border-white/20 transition-all"
                     >
                         <div className="flex items-start justify-between mb-4">
+                            {selectMode && (
+                              <input
+                                type="checkbox"
+                                checked={selectedClientIds.includes(client.id)}
+                                onChange={() => toggleSelectClient(client.id)}
+                                className="w-4 h-4 rounded border-white/20 bg-transparent text-[var(--color-accent)]"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            )}
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
                                     {client.logo ? (
@@ -547,6 +612,25 @@ const PrePilotAgencySuite: React.FC<{
                 </button>
             </div>
 
+            {selectMode && (
+              <div className="flex items-center gap-2 px-1 mb-3">
+                <button onClick={selectAllClients} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
+                  Select All
+                </button>
+                <button onClick={clearSelection} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
+                  Clear
+                </button>
+                {selectedCampaignIds.length > 0 && (
+                  <>
+                    <span className="text-[9px] text-white/30 font-medium ml-2">{selectedCampaignIds.length} selected</span>
+                    <button onClick={batchDeleteCampaigns} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500/30 transition-all">
+                      Delete Selected
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3">
                 {project.campaigns.map((campaign, i) => (
                     <motion.div 
@@ -556,6 +640,15 @@ const PrePilotAgencySuite: React.FC<{
                         key={campaign.id} 
                         className="bg-white/5 border border-white/10 p-4 rounded-3xl flex flex-col md:flex-row md:items-center gap-6 hover:bg-white/[0.07] transition-all cursor-pointer"
                     >
+                        {selectMode && (
+                          <input
+                            type="checkbox"
+                            checked={selectedCampaignIds.includes(campaign.id)}
+                            onChange={() => toggleSelectCampaign(campaign.id)}
+                            className="w-4 h-4 rounded border-white/20 bg-transparent text-[var(--color-accent)]"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-1">
                                 <div className="text-sm font-bold">{campaign.name}</div>

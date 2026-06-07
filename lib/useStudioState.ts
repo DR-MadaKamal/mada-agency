@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { SyncService } from './sync';
 
 const STORAGE_PREFIX = 'mada_projects_';
 const SAVE_DEBOUNCE = 2000;
@@ -20,26 +21,48 @@ export function useStudioState<T extends { id: string; studioType: string }>(
   updateProject: (action: React.SetStateAction<T>) => void;
   addTab: () => void;
   closeTab: (index: number) => void;
+  syncStatus: 'idle' | 'syncing' | 'error';
 } {
   const [projects, setProjects] = useState<T[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
   const loaded = useRef(false);
+  const saveTimer = useRef<number | null>(null);
 
-  // Load from localStorage on mount
+  const storageKey = `${STORAGE_PREFIX}${storageKey}`;
+
+  // Load from localStorage on mount + attempt D1 merge
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`${STORAGE_PREFIX}${storageKey}`);
-      if (raw) {
-        const saved: StudioState<T> = JSON.parse(raw);
-        if (saved.projects?.length > 0) {
-          setProjects(saved.projects);
-          setActiveIndex(saved.activeIndex);
-          loaded.current = true;
-          return;
+    const loadData = async () => {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const saved: StudioState<T> = JSON.parse(raw);
+          if (saved.projects?.length > 0) {
+            setProjects(saved.projects);
+            setActiveIndex(saved.activeIndex);
+          }
         }
+      } catch { /* ignore */ }
+      loaded.current = true;
+
+      // Attempt D1 sync in background
+      setSyncStatus('syncing');
+      try {
+        const localRaw = localStorage.getItem(storageKey);
+        if (localRaw) {
+          const merged = await SyncService.mergeAndSave(storageKey, JSON.parse(localRaw));
+          if (merged) {
+            setProjects(merged.projects || []);
+            setActiveIndex(merged.activeIndex || 0);
+          }
+        }
+        setSyncStatus('idle');
+      } catch {
+        setSyncStatus('error');
       }
-    } catch { /* ignore corrupt data */ }
-    loaded.current = true;
+    };
+    loadData();
   }, [storageKey]);
 
   // Initialize if empty after load attempt
@@ -50,15 +73,20 @@ export function useStudioState<T extends { id: string; studioType: string }>(
     }
   }, [loaded.current, currentUser, storageKey]);
 
-  // Save to localStorage on change
+  // Save to localStorage + push to D1 on change
   useEffect(() => {
     if (!loaded.current) return;
-    const timer = setTimeout(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
       try {
-        localStorage.setItem(`${STORAGE_PREFIX}${storageKey}`, JSON.stringify({ projects, activeIndex }));
+        const data = { projects, activeIndex };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        SyncService.push(storageKey, data).catch(() => {});
       } catch { /* storage full */ }
     }, SAVE_DEBOUNCE);
-    return () => clearTimeout(timer);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [projects, activeIndex, storageKey]);
 
   const updateProject = useCallback((action: React.SetStateAction<T>) => {
@@ -90,5 +118,5 @@ export function useStudioState<T extends { id: string; studioType: string }>(
     });
   }, [activeIndex]);
 
-  return { projects, activeIndex, setProjects, setActiveIndex, updateProject, addTab: addTabFn, closeTab };
+  return { projects, activeIndex, setProjects, setActiveIndex, updateProject, addTab: addTabFn, closeTab, syncStatus };
 }

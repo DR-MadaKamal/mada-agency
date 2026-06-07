@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MarketingStudioProject } from '../types';
 import { 
     generateMarketingAnalysis, 
@@ -17,6 +17,9 @@ import { logHistory } from '../lib/admin';
 import { Share2, Download, Copy, Check, Target, TrendingUp, Megaphone, FileText, Sparkles } from 'lucide-react';
 import AISelector from './AISelector';
 import { LOGO_IMAGE_URL } from '../constants';
+import { AILoadingOverlay } from '../lib/AILoadingOverlay';
+import { ShareableLink } from '../lib/ShareableLink';
+import { CommentsOverlay } from '../lib/CommentsOverlay';
 
 const MarketingIcon = () => <Share2 className="w-5 h-5 inline mr-2 text-[var(--color-accent)]" />;
 const CopyIcon = () => <Copy className="h-4 w-4 mr-1.5" />;
@@ -39,6 +42,7 @@ const MarketingStudio: React.FC<{
     const [copied, setCopied] = useState(false);
     const [adCopiesCopied, setAdCopiesCopied] = useState<number | null>(null);
     const [isRefining, setIsRefining] = useState(false);
+    const cancelledRef = useRef(false);
 
     const activeTab = project.activeTab || 'strategy';
 
@@ -60,6 +64,7 @@ const MarketingStudio: React.FC<{
     };
 
     const onGenerate = async () => {
+        cancelledRef.current = false;
         if (project.brandType === 'new' && (!project.brandName || !project.specialty)) {
             setProject(s => ({ ...s, error: 'Please enter brand name and specialty' }));
             return;
@@ -248,6 +253,7 @@ const MarketingStudio: React.FC<{
         } catch (err) {
             setProject(s => ({ ...s, isGenerating: false, error: 'Strategy generation failed. Please try again.' }));
         }
+        if (cancelledRef.current) return;
     };
 
     const handleCopy = () => {
@@ -371,6 +377,12 @@ const MarketingStudio: React.FC<{
 
     return (
         <main className="w-full flex flex-col gap-8 pt-4 pb-12 animate-in fade-in duration-700">
+            {project.isGenerating && (
+                <div className="relative">
+                    <AILoadingOverlay message="Generating marketing strategy..." onCancel={() => { cancelledRef.current = true; setProject(s => ({ ...s, isGenerating: false })); }} />
+                </div>
+            )}
+            <div className="relative">
             {/* Tab Navigation */}
             <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-full self-center border border-white/5 backdrop-blur-xl">
                 <button 
@@ -425,10 +437,11 @@ const MarketingStudio: React.FC<{
                             <MarketingIcon /> Marketing Engine
                         </h2>
                         <p className="text-xs text-white/40 font-bold tracking-widest mt-1 ml-8 uppercase">STRATEGIC GROWTH ACCELERATOR</p>
-                    </div>
-                    <div className="flex bg-black/40 rounded-full p-1 border border-white/10">
-                        <button 
-                            onClick={() => setProject(s => ({ ...s, language: 'ar' }))}
+                        </div>
+                        <ShareableLink data={{ project, result: activeTab === 'strategy' ? project.result : activeTab === 'digital' ? project.digitalStrategy : activeTab === 'traditional' ? project.traditionalStrategy : activeTab === 'research' ? project.marketResearch : activeTab === 'competitive' ? project.competitiveStudy : activeTab === 'swot' ? project.swotAnalysis : project.marketingPlan }} />
+                        <div className="flex bg-black/40 rounded-full p-1 border border-white/10">
+                            <button 
+                                onClick={() => setProject(s => ({ ...s, language: 'ar' }))}
                             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${project.language === 'ar' ? 'bg-[var(--color-accent)] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
                         >
                             Arabic
@@ -1160,6 +1173,7 @@ const MarketingStudio: React.FC<{
                     ⚠️ Error: {project.error}
                 </div>
             )}
+            </div>
         </main>
     );
 };

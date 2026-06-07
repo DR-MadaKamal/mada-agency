@@ -12,6 +12,7 @@ import ResultDisplay from './ResultDisplay';
 import AISelector from './AISelector';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera } from 'lucide-react';
+import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 
 interface CreatorStudioProps {
   project: CreatorStudioProject;
@@ -40,6 +41,7 @@ const CreatorStudio: React.FC<CreatorStudioProps> = ({
   
   const translateTimeoutRef = useRef<number | null>(null);
   const translationRequestCounter = useRef(0);
+  const cancelRef = useRef<boolean>(false);
 
   const updateActiveProjectState = useCallback((updater: (projectDraft: CreatorStudioProject) => void) => {
     setProject(currentProject => {
@@ -186,6 +188,7 @@ Setting: Place the subject in a sophisticated and professional new environment.`
       updateActiveProjectState(p => { p.error = 'Please write a prompt or select a mode.'; });
       return;
     }
+    cancelRef.current = false;
     const currentPrompt = project.prompt;
     updateActiveProjectState(p => { p.isLoading = true; p.error = null; p.generatedImage = null; });
 
@@ -207,7 +210,13 @@ Setting: Place the subject in a sophisticated and professional new environment.`
     } finally {
       updateActiveProjectState(p => { p.isLoading = false; });
     }
+    if (cancelRef.current) return;
   }, [project, updateActiveProjectState]);
+
+  const handleCancelGeneration = useCallback(() => {
+    cancelRef.current = true;
+    updateActiveProjectState(p => { p.isLoading = false; p.error = 'Generation cancelled'; });
+  }, [updateActiveProjectState]);
 
   // Logic for Step 1: APPLY STOCK BASE
   const handleApplyStockBase = useCallback(() => {
@@ -560,16 +569,19 @@ Setting: Place the subject in a sophisticated and professional new environment.`
             </div>
 
             <div className="flex flex-col gap-6 order-2">
-                 <div className="glass-card rounded-[40px] p-8 min-h-[500px] border border-white/5 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[var(--color-accent)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                    <ResultDisplay 
-                        imageFile={project.generatedImage} 
-                        isLoading={project.isLoading}
-                        onEdit={handleImageEdit}
-                        onExpand={handleExpand}
-                        isEditing={project.isEditing}
-                        isExpanding={project.isExpanding}
-                    />
+                 <div className="relative">
+                    <div className="glass-card rounded-[40px] p-8 min-h-[500px] border border-white/5 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[var(--color-accent)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        <ResultDisplay 
+                            imageFile={project.generatedImage} 
+                            isLoading={project.isLoading}
+                            onEdit={handleImageEdit}
+                            onExpand={handleExpand}
+                            isEditing={project.isEditing}
+                            isExpanding={project.isExpanding}
+                        />
+                    </div>
+                    {project.isLoading && <AILoadingOverlay message="Generating image..." onCancel={handleCancelGeneration} />}
                  </div>
                 <HistoryPanel history={project.history} onSelect={(img) => updateActiveProjectState(p => { p.generatedImage = img; })} />
             </div>

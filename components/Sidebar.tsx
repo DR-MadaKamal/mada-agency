@@ -6,6 +6,7 @@ import {
   Archive, ShieldCheck, ChevronLeft, ChevronRight, Search,
   Sun, Moon, Monitor, SquareDashed, Command,
   Clock, Star, Plus, PanelLeftClose, PanelLeft,
+  CalendarDays,
 } from 'lucide-react';
 import { AppView } from '../types';
 import { cn } from '../lib/utils';
@@ -43,6 +44,7 @@ const STUDIOS: StudioEntry[] = [
   { id: 'command_center', label: 'Command', icon: ShieldCheck, category: 'system' },
   { id: 'asset_library', label: 'Vault', icon: Archive, category: 'system' },
   { id: 'archives', label: 'Archives', icon: Clock, category: 'system' },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays, category: 'system' },
 ];
 
 const THEMES = [

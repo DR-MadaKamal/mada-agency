@@ -39,6 +39,8 @@ const AdminStudio = lazy(() => import('./components/AdminStudio'));
 const GlobalHistoryPanel = lazy(() => import('./components/GlobalHistoryPanel'));
 const NexusVault = lazy(() => import('./components/NexusVault'));
 const NexusControlCenter = lazy(() => import('./components/NexusControlCenter'));
+import { CalendarStudio } from './components/CalendarStudio';
+import { CalendarEvent } from './components/CalendarStudio';
 
 import TabBar from './components/TabBar';
 import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES, LOGO_IMAGE_URL } from './constants';
@@ -649,6 +651,28 @@ function App() {
 
   const [toasts, setToasts] = useState<any[]>([]);
 
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem('mada_calendar_events');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    localStorage.setItem('mada_calendar_events', JSON.stringify(calendarEvents));
+  }, [calendarEvents]);
+
+  const handleAddCalendarEvent = (event: CalendarEvent) => {
+    setCalendarEvents(prev => [...prev, event]);
+  };
+
+  const handleUpdateCalendarEvent = (id: string, updates: Partial<CalendarEvent>) => {
+    setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  };
+
+  const handleDeleteCalendarEvent = (id: string) => {
+    setCalendarEvents(prev => prev.filter(e => e.id !== id));
+  };
+
   const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, title, message, type }]);
@@ -779,6 +803,7 @@ function App() {
             case 'edit_studio': activeProject = editProjects[activeEditIndex]; break;
             case 'controller_studio': activeProject = controllerProjects[activeControllerIndex]; break;
             case 'prepilot_agency_suite': activeProject = prePilotProjects[activePrePilotIndex]; break;
+            case 'calendar': activeProject = null; break;
         }
 
         if (activeProject && activeProject.id && !activeProject.id.includes('landing')) {
@@ -835,6 +860,7 @@ function App() {
           case 'edit_studio': updateIndex(editProjects, setEditProjects, setActiveEditIndex); break;
           case 'controller_studio': updateIndex(controllerProjects, setControllerProjects, setActiveControllerIndex); break;
           case 'prepilot_agency_suite': updateIndex(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex); break;
+          case 'calendar': break;
       }
       scrollToContent();
   };
@@ -1357,6 +1383,15 @@ function App() {
                                 return <GlobalHistoryPanel />;
                             case 'asset_library':
                                 return <NexusVault />;
+                            case 'calendar':
+                                return (
+                                    <CalendarStudio
+                                        events={calendarEvents}
+                                        onAddEvent={handleAddCalendarEvent}
+                                        onUpdateEvent={handleUpdateCalendarEvent}
+                                        onDeleteEvent={handleDeleteCalendarEvent}
+                                    />
+                                );
                             case 'command_center':
                                 return <NexusControlCenter />;
                             default:
@@ -1394,7 +1429,7 @@ function App() {
     const STUDIO_KEYS: Record<string, AppView> = {
       '1': 'creator_studio', '2': 'storyboard_studio', '3': 'branding_studio',
       '4': 'marketing_studio', '5': 'photoshoot_director', '6': 'edit_studio',
-      '7': 'plan_studio', '8': 'command_center', '9': 'asset_library',
+      '7': 'plan_studio', '8': 'command_center', '9': 'asset_library', '0': 'calendar',
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1404,7 +1439,7 @@ function App() {
         setIsOmniSearchOpen(prev => !prev);
         return;
       }
-      if (mod && e.key >= '1' && e.key <= '9') {
+      if (mod && ((e.key >= '1' && e.key <= '9') || e.key === '0')) {
         e.preventDefault();
         const target = STUDIO_KEYS[e.key];
         if (target) { setView(target); scrollToContent(); }
