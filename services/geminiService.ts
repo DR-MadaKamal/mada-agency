@@ -145,7 +145,7 @@ export async function generateImage(
   aspectRatio: string = "1:1",
   config?: AIConfig
 ): Promise<ImageFile> {
-  const model = config?.modelId || 'gemini-2.5-flash-image';
+  const model = config?.modelId || 'gemini-2.0-flash';
   const parts: Part[] = [];
   const startTime = Date.now();
 
@@ -195,7 +195,7 @@ export async function editImage(
   prompt: string,
   config?: AIConfig
 ): Promise<ImageFile> {
-  const model = config?.modelId || 'gemini-2.5-flash-image';
+  const model = config?.modelId || 'gemini-2.0-flash';
 
   const parts: Part[] = [
     {
@@ -229,7 +229,7 @@ export async function analyzeImageForPrompt(
   instructions: string,
   config?: AIConfig
 ): Promise<string> {
-  const model = config?.modelId || 'gemini-3-flash-preview';
+  const model = config?.modelId || 'gemini-2.0-flash';
   const parts: Part[] = [];
 
   images.forEach(image => {
@@ -253,7 +253,7 @@ export async function analyzeImageForPrompt(
 }
 
 export async function analyzeStyleImage(images: ImageFile[]): Promise<string> {
-  const model = 'gemini-3-flash-preview';
+  const model = 'gemini-2.0-flash';
   const parts: Part[] = images.map(img => ({
     inlineData: {
       data: img.base64,
@@ -272,7 +272,7 @@ export async function analyzeStyleImage(images: ImageFile[]): Promise<string> {
 }
 
 export async function analyzeLogoForBranding(images: ImageFile[]): Promise<{ colors: string[] }> {
-  const model = 'gemini-3-flash-preview';
+  const model = 'gemini-2.0-flash';
   const parts: Part[] = images.map(img => ({
     inlineData: {
       data: img.base64,
@@ -305,7 +305,7 @@ export async function analyzeLogoForBranding(images: ImageFile[]): Promise<{ col
 }
 
 export async function generatePromptFromText(instructions: string, config?: AIConfig): Promise<string> {
-  const model = config?.modelId || 'gemini-3-flash-preview';
+  const model = config?.modelId || 'gemini-2.0-flash';
   const prompt = `Expand this idea into a detailed text-to-image prompt: "${instructions}"`;
   try {
     const response = await googleAICall(model, { parts: [{ text: prompt }] });
@@ -316,7 +316,7 @@ export async function generatePromptFromText(instructions: string, config?: AICo
 }
 
 export async function translateText(text: string): Promise<string> {
-  const model = 'gemini-3-flash-preview';
+  const model = 'gemini-2.0-flash';
   const prompt = `Translate the following text to English, preserving any technical or descriptive nuances: "${text}"`;
   try {
     const response = await googleAICall(model, { parts: [{ text: prompt }] });
@@ -362,7 +362,7 @@ export async function generateCampaignPlan(
     dialect: string = "English",
     config?: AIConfig
 ): Promise<any[]> {
-    const model = config?.modelId || 'gemini-3-flash-preview';
+    const model = config?.modelId || 'gemini-2.0-flash';
     const parts: Part[] = [];
 
     if (productImages && productImages.length > 0) {
@@ -411,7 +411,7 @@ export async function generateCampaignPlan(
 }
 
 export async function analyzeProductForCampaign(productImages: ImageFile[]): Promise<string> {
-    const model = 'gemini-3-flash-preview';
+    const model = 'gemini-2.0-flash';
     const parts: Part[] = [];
     productImages.forEach(img => parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
 
@@ -437,7 +437,7 @@ export async function generateStoryboardPlan(
     aspectRatio: string,
     config?: AIConfig
 ): Promise<any[]> {
-    const model = config?.modelId || 'gemini-3-flash-preview';
+    const model = config?.modelId || 'gemini-2.0-flash';
     const instruction = `Act as a cinematic Storyboard Director, Scriptwriter, and Visual Artist. 
     Script/Context: "${script}".
     Intended Visual Style: "${visualStyle}".
@@ -1093,6 +1093,7 @@ export async function generateShotScript(scenes: any[], aiConfig: AIConfig): Pro
 }
 
 export async function generateDirectorCritique(scene: any, previousScene: any | null, aiConfig: AIConfig): Promise<string> {
+    const model = aiConfig?.modelId || 'gemini-2.0-flash';
     const instruction = `Act as a Senior Film Director. Critique the following shot selection:
     Current Shot: ${scene.shotType} with ${scene.cameraMovement} movement.
     Description: ${scene.description}
@@ -1101,7 +1102,8 @@ export async function generateDirectorCritique(scene: any, previousScene: any | 
     Provide a sharp, 2-3 sentence technical critique of this cinematic choice. Mention pacing, focus, or visual impact. Return raw text.`;
 
     try {
-        return await callAI(instruction, aiConfig);
+        const response = await googleAICall(model, { parts: [{ text: instruction }] });
+        return response.text || "Director's feedback unavailable.";
     } catch (err) {
         return "Director's feedback unavailable.";
     }

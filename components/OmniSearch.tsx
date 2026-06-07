@@ -71,6 +71,7 @@ const OmniSearch: React.FC<OmniSearchProps> = ({ isOpen, onClose, onNavigate }) 
 
         const internalCommands = [
           { type: 'command', title: 'Open Creator Studio', subtitle: 'AI Image Splicing', icon: Command, view: 'creator_studio' },
+          { type: 'command', title: 'PrePilot Agency Suite', subtitle: 'Strategic Oversight', icon: Command, view: 'prepilot_agency_suite' },
           { type: 'command', title: 'Neural Vault', subtitle: 'Smart Asset Management', icon: Database, view: 'asset_library' },
           { type: 'command', title: 'Command Center', subtitle: 'System Metrics', icon: Cpu, view: 'command_center' },
           { type: 'command', title: 'History Archives', subtitle: 'Previous Creations', icon: FileText, view: 'archives' }

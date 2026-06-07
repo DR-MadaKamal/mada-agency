@@ -1,5 +1,6 @@
 {
   "name": "Jenta Intelligence Tool",
-  "description": "The ultimate AI-powered creative and strategic suite. Access professional studios for branding, campaign planning, photosynthesis direction, and market intelligence.",
+  "description": "The ultimate AI-powered creative and strategic suite. Access professional studios for branding, campaign planning, photography direction, and market intelligence.",
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
   "requestFramePermissions": []
 }

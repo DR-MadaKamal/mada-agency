@@ -207,6 +207,15 @@
          color: var(--color-text-muted);
        }
 
+      @keyframes dash {
+        to {
+          stroke-dashoffset: -100;
+        }
+      }
+      .animate-dash {
+        animation: dash 5s linear infinite;
+      }
+
       .font-tajawal {
         font-family: 'Tajawal', sans-serif;
       }

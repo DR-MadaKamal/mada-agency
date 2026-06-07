@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { AssistantMessage, AppView } from '../types';
-import { auth, db } from '../lib/firebase';
+import { auth, db, sanitizeData } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, onSnapshot, doc, setDoc } from 'firebase/firestore';
 
 interface NexusAssistantProps {
@@ -175,12 +175,12 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
             setMessages(prev => [...prev, assistantMsg]);
 
             // Save assistant response to Nexus
-            await addDoc(collection(db, 'assistant_sessions'), {
+            await addDoc(collection(db, 'assistant_sessions'), sanitizeData({
                 ...assistantMsg,
                 userId: auth.currentUser.uid,
                 timestamp: serverTimestamp(),
                 context: currentView
-            });
+            }));
 
         } catch (err) {
             console.error("Neural Failure:", err);

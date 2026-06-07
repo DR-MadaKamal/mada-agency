@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, Fragment } from 'react';
 import { 
     EditStudioProject, 
     ImageFile, 
@@ -7,13 +7,14 @@ import {
     LocalText, 
     GlobalLayer,
     BlendingMode,
-    DrawPath
+    DrawPath,
+    SliceRect,
+    PenPath
 } from '../types';
 import { resizeImage, createThumbnail } from '../utils';
 import { logHistory } from '../lib/admin';
 import { 
     Layers, 
-    Type, 
     Image as ImageIcon, 
     Trash2, 
     Copy, 
@@ -67,7 +68,6 @@ import {
     Wand2,
     LassoSelect,
     BoxSelect,
-    Type,
     Component,
     Box,
     Play,
@@ -76,7 +76,6 @@ import {
     Image as ImageFileIcon,
     Monitor,
     Zap,
-    Download,
     Share2,
     Cloud,
     Keyboard,
@@ -86,7 +85,6 @@ import {
     Clock,
     Brush,
     Ghost,
-    Masks,
     Slice,
     Contrast,
     Sun,
@@ -94,7 +92,6 @@ import {
     Sticker,
     Menu,
     ChevronRight,
-    Search
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -190,7 +187,7 @@ const EditStudio: React.FC<{
     const [activeSlotIdx, setActiveSlotIdx] = useState<number | null>(null);
     const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
     const [customFonts, setCustomFonts] = useState<string[]>([]);
-    const [clipboard, setClipboard] = useState<LocalText | null>(null);
+    const [clipboard, setClipboard] = useState<LocalText | GlobalLayer | null>(null);
     const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'wand' | 'stamp' | 'eraser' | 'gradient' | 'blur' | 'pen' | 'slice' | 'healing' | 'path' | '3d'>('select');
     const [shapeToolType, setShapeToolType] = useState<'rect' | 'circle' | 'line' | 'star'>('rect');
     const [justSavedSlot, setJustSavedSlot] = useState<number | null>(null);
@@ -210,9 +207,26 @@ const EditStudio: React.FC<{
     const [brushColor, setBrushColor] = useState('#ff0000');
     const [brushOpacity, setBrushOpacity] = useState(1);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
-    const [showTimeline, setShowTimeline] = useState(false);
+    const [isGenerativeFillOpen, setIsGenerativeFillOpen] = useState(false);
+    const [isLassoDrawing, setIsLassoDrawing] = useState(false);
+    const [isExportOpen, setIsExportOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
+    const [exportQuality, setExportQuality] = useState(90);
+    const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+    const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+    const [isUpscaling, setIsUpscaling] = useState<string | null>(null);
+
+    const STYLES_PRESETS = {
+        'Cyberpunk': { saturation: 1.5, contrast: 1.3, lut: 'neon', exposure: 0.1, warmth: -0.3, tint: 0.2, grain: 0.1 },
+        'Cinema': { saturation: 1.1, contrast: 1.4, lut: 'teal-orange', exposure: -0.1, shadows: 0.8, highlights: 1.1 },
+        'Vintage': { saturation: 0.6, contrast: 0.85, lut: 'sepia', warmth: 0.4, grain: 0.6, vignette: 0.4, blur: 0.5 },
+        'B&W Noir': { saturation: 0, contrast: 1.8, shadows: 0.6, highlights: 1.4, grain: 0.3, vignette: 0.5 },
+        'Hyper-Real': { sharpness: 1.5, contrast: 1.2, saturation: 1.1, highlights: 1.15, shadows: 0.95 },
+        'Ethereal': { sharpness: 0.8, saturation: 0.8, exposure: 0.3, highlights: 1.5, blur: 1.2, warmth: -0.1 }
+    };
     const [timelineFrames, setTimelineFrames] = useState<number>(1);
     const [activeFrame, setActiveFrame] = useState<number>(0);
+    const [showTimeline, setShowTimeline] = useState(false);
     const [availableChannels, setAvailableChannels] = useState(['Red', 'Green', 'Blue']);
     const [activeChannels, setActiveChannels] = useState(['Red', 'Green', 'Blue']);
     const [selectionMarquee, setSelectionMarquee] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
@@ -227,6 +241,7 @@ const EditStudio: React.FC<{
     const [isCreatingGuide, setIsCreatingGuide] = useState<'h' | 'v' | null>(null);
     const [guideLines, setGuideLines] = useState<{ type: 'h' | 'v', pos: number }[]>([]);
     const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const imageWrapperRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     const [activeGuides, setActiveGuides] = useState<{ x?: number, y?: number }[]>([]);
     const [draggingOffset, setDraggingOffset] = useState<{ x: number, y: number } | null>(null);
@@ -243,9 +258,83 @@ const EditStudio: React.FC<{
         }
     }, [activeTool]);
 
-    const MenuBar = () => {
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+    const handleNewProject = (options: { type: 'blank' | 'ai' | 'template', width?: number, height?: number, prompt?: string }) => {
+        setIsNewProjectModalOpen(false);
+        
+        if (options.type === 'ai' && options.prompt) {
+            setImageGenPromptForNew(options.prompt);
+            return;
+        }
+
+        const newWidth = options.width || 4096;
+        const newHeight = options.height || 4096;
+
+        // Create a blank white canvas of requested size
+        const canvas = document.createElement('canvas');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, newWidth, newHeight);
+        }
+
+        const blankImg: ImageFile = {
+            name: options.type === 'template' ? 'Template' : 'Blank Canvas',
+            mimeType: 'image/png',
+            base64: canvas.toDataURL('image/png')
+        };
+        
+        const nextIdx = project.baseImages.length;
+        setProject(s => ({
+            ...s,
+            baseImages: [...s.baseImages, blankImg],
+            localTexts: { ...s.localTexts, [nextIdx]: [] },
+            committedTexts: { ...s.committedTexts, [nextIdx]: [] }
+        }));
+        setActiveSlotIdx(nextIdx);
+        
+        logHistory({
+            type: 'image',
+            studio: 'edit_studio',
+            content: `Created ${options.type} canvas (${newWidth}x${newHeight})`,
+            prompt: `New Project: ${options.type}`
+        });
+    };
+
+    const setImageGenPromptForNew = async (prompt: string) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { generateImage } = await import('../services/geminiService');
+            const result = await generateImage([], prompt, null);
+            
+            const nextSlotIdx = project.baseImages.length;
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                baseImages: [...s.baseImages, result],
+                localTexts: { ...s.localTexts, [s.baseImages.length]: [] },
+                committedTexts: { ...s.committedTexts, [s.baseImages.length]: [] }
+            }));
+            setActiveSlotIdx(nextSlotIdx);
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `AI Generated Base: ${prompt}`,
+                prompt: prompt
+            });
+        } catch (err) {
+            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const renderMenuBar = () => {
         const menus = [
-            { label: 'File', items: ['New...', 'Open...', 'Open Recent', 'Save', 'Save As...', 'Export', 'Generate', 'Share', 'Print'] },
+            { label: 'File', items: ['New...', 'Open...', 'Open Recent', 'Import from Drive', 'Export to Drive', 'Save', 'Save As...', 'Export', 'Generate', 'Share', 'Print'] },
             { label: 'Edit', items: ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Fill...', 'Stroke...', 'Content-Aware Fill', 'Free Transform', 'Preferences'] },
             { label: 'Image', items: ['Mode', 'Adjustments', 'Auto Tone', 'Auto Contrast', 'Auto Color', 'Image Size...', 'Canvas Size...', 'Image Rotation'] },
             { label: 'Layer', items: ['New', 'Duplicate Layer', 'Delete', 'Quick Export as PNG', 'Layer Style', 'New Fill Layer', 'New Adjustment Layer', 'Mask', 'Smart Objects', 'Merge Layers', 'Flatten Image'] },
@@ -258,7 +347,6 @@ const EditStudio: React.FC<{
             { label: 'Help', items: ['Photoshop Help...', 'Photoshop Tutorials...', 'About Photoshop...'] }
         ];
 
-        const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
         return (
             <div className="h-8 bg-[#2B2B2B] border-b border-black flex items-center px-2 gap-4 text-[11px] text-white/70 select-none relative z-[100]">
@@ -286,17 +374,68 @@ const EditStudio: React.FC<{
                         {activeMenu === menu.label && (
                             <div className="absolute top-full left-0 mt-0.5 bg-[#2B2B2B] border border-black shadow-2xl py-1 min-w-[200px] rounded-b overflow-hidden">
                                 {menu.items.map((item, i) => (
-                                    <React.Fragment key={item}>
+                                    <Fragment key={item}>
                                         {item === '---' ? (
                                             <div className="h-[1px] bg-white/5 my-1" />
                                         ) : (
                                             <button 
                                                 className="w-full text-left px-4 py-1.5 hover:bg-[#3d75f2] hover:text-white transition-colors flex justify-between items-center group"
-                                                onClick={() => {
+                                                onClick={async () => {
+                                                    if (item === 'New...') setIsNewProjectModalOpen(true);
+                                                    if (item === 'Undo') undo();
+                                                    if (item === 'Redo') redo();
+                                                    if (item === 'Cut' && activeSlotIdx !== null) {
+                                                        if (selectedTextId) {
+                                                            const text = (project.localTexts[activeSlotIdx] || []).find(t => t.id === selectedTextId);
+                                                            if (text) { handleCopy(text); deleteSlotText(activeSlotIdx, selectedTextId); }
+                                                        }
+                                                    }
+                                                    if (item === 'Copy' && activeSlotIdx !== null) {
+                                                        const target = selectedTextId 
+                                                            ? (project.localTexts[activeSlotIdx] || []).find(t => t.id === selectedTextId)
+                                                            : project.globalLayers.find(l => l.id === selectedLayerId);
+                                                        if (target) handleCopy(target);
+                                                    }
+                                                    if (item === 'Paste' && activeSlotIdx !== null) handlePaste(activeSlotIdx);
+                                                    if (item === 'Delete' && activeSlotIdx !== null) {
+                                                        if (selectedTextId) deleteSlotText(activeSlotIdx, selectedTextId);
+                                                        else if (selectedLayerId) {
+                                                            setProject(s => ({ ...s, globalLayers: s.globalLayers.filter(l => l.id !== selectedLayerId) }));
+                                                            setSelectedLayerId(null);
+                                                        }
+                                                    }
+                                                    if (item === 'Save' && activeSlotIdx !== null) handleSaveSlot(activeSlotIdx);
                                                     if (item === 'Timeline') setShowTimeline(!showTimeline);
-                                                    if (item === 'Channels') { setRightPanelTab('channels'); }
-                                                    if (item === 'Adjustments') { setRightPanelTab('adjustments'); }
-                                                    if (item === '3D') { setRightPanelTab('3d'); }
+                                                    if (item === 'Channels') { setRightPanelTab('channels'); setActiveTool('layers'); }
+                                                    if (item === 'Adjustments') { setRightPanelTab('adjustments'); setActiveTool('select'); }
+                                                    if (item === 'Export' || item === 'Quick Export as PNG') setIsExportOpen(true);
+                                                    if (item === 'Subject' && activeSlotIdx !== null) selectSubject(activeSlotIdx);
+                                                    if (item === 'All') { /* Select all logic */ }
+                                                    if (item === 'Deselect') {
+                                                        setSelectedLayerId(null);
+                                                        setSelectedLayerIds([]);
+                                                        setSelectedTextId(null);
+                                                        setSelectionMarquee(null);
+                                                    }
+                                                    if (item === '3D') { setRightPanelTab('3d'); setActiveTool('3d'); }
+                                                    if (item === 'Rulers') setShowRulers(s => !s);
+                                                    if (item === 'Grid') setShowGrid(s => !s);
+                                                    if (item === 'Fit on Screen') { setCanvasPos({ x: 0, y: 0 }); setZoomLevel(100); }
+                                                    if (item === 'Zoom In') setZoomLevel(z => Math.min(600, z + 20));
+                                                    if (item === 'Zoom Out') setZoomLevel(z => Math.max(10, z - 20));
+                                                    if (item === 'Auto Tone' || item === 'Auto Contrast' || item === 'Auto Color') {
+                                                        if (activeSlotIdx !== null) aiRetouch(activeSlotIdx);
+                                                    }
+                                                    if (item === 'Import from Drive') {
+                                                        const { GoogleDriveService } = await import('../services/googleDriveService');
+                                                        GoogleDriveService.loadPicker(() => {});
+                                                    }
+                                                    if (item === 'Export to Drive' && activeSlotIdx !== null) {
+                                                        if (project.baseImages[activeSlotIdx]) {
+                                                            const { GoogleDriveService } = await import('../services/googleDriveService');
+                                                            GoogleDriveService.exportToDrive(project.baseImages[activeSlotIdx]);
+                                                        }
+                                                    }
                                                     setActiveMenu(null);
                                                 }}
                                             >
@@ -304,7 +443,7 @@ const EditStudio: React.FC<{
                                                 <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-40" />
                                             </button>
                                         )}
-                                    </React.Fragment>
+                                    </Fragment>
                                 ))}
                             </div>
                         )}
@@ -360,8 +499,145 @@ const EditStudio: React.FC<{
         </svg>
     );
 
+    const upscaleArtboard = async (idx: number) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No base image");
+            
+            const result = await editImage(baseImg, "Upscale this entire artboard to 4K resolution. Enhance every detail, reduce noise, and sharpen edges while maintaining perfect fidelity to the original content.");
+            
+            setProject(s => {
+                const newBase = [...s.baseImages];
+                newBase[idx] = result;
+                return { ...s, baseImages: newBase, isProcessingAI: false };
+            });
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `Upscaled Artboard ${idx + 1}`,
+                prompt: 'Neural Filter: 4K Artboard Enhance'
+            });
+        } catch (err) {
+            alert("Upscale failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const generateVariations = async (idx: number) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No image");
+            
+            const result = await editImage(baseImg, "Generate a creative variation of this image. Keep the same layout and subject but change the mood, lighting, and artistic style slightly to give it a fresh look.");
+            
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                baseImages: [...s.baseImages, result]
+            }));
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `Generated Variation of Artboard ${idx + 1}`,
+                prompt: 'AI Variations: Creative Mutation'
+            });
+        } catch (err) {
+            alert("Variation failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const applyAIStyle = async (idx: number, stylePrompt: string) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No base image");
+            
+            const result = await editImage(baseImg, `Transform this image into a ${stylePrompt} style. Maintain the core layout but re-render everything in this artistic style.`);
+            
+            setProject(s => {
+                const newBase = [...s.baseImages];
+                newBase[idx] = result;
+                return { ...s, baseImages: newBase, isProcessingAI: false };
+            });
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `AI Stylize: ${stylePrompt}`,
+                prompt: `Neural Filter: ${stylePrompt}`
+            });
+        } catch (err) {
+            alert("Style application failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
     const AdjustmentsPanel = () => (
         <div className="flex-1 flex flex-col p-4 bg-[#2B2B2B] gap-6 overflow-y-auto">
+            <div className="flex flex-col gap-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Artistic Styles (AI)</h3>
+                <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                        { name: 'Comic', prompt: 'bold comic book illustration with ink lines' },
+                        { name: 'Oil Painting', prompt: 'expressive oil painting with visible brushstrokes' },
+                        { name: 'Sketch', prompt: 'detailed pencil sketch on paper' },
+                        { name: 'Watercolor', prompt: 'soft watercolor painting with drips' },
+                        { name: 'Futuristic', prompt: 'sleek futuristic cyber-tech style' },
+                        { name: 'Old Photo', prompt: 'distressed 19th century daguerreotype' }
+                    ].map(style => (
+                        <button 
+                            key={style.name}
+                            onClick={() => activeSlotIdx !== null && applyAIStyle(activeSlotIdx, style.prompt)}
+                            className="py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded text-[8px] font-black uppercase text-white/60 tracking-wider transition-all"
+                        >
+                            {style.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Neural Filters (AI)</h3>
+                <div className="grid grid-cols-2 gap-2">
+                    <button 
+                        onClick={() => activeSlotIdx !== null && aiRetouch(activeSlotIdx)}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#3d75f2]/10 hover:bg-[#3d75f2]/20 border border-[#3d75f2]/30 rounded text-[9px] text-white/80 font-black uppercase transition-all"
+                    >
+                        <Sparkles className="w-3 h-3 text-[#3d75f2]" />
+                        Professional Retouch
+                    </button>
+                    <button 
+                        onClick={() => activeSlotIdx !== null && removeBackground(activeSlotIdx)}
+                        className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
+                    >
+                        <Wand2 className="w-3 h-3 text-[#3d75f2]" />
+                        Extract Subject
+                    </button>
+                    <button 
+                        onClick={() => activeSlotIdx !== null && upscaleArtboard(activeSlotIdx)}
+                        className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
+                    >
+                        <Maximize className="w-3 h-3 text-[#3d75f2]" />
+                        4K AI Upscale
+                    </button>
+                    <button 
+                        onClick={() => activeSlotIdx !== null && generateVariations(activeSlotIdx)}
+                        className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
+                    >
+                        <Layers className="w-3 h-3 text-[#3d75f2]" />
+                        AI Variations
+                    </button>
+                </div>
+            </div>
+
             <div className="flex flex-col gap-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Color Correction</h3>
                 <div className="grid grid-cols-4 gap-2">
@@ -393,6 +669,8 @@ const EditStudio: React.FC<{
                         { label: 'Contrast', key: 'contrast', min: 0, max: 200 },
                         { label: 'Saturation', key: 'saturation', min: 0, max: 200 },
                         { label: 'Warmth', key: 'warmth', min: -100, max: 100 },
+                        { label: 'Sharpness', key: 'sharpness', min: 0, max: 200 },
+                        { label: 'Blur', key: 'blur', min: 0, max: 20 },
                         { label: 'Grain', key: 'grain', min: 0, max: 100 },
                         { label: 'Vignette', key: 'vignette', min: 0, max: 100 },
                     ].map(item => (
@@ -614,13 +892,81 @@ const EditStudio: React.FC<{
                             <label className="text-[9px] text-white/40 uppercase font-black block">Scale (%)</label>
                             <input type="number" value={Math.round(layer.scale || 0)} onChange={e => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, scale: parseInt(e.target.value) || 0 } : l) }))} className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-[11px] outline-none" />
                          </div>
+                         <div className="space-y-2">
+                            <label className="text-[9px] text-white/40 uppercase font-black block">Rotation</label>
+                            <input type="number" value={Math.round(layer.rotation || 0)} onChange={e => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, rotation: parseInt(e.target.value) || 0 } : l) }))} className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-[11px] outline-none" />
+                         </div>
                     </div>
                 </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Blending</h3>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[9px] text-white/40 uppercase font-black block">Opacity</label>
+                            <input 
+                                type="range" min="0" max="1" step="0.01"
+                                value={layer.opacity ?? 1}
+                                onChange={e => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, opacity: parseFloat(e.target.value) } : l) }))}
+                                className="w-full accent-[#3d75f2] h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] text-white/40 uppercase font-black block">Blend Mode</label>
+                            <select 
+                                value={layer.blendMode}
+                                onChange={e => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, blendMode: e.target.value as BlendingMode } : l) }))}
+                                className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-[11px] outline-none capitalize"
+                            >
+                                {BLENDING_MODES.map(mode => (
+                                    <option key={mode} value={mode} className="bg-[#2B2B2B]">{mode}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Z-Index / Reorder</h3>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, zIndex: (l.zIndex || 0) + 1 } : l) }))}
+                            className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] font-black uppercase"
+                        >
+                            Bring Forward
+                        </button>
+                        <button 
+                            onClick={() => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, zIndex: Math.max(0, (l.zIndex || 0) - 1) } : l) }))}
+                            className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] font-black uppercase"
+                        >
+                            Send Backward
+                        </button>
+                    </div>
+                </div>
+
+                {layer.type === 'image' && (
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">AI Lab</h3>
+                        <button 
+                            onClick={() => upscaleLayer(layerId)}
+                            disabled={!!isUpscaling}
+                            className="w-full py-2 bg-[#3d75f2]/10 hover:bg-[#3d75f2]/20 border border-[#3d75f2]/30 rounded text-[9px] text-white/80 font-black uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                        >
+                            {isUpscaling === layerId ? (
+                                <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Sparkles className="w-3 h-3 text-[#3d75f2]" />
+                            )}
+                            {isUpscaling === layerId ? 'Upscaling...' : 'AI Upscale & Enhance'}
+                        </button>
+                    </div>
+                )}
             </div>
         );
     };
 
 
+    const SmartGuides = () => {
         return (
             <>
                 {activeGuides.map((guide, i) => (
@@ -650,20 +996,34 @@ const EditStudio: React.FC<{
         setContextMenu({ x: e.clientX, y: e.clientY, type, id });
     };
 
-    const QuickActions = () => (
+    const renderQuickActions = () => (
         <div className="absolute top-20 left-16 z-50 flex flex-col gap-2">
             <button 
-                onClick={() => setProject(s => ({ ...s, isProcessingAI: true }))}
+                onClick={() => activeSlotIdx !== null && selectSubject(activeSlotIdx)}
                 className="px-3 py-1.5 bg-[#3d75f2] hover:bg-[#3d75f2]/90 text-white rounded shadow-lg flex items-center gap-2 text-[10px] font-bold transition-all hover:scale-105 active:scale-95 group"
             >
                 <Sparkles className="w-3.5 h-3.5 group-hover:animate-pulse" />
                 <span>Select Subject</span>
             </button>
             <button 
+                onClick={() => {
+                    if (selectionMarquee) {
+                        setIsGenerativeFillOpen(true);
+                    } else {
+                        alert("Please select an area with the Marquee Tool (M) first.");
+                    }
+                }}
                 className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#2B2B2B] text-white/80 rounded shadow-lg flex items-center gap-2 text-[10px] font-bold border border-white/5 transition-all"
             >
-                <Palette className="w-3.5 h-3.5" />
-                <span>Remove Background</span>
+                <Wand2 className="w-3.5 h-3.5 text-[#3d75f2]" />
+                <span>Generative Fill</span>
+            </button>
+            <button 
+                onClick={() => activeSlotIdx !== null && smartHealing(activeSlotIdx)}
+                className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#2B2B2B] text-white/80 rounded shadow-lg flex items-center gap-2 text-[10px] font-bold border border-white/5 transition-all"
+            >
+                <Zap className="w-3.5 h-3.5 text-orange-400" />
+                <span>Smart Heal</span>
             </button>
         </div>
     );
@@ -779,12 +1139,33 @@ const EditStudio: React.FC<{
                         }}>Lock/Unlock Layer</div>
                         <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => setRenamingId(contextMenu.id!)}>Rename Layer</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer">Flip Horizontal</div>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer">Flip Vertical</div>
+                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                            const layer = project.globalLayers.find(l => l.id === contextMenu.id);
+                            if (layer) {
+                                setProject(s => ({
+                                    ...s,
+                                    globalLayers: s.globalLayers.map(l => l.id === layer.id ? { ...l, flipX: !l.flipX } : l)
+                                }));
+                            }
+                        }}>Flip Horizontal</div>
+                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                            const layer = project.globalLayers.find(l => l.id === contextMenu.id);
+                            if (layer) {
+                                setProject(s => ({
+                                    ...s,
+                                    globalLayers: s.globalLayers.map(l => l.id === layer.id ? { ...l, flipY: !l.flipY } : l)
+                                }));
+                            }
+                        }}>Flip Vertical</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer">Rasterize Layer</div>
+                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                            // Rasterize logic
+                        }}>Rasterize Layer</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-red-500 text-[10px] text-white/80 hover:text-white cursor-pointer">Delete Layer</div>
+                        <div className="px-3 py-1.5 hover:bg-red-500 text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                            setProject(s => ({ ...s, globalLayers: s.globalLayers.filter(l => l.id !== contextMenu.id) }));
+                            setSelectedLayerId(null);
+                        }}>Delete Layer</div>
                     </>
                 ) : (
                     <>
@@ -829,27 +1210,30 @@ const EditStudio: React.FC<{
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'marquee') {
             setIsDrawingSelection(true);
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setSelectionMarquee({ x, y, w: 0, h: 0 });
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'brush' || activeTool === 'eraser') {
             setIsDrawing(true);
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setCurrentPath({
                 id: Math.random().toString(36).substr(2, 9),
                 points: [{ x, y }],
-                color: activeTool === 'eraser' ? '#ffffff' : brushColor,
+                color: (activeTool === 'eraser') ? '#ffffff' : brushColor,
                 width: brushSize / 5, // scaled
                 opacity: brushOpacity,
-                blendMode: activeTool === 'eraser' ? 'normal' : 'normal'
+                blendMode: (activeTool === 'eraser') ? 'normal' : 'normal'
             });
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'pen') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             if (!activePenPath) {
@@ -858,13 +1242,15 @@ const EditStudio: React.FC<{
                 setActivePenPath(prev => prev ? { ...prev, points: [...prev.points, { x, y }] } : null);
             }
         } else if (activeTool === 'slice') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
-            setActiveSlice({ id: Math.random().toString(36).substr(2, 9), x, y, w: 0, h: 0, label: `Slice ${project.slices[activeSlotIdx || 0]?.length || 0 + 1}` });
+            setActiveSlice({ id: Math.random().toString(36).substr(2, 9), x, y, w: 0, h: 0, label: `Slice ${project.slices[activeSlotIdx ?? 0]?.length || 0 + 1}` });
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'lasso') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setLassoPoints([{ x, y }]);
@@ -873,46 +1259,75 @@ const EditStudio: React.FC<{
     };
 
     const handleCanvasPointerMove = (e: React.PointerEvent) => {
-        if (isPanning) {
+        if (isDragging && activeSlotIdx !== null) {
+            const rect = imageWrapperRefs.current[activeSlotIdx]?.getBoundingClientRect();
+            if (!rect) return;
+            const dx = ((e.clientX - lastPointerPos.x) / rect.width) * 100;
+            const dy = ((e.clientY - lastPointerPos.y) / rect.height) * 100;
+            if (selectedTextId) {
+                setProject(s => ({
+                    ...s,
+                    localTexts: {
+                        ...s.localTexts,
+                        [activeSlotIdx]: (s.localTexts[activeSlotIdx] || []).map(t => 
+                            t.id === selectedTextId ? { ...t, x: t.x + dx, y: t.y + dy } : t
+                        )
+                    }
+                }));
+            } else if (selectedLayerId || selectedLayerIds.length > 0) {
+                const ids = selectedLayerIds.length > 0 ? selectedLayerIds : [selectedLayerId!];
+                setProject(s => ({
+                    ...s,
+                    globalLayers: s.globalLayers.map(l => 
+                        ids.includes(l.id) ? { ...l, x: l.x + dx, y: l.y + dy } : l
+                    )
+                }));
+            }
+            setLastPointerPos({ x: e.clientX, y: e.clientY });
+        } else if (isPanning) {
             const dx = (e.clientX - lastPointerPos.x) / (zoomLevel / 100);
             const dy = (e.clientY - lastPointerPos.y) / (zoomLevel / 100);
             setCanvasPos(prev => ({ x: prev.x + dx, y: prev.y + dy }));
             setLastPointerPos({ x: e.clientX, y: e.clientY });
         } else if (isDrawingSelection && selectionMarquee) {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setSelectionMarquee(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
         } else if (activeSlice) {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setActiveSlice(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
         } else if (lassoPoints.length > 0 && activeTool === 'lasso') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setLassoPoints(prev => [...prev, { x, y }]);
         } else if (isDrawing && currentPath) {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setCurrentPath(prev => prev ? { ...prev, points: [...prev.points, { x, y }] } : null);
         } else if (isCreatingGuide) {
             // Find the artboard and its rect to calculate % position
-            const rect = containerRefs.current[activeSlotIdx || 0]?.getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
             if (rect) {
-                const pos = isCreatingGuide === 'h' ? ((e.clientX - rect.left) / rect.width) * 100 : ((e.clientY - rect.top) / rect.height) * 100;
+                const pos = isCreatingGuide === 'v' ? ((e.clientX - rect.left) / rect.width) * 100 : ((e.clientY - rect.top) / rect.height) * 100;
             }
         }
     };
 
     const handleCanvasPointerUp = (e: React.PointerEvent) => {
         if (isCreatingGuide) {
-            const rect = containerRefs.current[activeSlotIdx || 0]?.getBoundingClientRect();
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
             if (rect) {
-                const pos = isCreatingGuide === 'h' ? ((e.clientX - rect.left) / rect.width) * 100 : ((e.clientY - rect.top) / rect.height) * 100;
-                setGuideLines(prev => [...prev, { type: isCreatingGuide === 'h' ? 'v' : 'h', pos }]);
+                const pos = isCreatingGuide === 'v' ? ((e.clientX - rect.left) / rect.width) * 100 : ((e.clientY - rect.top) / rect.height) * 100;
+                setGuideLines(prev => [...prev, { type: isCreatingGuide === 'v' ? 'v' : 'h', pos }]);
             }
             setIsCreatingGuide(null);
         }
@@ -938,12 +1353,25 @@ const EditStudio: React.FC<{
             setActiveSlice(null);
         }
         if (lassoPoints.length > 0 && activeTool === 'lasso') {
-            // For now just clear it, ideally convert to a selection path
+            const minX = Math.min(...lassoPoints.map(p => p.x));
+            const maxX = Math.max(...lassoPoints.map(p => p.x));
+            const minY = Math.min(...lassoPoints.map(p => p.y));
+            const maxY = Math.max(...lassoPoints.map(p => p.y));
+            
+            setSelectionMarquee({
+                x: minX,
+                y: minY,
+                w: maxX - minX,
+                h: maxY - minY
+            });
             setLassoPoints([]);
         }
+        setIsDragging(false);
         setIsPanning(false);
         setIsDrawingSelection(false);
         setIsDrawing(false);
+        setDraggingOffset(null);
+        setActiveGuides([]);
     };
 
     const handleRulerPointerDown = (type: 'h' | 'v') => {
@@ -1034,6 +1462,235 @@ const EditStudio: React.FC<{
         });
     };
 
+    const aiRetouch = async (idx: number) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No base image");
+            
+            const result = await editImage(baseImg, "Retouch this image to look professional. Enhance colors, balance lighting, and sharpen details while maintaining a natural look.");
+            
+            setProject(s => {
+                const newBaseImages = [...s.baseImages];
+                newBaseImages[idx] = result;
+                return { ...s, baseImages: newBaseImages, isProcessingAI: false };
+            });
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `AI Retouched Artboard ${idx + 1}`,
+                prompt: 'Neural Filter: Professional Retouch'
+            });
+        } catch (err) {
+            alert("Retouch failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const handleGenerativeFill = async (idx: number, prompt: string) => {
+        if (!selectionMarquee) return;
+        setIsGenerativeFillOpen(false);
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No image found");
+            
+            const areaDesc = `selection at [x:${selectionMarquee.x.toFixed(1)}%, y:${selectionMarquee.y.toFixed(1)}%, width:${selectionMarquee.w.toFixed(1)}%, height:${selectionMarquee.h.toFixed(1)}%]`;
+            const result = await editImage(baseImg, `Modify the following area: ${areaDesc}. Generative Task: ${prompt}. Ensure the new content integrates seamlessly with the rest of the image texture, lighting, and perspective.`);
+            
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                baseImages: s.baseImages.map((img, i) => i === idx ? result : img)
+            }));
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `Generative Fill: Artboard ${idx + 1}`,
+                prompt: prompt
+            });
+            
+            setSelectionMarquee(null);
+        } catch (err) {
+            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const smartHealing = async (idx: number) => {
+        if (!selectionMarquee) {
+            alert("Please select the area you want to heal/remove first.");
+            return;
+        }
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No image");
+            
+            const result = await editImage(baseImg, "Remove the object or distraction within the selected area and realistically fill it in with the surrounding texture and lighting. The result should look completely natural and untouched.");
+            
+            setProject(s => {
+                const newBase = [...s.baseImages];
+                newBase[idx] = result;
+                return { ...s, baseImages: newBase, isProcessingAI: false };
+            });
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `Smart Healing applied to Artboard ${idx + 1}`,
+                prompt: 'Neural Filter: AI Content-Aware Fill'
+            });
+            setSelectionMarquee(null);
+        } catch (err) {
+            alert("Healing failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+ 
+    const removeBackground = async (idx: number) => {
+        if (!selectionMarquee) {
+            alert("Please select an object first.");
+            return;
+        }
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No base image");
+            
+            const result = await editImage(baseImg, "Isolate the main subject within the selection and remove the background. Return only the subject.");
+            
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                globalLayers: [...s.globalLayers, {
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'image',
+                    file: result,
+                    scale: Math.abs(selectionMarquee.w),
+                    x: selectionMarquee.x + selectionMarquee.w/2,
+                    y: selectionMarquee.y + selectionMarquee.h/2,
+                    rotation: 0,
+                    opacity: 1,
+                    zIndex: 15,
+                    isVisible: true,
+                    blendMode: 'normal',
+                    name: 'AI Subject'
+                }]
+            }));
+            setSelectionMarquee(null);
+        } catch (err) {
+            alert("AI Extraction failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const selectSubject = async (idx: number) => {
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { analyzeImageForPrompt } = await import('../services/geminiService');
+            const baseImg = project.baseImages[idx];
+            if (!baseImg) throw new Error("No base image");
+            
+            const result = await analyzeImageForPrompt(
+                [baseImg], 
+                "Identify the main subject in the image. Give me its bounding box in percentages of the image size (x, y, width, height). Return ONLY the JSON object like: {\"x\": 10, \"y\": 10, \"w\": 50, \"h\": 50}."
+            );
+            
+            const jsonMatch = result.match(/\{.*\}/);
+            if (jsonMatch) {
+                const box = JSON.parse(jsonMatch[0]);
+                setSelectionMarquee({
+                    x: box.x,
+                    y: box.y,
+                    w: box.w,
+                    h: box.h
+                });
+                setActiveSlotIdx(idx);
+            }
+        } catch (err) {
+            alert("Subject selection failed: " + (err instanceof Error ? err.message : String(err)));
+        } finally {
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const generateAIImage = async (prompt: string) => {
+        if (!prompt) return;
+        setIsAIGeneratorOpen(false);
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { generateImage } = await import('../services/geminiService');
+            const result = await generateImage([], prompt, null);
+            
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                globalLayers: [...s.globalLayers, {
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'image',
+                    file: result,
+                    scale: 50,
+                    x: 50,
+                    y: 50,
+                    rotation: 0,
+                    opacity: 1,
+                    zIndex: 20,
+                    isVisible: true,
+                    blendMode: 'normal',
+                    name: `AI: ${prompt.substring(0, 15)}...`
+                }]
+            }));
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `AI Generated: ${prompt}`,
+                prompt: prompt
+            });
+        } catch (err) {
+            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        }
+    };
+
+    const upscaleLayer = async (layerId: string) => {
+        setIsUpscaling(layerId);
+        setProject(s => ({ ...s, isProcessingAI: true }));
+        try {
+            const { editImage } = await import('../services/geminiService');
+            const layer = project.globalLayers.find(l => l.id === layerId);
+            if (!layer || !layer.file) throw new Error("Layer not found");
+            
+            const result = await editImage(layer.file, "Upscale this image, improve details, sharpen edges and remove artifacts while keeping the same content. Return high resolution version.");
+            
+            setProject(s => ({
+                ...s,
+                isProcessingAI: false,
+                globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, file: result } : l)
+            }));
+            
+            logHistory({
+                type: 'image',
+                studio: 'edit_studio',
+                content: `Upscaled Layer: ${layer.name || 'Image'}`,
+                prompt: 'Neural Filter: AI Upscale & Enhance'
+            });
+        } catch (err) {
+            alert("Upscale failed: " + (err instanceof Error ? err.message : String(err)));
+            setProject(s => ({ ...s, isProcessingAI: false }));
+        } finally {
+            setIsUpscaling(null);
+        }
+    };
+
     const alignLayers = (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
         if (!activeSlotIdx && activeSlotIdx !== 0) return;
         pushToHistory();
@@ -1087,17 +1744,27 @@ const EditStudio: React.FC<{
         setActiveSlotIdx(slotIdx);
     }, [setProject]);
 
-    const handleCopy = useCallback((textObj: LocalText) => {
-        setClipboard({ ...textObj });
+    const handleCopy = useCallback((obj: LocalText | GlobalLayer) => {
+        setClipboard({ ...obj });
     }, []);
 
     const handlePaste = useCallback((slotIdx: number) => {
-        if (clipboard) {
-            pushToHistory();
+        if (!clipboard) return;
+        pushToHistory();
+        if ('content' in clipboard) {
             const pastedText = { ...clipboard, x: clipboard.x + 2, y: clipboard.y + 2 };
             addTextToSlot(slotIdx, pastedText);
+        } else {
+            const newLayer = { 
+                ...clipboard, 
+                id: Math.random().toString(36).substr(2, 9), 
+                x: clipboard.x + 5, 
+                y: clipboard.y + 5,
+                zIndex: project.globalLayers.length + 10
+            };
+            setProject(s => ({ ...s, globalLayers: [...s.globalLayers, newLayer] }));
         }
-    }, [clipboard, addTextToSlot]);
+    }, [clipboard, addTextToSlot, project.globalLayers.length]);
 
     const handleSaveSlot = (idx: number) => {
         setProject(s => ({
@@ -1181,10 +1848,28 @@ const EditStudio: React.FC<{
                     case 't': setActiveTool('text'); break;
                     case 'u': setActiveTool('shapes'); break;
                     case 'c': setActiveTool('crop'); break;
-                    case 'm': setActiveTool('images'); break;
-                    case 'h': setActiveTool('history'); break;
-                    case 'l': setActiveTool('layers'); break;
+                    case 'm': setActiveTool('marquee'); break;
+                    case 'h': setActiveTool('hand'); break;
+                    case 'z': setActiveTool('zoom'); break;
+                    case 'b': setActiveTool('brush'); break;
+                    case 'e': setActiveTool('eraser'); break;
+                    case 'i': setActiveTool('eyedropper'); break;
+                    case 'l': setActiveTool('lasso'); break;
+                    case 'p': setActiveTool('pen'); break;
+                    case 's': setActiveTool('stamp'); break;
+                    case 'j': setActiveTool('healing'); break;
+                    case 'k': setActiveTool('slice'); break;
                     case 'g': setShowGrid(prev => !prev); break;
+                    case 'r': setShowRulers(prev => !prev); break;
+                    case 'd': {
+                        if (selectedLayerId || selectedTextId || selectionMarquee) {
+                            setSelectedLayerId(null);
+                            setSelectedTextId(null);
+                            setSelectedLayerIds([]);
+                            setSelectionMarquee(null);
+                        }
+                        break;
+                    }
                 }
             }
         };
@@ -1332,7 +2017,7 @@ const EditStudio: React.FC<{
         if (selectedTextId === textId) setSelectedTextId(null);
     };
 
-    const handleDownload = (idx: number, resolution: '2k' | '4k') => {
+    const handleDownload = (idx: number, resolution: '2k' | '4k', format: 'png' | 'jpeg' | 'webp' = 'png', quality: number = 0.9) => {
         const imgFile = project.baseImages[idx];
         const container = containerRefs.current[idx];
         if (!imgFile || !container) return;
@@ -1340,7 +2025,7 @@ const EditStudio: React.FC<{
         const currentTexts = project.localTexts[idx] || [];
         const committedTexts = project.committedTexts[idx] || [];
         if (JSON.stringify(currentTexts) !== JSON.stringify(committedTexts)) {
-            alert("⚠️ فضلاً اضغط على زر 'BAKE' لحفظ التعديلات أولاً لضمان ثباتها عند التحميل.");
+            alert("⚠️ Please press 'BAKE' to save your edits first.");
             return;
         }
 
@@ -1368,15 +2053,25 @@ const EditStudio: React.FC<{
 
             const renderLayers = async () => {
                 for (const layer of project.globalLayers) {
+                    if (!layer.isVisible) continue;
                     await new Promise<void>(res => {
                         const lImg = new Image();
                         lImg.src = `data:${layer.file.mimeType};base64,${layer.file.base64}`;
                         lImg.onload = () => {
+                            ctx.save();
+                            const posX = (layer.x / 100) * canvas.width;
+                            const posY = (layer.y / 100) * canvas.height;
+                            ctx.translate(posX, posY);
+                            ctx.rotate(((layer.rotation || 0) * Math.PI) / 180);
+                            ctx.globalAlpha = layer.opacity ?? 1;
+                            
                             const scale = (layer.scale / 100) * canvas.width;
                             const aspect = lImg.width / lImg.height;
                             const drawW = scale;
                             const drawH = scale / aspect;
-                            ctx.drawImage(lImg, (layer.x / 100) * canvas.width - drawW/2, (layer.y / 100) * canvas.height - drawH/2, drawW, drawH);
+                            
+                            ctx.drawImage(lImg, -drawW/2, -drawH/2, drawW, drawH);
+                            ctx.restore();
                             res();
                         };
                     });
@@ -1422,15 +2117,18 @@ const EditStudio: React.FC<{
                     ctx.restore();
                 });
 
+                const mimeType = format === 'png' ? 'image/png' : format === 'jpeg' ? 'image/jpeg' : 'image/webp';
                 const link = document.createElement('a');
-                link.download = `Jenta-Final-${idx + 1}-${resolution}.png`;
-                link.href = canvas.toDataURL('image/png');
+                link.download = `Studio-Export-${idx + 1}-${resolution}.${format}`;
+                link.href = canvas.toDataURL(mimeType, quality);
                 link.click();
                 setIsDownloading(null);
             };
             renderLayers();
         };
     };
+
+
 
     const activeLut = LUTS.find(l => l.name === project.adjustments.lut);
     const filterStyle = { 
@@ -1466,8 +2164,44 @@ const EditStudio: React.FC<{
 
     return (
         <main className="w-full h-[calc(100vh-120px)] flex flex-col bg-[#1A1A1A] overflow-hidden text-[#cccccc] font-sans selection:bg-[#3d75f2] selection:text-white" onContextMenu={(e) => e.preventDefault()} onClick={() => setContextMenu(null)}>
-            <ContextMenu />
-            <CommandPalette />
+            {ContextMenu()}
+            {CommandPalette()}
+            <AnimatePresence>
+                {isExportOpen && (
+                    <ExportModal 
+                        isOpen={isExportOpen} 
+                        onClose={() => setIsExportOpen(false)} 
+                        onExport={(res, format, quality) => activeSlotIdx !== null && handleDownload(activeSlotIdx, res as '2k' | '4k', format, quality)}
+                    />
+                )}
+            </AnimatePresence>
+            <AnimatePresence>
+                {isGenerativeFillOpen && (
+                    <GenerativeFillModal 
+                        isOpen={isGenerativeFillOpen} 
+                        onClose={() => setIsGenerativeFillOpen(false)} 
+                        onGenerate={(prompt) => activeSlotIdx !== null && handleGenerativeFill(activeSlotIdx, prompt)}
+                    />
+                )}
+            </AnimatePresence>
+            <AnimatePresence>
+                {isAIGeneratorOpen && (
+                    <AIGeneratorModal 
+                        isOpen={isAIGeneratorOpen} 
+                        onClose={() => setIsAIGeneratorOpen(false)} 
+                        onGenerate={generateAIImage}
+                    />
+                )}
+            </AnimatePresence>
+            <AnimatePresence>
+                {isNewProjectModalOpen && (
+                    <NewProjectModal 
+                        isOpen={isNewProjectModalOpen} 
+                        onClose={() => setIsNewProjectModalOpen(false)} 
+                        onCreate={handleNewProject}
+                    />
+                )}
+            </AnimatePresence>
             
             <AnimatePresence>
                 {showHelp && (
@@ -1566,7 +2300,7 @@ const EditStudio: React.FC<{
             )}
             
             {/* Photoshop Top Navigation */}
-            <MenuBar />
+            {renderMenuBar()}
             
             <div className="flex flex-1 items-stretch overflow-hidden">
                 {/* Left Toolbar - Full Photoshop Tools List */}
@@ -1582,8 +2316,8 @@ const EditStudio: React.FC<{
                         { icon: Sparkles, id: 'healing', tooltip: 'Spot Healing Brush (J)' },
                         { icon: Brush, id: 'brush', tooltip: 'Brush Tool (B)' },
                         { icon: Stamp, id: 'stamp', tooltip: 'Clone Stamp (S)' },
-                        { icon: History, id: 'eraser', tooltip: 'History Brush (Y)' },
-                        { icon: Eraser, id: 'eraser_tool', tooltip: 'Eraser (E)' },
+                        { icon: History, id: 'history_brush', tooltip: 'History Brush (Y)' },
+                        { icon: Eraser, id: 'eraser', tooltip: 'Eraser (E)' },
                         { icon: Palette, id: 'gradient', tooltip: 'Gradient Tool (G)' },
                         { icon: Droplet, id: 'blur', tooltip: 'Blur tool' },
                         { icon: PenIcon, id: 'pen', tooltip: 'Pen tool (P)' },
@@ -1593,10 +2327,17 @@ const EditStudio: React.FC<{
                         { icon: Move, id: 'hand', tooltip: 'Hand tool (H)' },
                         { icon: Search, id: 'zoom', tooltip: 'Zoom tool (Z)' },
                         { icon: Box, id: '3d', tooltip: '3D Orbit tool' },
+                        { icon: Sparkles, id: 'ai_gen', tooltip: 'AI Image Creator' },
                     ].map((tool) => (
                         <button 
                             key={tool.id}
-                            onClick={() => setActiveTool(tool.id as any)}
+                            onClick={() => {
+                                if (tool.id === 'ai_gen') {
+                                    setIsAIGeneratorOpen(true);
+                                } else {
+                                    setActiveTool(tool.id as any);
+                                }
+                            }}
                             className={cn(
                                 "p-2 rounded hover:bg-white/5 transition-all relative group shrink-0",
                                 activeTool === tool.id ? "bg-[#3d75f2] text-white shadow-inner" : "text-white/60 hover:text-white"
@@ -1760,10 +2501,7 @@ const EditStudio: React.FC<{
                                     <button onClick={redo} disabled={project.redoStack.length === 0} className="p-1 hover:bg-white/5 rounded disabled:opacity-20 transition-all"><Redo2 className="w-3 h-3" /></button>
                                     <div className="w-[1px] h-4 bg-white/10 mx-2" />
                                     <button 
-                                        onClick={() => {
-                                            // Real export logic placeholder (canvas.toDataURL)
-                                            alert("Project exported as High-Res PSD (Simulated)");
-                                        }}
+                                        onClick={() => setIsExportOpen(true)}
                                         className="flex items-center gap-1.5 px-3 py-1 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded text-[10px] font-black uppercase transition-all"
                                     >
                                         <Download className="w-3 h-3" />
@@ -1782,10 +2520,10 @@ const EditStudio: React.FC<{
                         onPointerUp={handleCanvasPointerUp}
                     >
                         {/* Rulers */}
-                        <Rulers />
+                        {Rulers()}
 
                         {/* AI Quick Actions Bar */}
-                        <QuickActions />
+                        {renderQuickActions()}
 
                         {/* Status Bar */}
                         <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#1e1e1e] border-t border-white/10 z-[60] flex items-center px-4 justify-between">
@@ -1822,7 +2560,66 @@ const EditStudio: React.FC<{
                                     transformOrigin: 'center'
                                 }}
                             >
-                                {project.baseImages.map((img, idx) => {
+                                {project.baseImages.length === 0 ? (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        className="flex flex-col items-center justify-center w-[800px] h-[600px] bg-[#1a1a1a] border-2 border-dashed border-white/5 rounded-3xl gap-6"
+                                    >
+                                        <div className="w-20 h-20 bg-[#3d75f2]/10 rounded-full flex items-center justify-center">
+                                            <Zap className="w-10 h-10 text-[#3d75f2] animate-pulse" />
+                                        </div>
+                                        <div className="text-center space-y-2">
+                                            <h3 className="text-xl font-bold text-white tracking-tight">ابدأ مروعك الان</h3>
+                                            <p className="text-[11px] text-white/40 max-w-[200px]">أنشئ لوحة فنية جديدة أو ابدأ باستخدام الذكاء الاصطناعي</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setIsNewProjectModalOpen(true)}
+                                                className="px-8 py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-[#3d75f2]/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                New Artboard
+                                            </button>
+                                            <label className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white/80 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 border border-white/5">
+                                                <ImageFileIcon className="w-4 h-4" />
+                                                Upload
+                                                <input 
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    multiple 
+                                                    accept="image/*" 
+                                                    onChange={(e) => {
+                                                        if (e.target.files) {
+                                                            Array.from(e.target.files).forEach(file => {
+                                                                const reader = new FileReader();
+                                                                reader.onload = async (re) => {
+                                                                    const img = new Image();
+                                                                    img.src = re.target?.result as string;
+                                                                    img.onload = () => {
+                                                                        const fileObj: ImageFile = {
+                                                                            name: file.name,
+                                                                            mimeType: file.type,
+                                                                            base64: re.target?.result as string
+                                                                        };
+                                                                        const nextIdx = project.baseImages.length;
+                                                                        setProject(s => ({
+                                                                            ...s,
+                                                                            baseImages: [...s.baseImages, fileObj],
+                                                                            localTexts: { ...s.localTexts, [nextIdx]: [] },
+                                                                            committedTexts: { ...s.committedTexts, [nextIdx]: [] }
+                                                                        }));
+                                                                        setActiveSlotIdx(nextIdx);
+                                                                    };
+                                                                };
+                                                                reader.readAsDataURL(file);
+                                                            });
+                                                        }
+                                                    }} 
+                                                />
+                                            </label>
+                                        </div>
+                                    </motion.div>
+                                ) : project.baseImages.map((img, idx) => {
                                     if (!img) return null;
                                     const currentTexts = project.localTexts[idx] || [];
                                     const committedTexts = project.committedTexts[idx] || [];
@@ -1858,7 +2655,8 @@ const EditStudio: React.FC<{
                                                         addTextToSlot(idx);
                                                     } else if (activeTool === 'shapes') {
                                                         pushToHistory();
-                                                        const rect = containerRefs.current[idx]!.getBoundingClientRect();
+                                                        const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
+                                                        if (!rect) return;
                                                         const x = ((e.clientX - rect.left) / rect.width) * 100;
                                                         const y = ((e.clientY - rect.top) / rect.height) * 100;
                                                         setProject(s => ({
@@ -1897,7 +2695,8 @@ const EditStudio: React.FC<{
                                                         addTextToSlot(idx);
                                                     } else if (activeTool === 'shapes') {
                                                         pushToHistory();
-                                                        const rect = containerRefs.current[idx]!.getBoundingClientRect();
+                                                        const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
+                                                        if (!rect) return;
                                                         const x = ((e.clientX - rect.left) / rect.width) * 100;
                                                         const y = ((e.clientY - rect.top) / rect.height) * 100;
                                                         setProject(s => ({
@@ -1916,7 +2715,7 @@ const EditStudio: React.FC<{
                                                 )}
                                                 style={{ width: '800px', height: '1000px', backgroundColor: '#fff' }}
                                             >
-                                                <div className="w-full relative shadow-2xl">
+                                                <div ref={el => { imageWrapperRefs.current[idx] = el; }} className="w-full relative shadow-2xl">
                                                 <img 
                                                     src={`data:${img.mimeType};base64,${img.base64}`} 
                                                     className="w-full h-auto block select-none pointer-events-none" 
@@ -2073,7 +2872,7 @@ const EditStudio: React.FC<{
                                                 )}
 
                                                 {/* Channel Filters Definitions */}
-                                                <ChannelFilters />
+                                                {ChannelFilters()}
                                                 
                                                 {/* Crop Tool Overlay */}
                      
@@ -2114,7 +2913,7 @@ const EditStudio: React.FC<{
                                         </div>
                                     ))}
                                     {/* Smart Guides Rendering */}
-                                                <SmartGuides />
+                                                {SmartGuides()}
                                                 {/* Layers Rendering - Images & Shapes */}
                                                 {project.globalLayers.slice().sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).map(layer => (
                                                     layer.isVisible && (
@@ -2124,8 +2923,8 @@ const EditStudio: React.FC<{
                                                                 position: 'absolute', 
                                                                 left: `${layer.x}%`, 
                                                                 top: `${layer.y}%`, 
-                                                                width: `${layer.scale}%`, 
-                                                                transform: `translate(-50%, -50%) rotate(${layer.rotation || 0}deg)`, 
+                                                                width: `${Math.abs(layer.scale || 20)}%`, 
+                                                                transform: `translate(-50%, -50%) rotate(${layer.rotation || 0}deg) scaleX(${layer.flipX ? -1 : 1}) scaleY(${layer.flipY ? -1 : 1})`, 
                                                                 zIndex: layer.zIndex || 5,
                                                                 opacity: layer.opacity ?? 1,
                                                                 mixBlendMode: layer.blendMode || 'normal',
@@ -2149,15 +2948,18 @@ const EditStudio: React.FC<{
                                                                 
                                                                 setSelectedTextId(null);
                                                                 setIsDragging(true);
-                                                                const rect = containerRefs.current[idx]!.getBoundingClientRect();
-                                                                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                                                                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                                                                setDraggingOffset({ x: x - layer.x, y: y - layer.y });
+                                                                setActiveSlotIdx(idx);
+                                                                setLastPointerPos({ x: e.clientX, y: e.clientY });
                                                                 (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                                                            }}
+                                                            onPointerUp={() => {
+                                                                setIsDragging(false);
+                                                                setActiveGuides([]);
                                                             }}
                                                             onPointerMove={(e) => {
                                                                 if (!selectedLayerIds.includes(layer.id) || !isDragging || !draggingOffset) return;
-                                                                const rect = containerRefs.current[idx]!.getBoundingClientRect();
+                                                                const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
+                                                                if (!rect) return;
                                                                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                                                                 const y = ((e.clientY - rect.top) / rect.height) * 100;
                                                                 
@@ -2250,15 +3052,13 @@ const EditStudio: React.FC<{
                                                                 setIsDragging(true);
                                                                 setDraggingSlot(idx);
                                                                 setActiveSlotIdx(idx);
-                                                                const rect = containerRefs.current[idx]!.getBoundingClientRect();
-                                                                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                                                                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                                                                setDraggingOffset({ x: x - text.x, y: y - text.y });
+                                                                setLastPointerPos({ x: e.clientX, y: e.clientY });
                                                                 (e.target as HTMLElement).setPointerCapture(e.pointerId); 
                                                             }}
                                                             onPointerMove={(e) => {
                                                                 if (!isDragging || draggingSlot !== idx || selectedTextId !== text.id || !draggingOffset) return;
-                                                                const rect = containerRefs.current[idx]!.getBoundingClientRect();
+                                                                const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
+                                                                if (!rect) return;
                                                                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                                                                 const y = ((e.clientY - rect.top) / rect.height) * 100;
                                                                 
@@ -2299,7 +3099,7 @@ const EditStudio: React.FC<{
                             })}
                         </div>
                     </div>
-                    {showTimeline && <TimelinePanel />}
+                    {showTimeline && TimelinePanel()}
                 </div>
 
                 {/* Status Bar */}
@@ -2348,23 +3148,23 @@ const EditStudio: React.FC<{
                     </div>
 
                     <div className="flex-1 overflow-y-auto flex flex-col bg-[#2B2B2B]">
-                        {rightPanelTab === 'layers' && <LayersPanel />}
-                        {rightPanelTab === 'history' && <HistoryPanel />}
-                        {rightPanelTab === 'branding' && <BrandingPanel />}
-                        {rightPanelTab === 'channels' && <ChannelsPanel />}
-                        {rightPanelTab === 'adjustments' && <AdjustmentsPanel />}
+                        {rightPanelTab === 'layers' && LayersPanel()}
+                        {rightPanelTab === 'history' && HistoryPanel()}
+                        {rightPanelTab === 'branding' && BrandingPanel()}
+                        {rightPanelTab === 'channels' && ChannelsPanel()}
+                        {rightPanelTab === 'adjustments' && AdjustmentsPanel()}
                         {rightPanelTab === 'properties' && (
                             <div className="p-4 space-y-6">
                                 {/* Properties Content */}
                                 {selectedTextId && activeSlotIdx !== null ? (
                                     /* Text Properties */
                                     <div className="space-y-4 animate-in fade-in duration-300">
-                                            <TextProperties idx={activeSlotIdx} textId={selectedTextId} />
+                                            {TextProperties({ idx: activeSlotIdx, textId: selectedTextId })}
                                     </div>
                                 ) : selectedLayerId ? (
                                     /* Layer Properties */
                                     <div className="space-y-4 animate-in fade-in duration-300">
-                                            <LayerProperties layerId={selectedLayerId} />
+                                            {LayerProperties({ layerId: selectedLayerId })}
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-40 text-white/10 italic text-[10px] gap-2">
@@ -2377,8 +3177,272 @@ const EditStudio: React.FC<{
                     </div>
                 </div>
             </div>
+        </div>
+    </main>
+);
+};
 
-        </main>
+// --- Modal Components ---
+
+const AIGeneratorModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void }) => {
+    const [prompt, setPrompt] = useState('');
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+        >
+            <motion.div 
+                initial={{ y: 20, scale: 0.9 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.9 }}
+                className="w-full max-w-md bg-[#2b2b2b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+                <div className="p-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Palette className="w-5 h-5 text-[#3d75f2]" />
+                            <h3 className="text-xl font-bold text-white tracking-tight text-right">AI Image Creator</h3>
+                        </div>
+                        <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
+                    </div>
+                    
+                    <textarea 
+                        value={prompt}
+                        onChange={e => setPrompt(e.target.value)}
+                        placeholder="e.g., 'a futuristic city with neon lights and flying cars'..."
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                    />
+                    
+                    <button 
+                        onClick={() => onGenerate(prompt)}
+                        className="w-full py-3 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#3d75f2]/20 transition-all"
+                    >
+                        Generate New Image
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+const GenerativeFillModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void }) => {
+    const [prompt, setPrompt] = useState('');
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+        >
+            <motion.div 
+                initial={{ y: 20, scale: 0.9 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.9 }}
+                className="w-full max-w-md bg-[#2b2b2b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+                <div className="p-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-[#3d75f2]" />
+                            <h3 className="text-xl font-bold text-white tracking-tight">Generative Fill</h3>
+                        </div>
+                        <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
+                    </div>
+                    
+                    <textarea 
+                        value={prompt}
+                        onChange={e => setPrompt(e.target.value)}
+                        placeholder="e.g., 'a cinematic mountain range at sunset'..."
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                    />
+                    
+                    <button 
+                        onClick={() => onGenerate(prompt)}
+                        className="w-full py-3 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#3d75f2]/20 transition-all"
+                    >
+                        Apply Generative Fill
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+const ExportModal = ({ isOpen, onClose, onExport }: { isOpen: boolean, onClose: () => void, onExport: (res: string, format: 'png' | 'jpeg' | 'webp', quality: number) => void }) => {
+    const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
+    const [quality, setQuality] = useState(90);
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[4000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={onClose}
+        >
+            <motion.div 
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                className="bg-[#2B2B2B] border border-white/10 w-full max-w-md p-8 rounded-2xl shadow-2xl space-y-6"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-black uppercase tracking-widest text-[#3d75f2]">Export Advanced</h3>
+                    <button onClick={onClose}><X className="w-5 h-5 text-white/20 hover:text-white" /></button>
+                </div>
+                
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] text-white/40 uppercase font-black">Format</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['png', 'jpeg', 'webp'].map(f => (
+                                <button 
+                                    key={f}
+                                    onClick={() => setFormat(f as any)}
+                                    className={cn("py-2 text-[10px] font-black uppercase rounded border transition-all", format === f ? "bg-[#3d75f2] border-[#3d75f2] text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white")}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {format !== 'png' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] text-white/40 uppercase font-black flex justify-between">
+                                <span>Quality</span>
+                                <span className="text-[#3d75f2]">{quality}%</span>
+                            </label>
+                            <input 
+                                type="range" min="10" max="100" value={quality}
+                                onChange={e => setQuality(parseInt(e.target.value))}
+                                className="w-full h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
+                            />
+                        </div>
+                    )}
+
+                    <div className="space-y-2 pt-4 border-t border-white/5">
+                        <button 
+                            onClick={() => onExport('4k', format, quality / 100)}
+                            className="w-full py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                        >
+                            Export High-Res (4K)
+                        </button>
+                        <button 
+                            onClick={() => onExport('2k', format, quality / 100)}
+                            className="w-full py-3 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                            Quick 2K Export
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+const NewProjectModal = ({ isOpen, onClose, onCreate }: { 
+    isOpen: boolean, 
+    onClose: () => void, 
+    onCreate: (options: { type: 'blank' | 'ai' | 'template', width?: number, height?: number, prompt?: string }) => void 
+}) => {
+    const [activeTab, setActiveTab] = useState<'blank' | 'ai' | 'template'>('blank');
+    const [width, setWidth] = useState(1920);
+    const [height, setHeight] = useState(1080);
+    const [aiPrompt, setAiPrompt] = useState('');
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+        >
+            <motion.div 
+                initial={{ y: 20, scale: 0.9 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.9 }}
+                className="w-full max-w-xl bg-[#2b2b2b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+                <div className="p-8 space-y-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <Box className="w-6 h-6 text-[#3d75f2]" />
+                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">New Artboard</h2>
+                        </div>
+                        <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
+                    </div>
+
+                    <div className="flex gap-2 p-1 bg-black/20 rounded-xl border border-white/5">
+                        {(['blank', 'ai', 'template'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={cn(
+                                    "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                                    activeTab === tab ? "bg-[#3d75f2] text-white" : "text-white/40 hover:text-white/60"
+                                )}
+                            >
+                                {tab === 'blank' ? 'Blank Canvas' : tab === 'ai' ? 'AI Generated' : 'Template'}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="min-h-[220px] py-4">
+                        {activeTab === 'blank' && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] text-white/40 uppercase font-black">Width (px)</label>
+                                        <input 
+                                            type="number" value={width} 
+                                            onChange={e => setWidth(parseInt(e.target.value))}
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-[#3d75f2]/50"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] text-white/40 uppercase font-black">Height (px)</label>
+                                        <input 
+                                            type="number" value={height} 
+                                            onChange={e => setHeight(parseInt(e.target.value))}
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-[#3d75f2]/50"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { label: '4K Ultra', w: 3840, h: 2160 },
+                                        { label: 'HD 1080p', w: 1920, h: 1080 },
+                                        { label: 'Instagram', w: 1080, h: 1080 }
+                                    ].map(sz => (
+                                        <button 
+                                            key={sz.label}
+                                            onClick={() => { setWidth(sz.w); setHeight(sz.h); }}
+                                            className="py-3 px-2 bg-white/5 border border-white/5 rounded-lg text-[9px] font-bold text-white/60 hover:bg-white/10 hover:text-white transition-all"
+                                        >
+                                            {sz.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'ai' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                <p className="text-xs text-white/40 italic leading-relaxed">
+                                    "Describe the image you want to start with. AI will generate it as your base layer."
+                                </p>
+                                <textarea 
+                                    value={aiPrompt}
+                                    onChange={e => setAiPrompt(e.target.value)}
+                                    placeholder="e.g., 'a cinematic cyberpunk city street at rainy night, highly detailed'..."
+                                    className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'template' && (
+                            <div className="flex items-center justify-center h-40 text-white/20 italic text-sm">
+                                Coming soon: Pre-made templates for Social Media & Web
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={() => onCreate({ type: activeTab, width, height, prompt: aiPrompt })}
+                        className="w-full py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-[#3d75f2]/20 transition-all font-sans"
+                    >
+                        {activeTab === 'ai' ? 'Generate artboard' : 'Create artboard'}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
     );
 };
 

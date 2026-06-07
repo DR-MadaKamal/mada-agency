@@ -13,15 +13,16 @@ import {
   StoryboardStudioProject,
   MarketingStudioProject,
   ControllerStudioProject,
-  AdminStudioProject
+  AdminStudioProject,
+  PrePilotAgencySuiteProject
 } from './types';
 import { auth, signIn, signOut, db } from './lib/firebase';
 import { saveUnifiedProject } from './lib/admin';
 import NexusAssistant from './components/NexusAssistant';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Shield, RefreshCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, RefreshCcw, AlertTriangle, CheckCircle2, Rocket, Briefcase } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const CreatorStudio = lazy(() => import('./components/CreatorStudio'));
 const PhotoshootDirector = lazy(() => import('./components/PhotoshootDirector'));
@@ -35,6 +36,7 @@ const EditStudio = lazy(() => import('./components/EditStudio'));
 const StoryboardStudio = lazy(() => import('./components/StoryboardStudio'));
 const MarketingStudio = lazy(() => import('./components/MarketingStudio'));
 const ControllerStudio = lazy(() => import('./components/ControllerStudio'));
+const PrePilotAgencySuite = lazy(() => import('./components/PrePilotAgencySuite'));
 const AdminStudio = lazy(() => import('./components/AdminStudio'));
 const GlobalHistoryPanel = lazy(() => import('./components/GlobalHistoryPanel'));
 const NexusVault = lazy(() => import('./components/NexusVault'));
@@ -59,6 +61,7 @@ const STUDIO_METADATA: Record<string, { label: string; icon: any }> = {
   marketing_studio: { label: 'Marketing', icon: null },
   controller_studio: { label: 'Controller', icon: null },
   branding_studio: { label: 'Brand', icon: null },
+  prepilot_agency_suite: { label: 'PrePilot', icon: Rocket },
   admin_studio: { label: 'Admin', icon: null },
   archives: { label: 'Archives', icon: null },
   asset_library: { label: 'Vault', icon: null },
@@ -443,6 +446,82 @@ const createNewMarketingProject = (projectCount: number, ownerId: string): Marke
     error: null,
 });
 
+const createNewPrePilotProject = (projectCount: number, ownerId: string): PrePilotAgencySuiteProject => ({
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    name: `Agency Suite ${projectCount + 1}`,
+    ownerId,
+    studioType: 'prepilot_agency_suite',
+    status: 'active',
+    progress: 0,
+    priority: 'medium',
+    clients: [],
+    campaigns: [],
+    agents: [
+        { 
+            id: 'master-agent', 
+            name: 'Strategic Orchestrator', 
+            role: 'Main Controller', 
+            type: 'engine', 
+            capabilities: ['orchestration', 'python', 'code_interpreter'], 
+            status: 'active',
+            metrics: { tasksCompleted: 1240, latency: '240ms', uptime: 99.9 }
+        },
+        { 
+            id: 'data-agent', 
+            name: 'Knowledge Miner', 
+            role: 'Grounding Expert', 
+            type: 'declarative', 
+            capabilities: ['rest_api', 'vision'], 
+            status: 'standby',
+            metrics: { tasksCompleted: 450, latency: '400ms', uptime: 98.5 }
+        }
+    ],
+    workflows: [
+        {
+            id: 'wf1',
+            name: 'Enterprise Sync',
+            description: 'Synchronizes agency leads with Salesforce and SAP',
+            trigger: 'manual',
+            status: 'active',
+            steps: [
+                { action: 'Fetch Salesforce Leads', status: 'done', connector: 'Salesforce' },
+                { action: 'Process with AI Orchestrator', agentId: 'master-agent', status: 'active' },
+                { action: 'Update Internal Ledger', status: 'pending', connector: 'SAP' }
+            ],
+            connectors: ['Salesforce', 'SAP']
+        }
+    ],
+    leads: [
+        { id: 'l1', company: 'TechNova', contactName: 'Sarah J.', value: '$45k', stage: 'qualified', lastContact: '2h ago', probability: 80 }
+    ],
+    team: [
+        { id: 't1', name: 'User Admin', role: 'Agency Director', department: 'management', availability: 100 }
+    ],
+    knowledgeBases: [
+        { id: 'kb1', name: 'Corporate SharePoint', type: 'sharepoint', status: 'ready', documentCount: 1420, lastSynced: '2024-05-18' }
+    ],
+    securityPolicies: [
+        { id: 'sec1', name: 'IAM Microsoft Entra', category: 'iam', severity: 'high', status: 'enforced' }
+    ],
+    billingData: [
+        { date: 'May 01', cost: 120 },
+        { date: 'May 05', cost: 150 },
+        { date: 'May 10', cost: 300 },
+        { date: 'May 15', cost: 450 }
+    ],
+    systemLogs: [
+        { timestamp: '2024-05-18 06:50', level: 'info', message: 'Master Orchestrator initiated successfully.' },
+        { timestamp: '2024-05-18 06:55', level: 'info', message: 'System scan complete: 0 vulnerabilities found.' }
+    ],
+    activeTab: 'overview',
+    isGenerating: false,
+    error: null,
+    strategicGoal: '',
+    marketAnalysis: null,
+    pilotResults: [],
+    aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash' },
+});
+
 const createNewAdminProject = (ownerId: string): AdminStudioProject => ({
     id: 'admin-dashboard',
     name: 'Admin Panel',
@@ -558,6 +637,9 @@ function App() {
   const [editProjects, setEditProjects] = useState<EditStudioProject[]>([]);
   const [activeEditIndex, setActiveEditIndex] = useState(0);
 
+  const [prePilotProjects, setPrePilotProjects] = useState<PrePilotAgencySuiteProject[]>([]);
+  const [activePrePilotIndex, setActivePrePilotIndex] = useState(0);
+
   const [systemConfig, setSystemConfig] = useState<{
     activeStudios: string[];
     maintenanceMode: boolean;
@@ -670,6 +752,7 @@ function App() {
         setMarketingProjects([]);
         setControllerProjects([]);
         setEditProjects([]);
+        setPrePilotProjects([]);
         return;
     }
 
@@ -686,6 +769,7 @@ function App() {
     setMarketingProjects(prev => prev.length === 0 ? [createNewMarketingProject(0, uid)] : prev);
     setControllerProjects(prev => prev.length === 0 ? [createNewControllerProject(0, uid)] : prev);
     setEditProjects(prev => prev.length === 0 ? [createNewEditProject(0, uid)] : prev);
+    setPrePilotProjects(prev => prev.length === 0 ? [createNewPrePilotProject(0, uid)] : prev);
 
   }, [currentUser]);
 
@@ -708,6 +792,7 @@ function App() {
             case 'marketing_studio': activeProject = marketingProjects[activeMarketingIndex]; break;
             case 'edit_studio': activeProject = editProjects[activeEditIndex]; break;
             case 'controller_studio': activeProject = controllerProjects[activeControllerIndex]; break;
+            case 'prepilot_agency_suite': activeProject = prePilotProjects[activePrePilotIndex]; break;
         }
 
         if (activeProject && activeProject.id && !activeProject.id.includes('landing')) {
@@ -733,7 +818,8 @@ function App() {
       storyboardProjects[activeStoryboardIndex],
       marketingProjects[activeMarketingIndex],
       editProjects[activeEditIndex],
-      controllerProjects[activeControllerIndex]
+      controllerProjects[activeControllerIndex],
+      prePilotProjects[activePrePilotIndex]
   ]);
 
   const handleEngageProject = (project: any) => {
@@ -762,6 +848,7 @@ function App() {
           case 'marketing_studio': updateIndex(marketingProjects, setMarketingProjects, setActiveMarketingIndex); break;
           case 'edit_studio': updateIndex(editProjects, setEditProjects, setActiveEditIndex); break;
           case 'controller_studio': updateIndex(controllerProjects, setControllerProjects, setActiveControllerIndex); break;
+          case 'prepilot_agency_suite': updateIndex(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex); break;
       }
       scrollToContent();
   };
@@ -968,6 +1055,16 @@ function App() {
         return newProjects;
     });
   }, [activeControllerIndex]);
+
+  const updatePrePilotProject = useCallback((action: React.SetStateAction<PrePilotAgencySuiteProject>) => {
+    setPrePilotProjects(prev => {
+        const newProjects = [...prev];
+        const current = newProjects[activePrePilotIndex];
+        const updated = action instanceof Function ? action(current) : action;
+        newProjects[activePrePilotIndex] = updated;
+        return newProjects;
+    });
+  }, [activePrePilotIndex]);
 
   const handleExportToStudio = useCallback((targetView: AppView, data: any) => {
     setView(targetView);
@@ -1241,6 +1338,22 @@ function App() {
                                 return (
                                     <VideoStudio />
                                 );
+                            case 'prepilot_agency_suite':
+                                return (
+                                    <div className="flex flex-col w-full gap-4">
+                                        <TabBar
+                                            projects={prePilotProjects as any}
+                                            activeProjectIndex={activePrePilotIndex}
+                                            onSelectTab={setActivePrePilotIndex}
+                                            onAddTab={() => currentUser && addTab(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, currentUser.uid))}
+                                            onCloseTab={(idx) => currentUser && closeTab(idx, prePilotProjects, setPrePilotProjects, activePrePilotIndex, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, currentUser.uid))}
+                                        />
+                                        <PrePilotAgencySuite 
+                                            project={prePilotProjects[activePrePilotIndex]}
+                                            setProject={updatePrePilotProject}
+                                        />
+                                    </div>
+                                );
                             case 'admin_studio':
                                 return (
                                     <div className="flex flex-col w-full gap-4 min-h-[600px]">
@@ -1393,6 +1506,9 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
                 <NavItem label="Plan" targetView="plan_studio" studioId="plan_studio" />
                 <NavItem label="Campaign" targetView="campaign_studio" studioId="campaign_studio" />
                 <NavItem label="Voice" targetView="voice_over_studio" studioId="voice_over_studio" />
+                <div className="w-[1px] h-6 bg-white/10 mx-2" />
+                <NavItem label="PREPILOT" targetView="prepilot_agency_suite" studioId="prepilot_agency_suite" />
+                <div className="w-[1px] h-6 bg-white/10 mx-2" />
                 <NavItem label="Archives" targetView="archives" />
                 <NavItem label="Vault" targetView="asset_library" />
                 <NavItem label="Command" targetView="command_center" />
@@ -1422,6 +1538,18 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
                 </div>
                 
                 <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => { setView('prepilot_agency_suite'); scrollToContent(); }}
+                      className="group relative px-6 py-2 rounded-full overflow-hidden transition-all active:scale-95 border border-blue-500/20 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+                    >
+                      <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-all" />
+                      <div className="relative flex items-center gap-2">
+                        <Rocket className="w-3 h-3 text-blue-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 group-hover:text-blue-300">
+                          Agency Suite
+                        </span>
+                      </div>
+                    </button>
                     <button 
                       onClick={handleAuthAction}
                       disabled={isAuthLoading}

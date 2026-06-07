@@ -11,7 +11,7 @@ import {
   doc, 
   serverTimestamp 
 } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType, sanitizeData } from '../lib/firebase';
 import { 
   LineChart, 
   Line, 
@@ -230,11 +230,12 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
 
     const handleAddIntegration = async () => {
         try {
-            await addDoc(collection(db, 'integrations'), {
+            const data = sanitizeData({
                 ...newIntegration,
                 status: 'active',
                 updatedAt: serverTimestamp()
             });
+            await addDoc(collection(db, 'integrations'), data);
             setIsAdding(false);
             setNewIntegration({ name: '', provider: 'gemini', apiKey: '', endpoint: '' });
         } catch (err) {
@@ -296,9 +297,9 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                 updatedAt: serverTimestamp()
             };
             if (editingModel) {
-                await setDoc(doc(db, 'models', editingModel.id), data, { merge: true });
+                await setDoc(doc(db, 'models', editingModel.id), sanitizeData(data), { merge: true });
             } else {
-                await addDoc(collection(db, 'models'), data);
+                await addDoc(collection(db, 'models'), sanitizeData(data));
             }
             setIsAddingModel(false);
             setEditingModel(null);

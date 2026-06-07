@@ -112,7 +112,45 @@ export interface AssistantSession {
     updatedAt: Date;
 }
 
-export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'archives' | 'asset_library' | 'command_center';
+export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center';
+
+export interface PrePilotAgent {
+    id: string;
+    name: string;
+    role: string;
+    type: 'declarative' | 'engine';
+    capabilities: ('python' | 'vision' | 'orchestration' | 'rest_api' | 'code_interpreter')[];
+    status: 'active' | 'standby' | 'training' | 'error';
+    orchestrationLogic?: string;
+    metrics: { tasksCompleted: number; latency: string; uptime: number };
+}
+
+export interface PrePilotWorkflow {
+    id: string;
+    name: string;
+    description: string;
+    trigger: 'event' | 'schedule' | 'manual';
+    status: 'active' | 'paused' | 'failed' | 'deploying';
+    steps: { action: string; agentId?: string; status: 'pending' | 'active' | 'done'; connector?: string }[];
+    connectors: string[];
+}
+
+export interface PrePilotKnowledgeSource {
+    id: string;
+    name: string;
+    type: 'sharepoint' | 'drive' | 'sql' | 'graph' | 'web' | 'local';
+    status: 'ready' | 'indexing' | 'error';
+    documentCount: number;
+    lastSynced: string;
+}
+
+export interface PrePilotSecurityPolicy {
+    id: string;
+    name: string;
+    category: 'iam' | 'pii' | 'compliance' | 'network';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    status: 'enforced' | 'audit' | 'disabled';
+}
 
 export interface UnifiedProject extends ProjectBase {
     ownerId: string;
@@ -523,6 +561,8 @@ export interface GlobalLayer {
     file?: ImageFile;
     shapeType?: 'rect' | 'circle' | 'line' | 'star';
     scale: number;
+    flipX?: boolean;
+    flipY?: boolean;
     x: number;
     y: number;
     rotation: number;
@@ -626,3 +666,65 @@ export interface ControllerStudioProject extends ProjectBase {
     error: string | null;
     history: HistoryItem[];
 }
+
+
+// --- PrePilot Agency Suite ---
+export interface PrePilotClient {
+    id: string;
+    name: string;
+    industry: string;
+    status: 'active' | 'onboarding' | 'dormant';
+    logo?: ImageFile;
+}
+
+export interface PrePilotCampaign {
+    id: string;
+    clientId: string;
+    name: string;
+    budget: string;
+    startDate: string;
+    endDate: string;
+    status: 'planning' | 'live' | 'completed' | 'paused';
+    progress: number;
+    kpis: { metric: string, target: string, current: string }[];
+}
+
+export interface PrePilotLead {
+    id: string;
+    company: string;
+    contactName: string;
+    value: string;
+    stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed';
+    lastContact: string;
+    probability: number;
+}
+
+export interface PrePilotTeamMember {
+    id: string;
+    name: string;
+    role: string;
+    department: 'creative' | 'strategy' | 'tech' | 'management';
+    availability: number; // percentage
+    avatar?: string;
+}
+
+export interface PrePilotAgencySuiteState {
+    clients: PrePilotClient[];
+    campaigns: PrePilotCampaign[];
+    agents: PrePilotAgent[];
+    workflows: PrePilotWorkflow[];
+    leads: PrePilotLead[];
+    team: PrePilotTeamMember[];
+    knowledgeBases: PrePilotKnowledgeSource[];
+    securityPolicies: PrePilotSecurityPolicy[];
+    activeTab: 'overview' | 'clients' | 'campaigns' | 'crm' | 'team' | 'agents' | 'workflows' | 'knowledge' | 'governance' | 'strategy' | 'pilots' | 'financials' | 'system';
+    isGenerating: boolean;
+    error: string | null;
+    strategicGoal: string;
+    marketAnalysis: string | null;
+    pilotResults: { id: string, name: string, confidence: number, risk: string, outcome: string }[];
+    billingData: { date: string; cost: number }[];
+    systemLogs: { timestamp: string; level: 'info' | 'warn' | 'error'; message: string }[];
+}
+
+export interface PrePilotAgencySuiteProject extends ProjectBase, PrePilotAgencySuiteState {}

@@ -1,11 +1,13 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, setDoc, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export async function signIn() {
@@ -78,3 +80,25 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+/**
+ * Sanitizes an object by removing undefined fields recursively.
+ */
+export const sanitizeData = (data: any): any => {
+    if (data === null || typeof data !== 'object') {
+        return data === undefined ? null : data;
+    }
+
+    if (Array.isArray(data)) {
+        return data.map(v => sanitizeData(v));
+    }
+
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+        const val = data[key];
+        if (val !== undefined) {
+            clean[key] = sanitizeData(val);
+        }
+    });
+    return clean;
+};

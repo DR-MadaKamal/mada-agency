@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { SmartAsset, ImageFile } from "../types";
-import { db, auth } from "../lib/firebase";
+import { db, auth, sanitizeData } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
@@ -56,7 +56,7 @@ export const AssetIntelligence = {
             isFavorite: asset.isFavorite || false,
         };
 
-        const docRef = await addDoc(collection(db, "vault_assets"), assetData);
+        const docRef = await addDoc(collection(db, "vault_assets"), sanitizeData(assetData));
         return docRef.id;
     },
 
@@ -65,9 +65,9 @@ export const AssetIntelligence = {
      */
     async updateAssetNeuralData(assetId: string, neuralData: any) {
         const docRef = doc(db, "vault_assets", assetId);
-        await updateDoc(docRef, {
+        await updateDoc(docRef, sanitizeData({
             ...neuralData,
             updatedAt: serverTimestamp()
-        });
+        }));
     }
 };

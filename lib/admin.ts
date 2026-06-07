@@ -1,6 +1,6 @@
 
 import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, orderBy, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { db, auth, handleFirestoreError, OperationType, sanitizeData } from './firebase';
 import { GlobalHistoryItem, Integration, UnifiedProject } from '../types';
 
 /**
@@ -33,13 +33,15 @@ export const logHistory = async (item: Omit<GlobalHistoryItem, 'id' | 'userId' |
             content = content.substring(0, 900000) + '... (truncated)';
         }
 
-        await addDoc(collection(db, path), {
+        const data = sanitizeData({
             ...item,
             content,
             userId: user.uid,
             userEmail: user.email || 'anonymous',
             timestamp: serverTimestamp()
         });
+
+        await addDoc(collection(db, path), data);
     } catch (err) {
         handleFirestoreError(err, OperationType.CREATE, path);
     }
@@ -52,7 +54,7 @@ export const logApiInteraction = async (service: string, status: number, respons
     const path = 'apiLogs';
     try {
         const user = auth.currentUser;
-        await addDoc(collection(db, path), {
+        const data = sanitizeData({
             service,
             status,
             responseTime,
@@ -60,6 +62,8 @@ export const logApiInteraction = async (service: string, status: number, respons
             userId: user?.email || 'system',
             timestamp: serverTimestamp()
         });
+        
+        await addDoc(collection(db, path), data);
     } catch (err) {
         handleFirestoreError(err, OperationType.CREATE, path);
     }
@@ -113,25 +117,26 @@ export const saveUnifiedProject = async (project: Partial<UnifiedProject> & { id
         if (Array.isArray(rest.baseImages)) rest.baseImages = rest.baseImages.slice(0, 6);
         if (Array.isArray(rest.globalLayers)) rest.globalLayers = rest.globalLayers.slice(0, 10);
 
-        const data = {
+        const data = sanitizeData({
             status: 'active',
             progress: 0,
             priority: 'medium',
             ...rest,
             ownerId: user.uid,
             updatedAt: serverTimestamp(),
-        };
+        });
 
         if (project.id) {
             const docRef = doc(db, path, project.id);
             await setDoc(docRef, data, { merge: true });
         } else {
-            await addDoc(collection(db, path), {
+            const newData = sanitizeData({
                 ...data,
                 createdAt: serverTimestamp(),
                 tags: project.tags || [],
                 isFavorite: false
             });
+            await addDoc(collection(db, path), newData);
         }
     } catch (err) {
         handleFirestoreError(err, project.id ? OperationType.UPDATE : OperationType.CREATE, project.id ? `${path}/${project.id}` : path);

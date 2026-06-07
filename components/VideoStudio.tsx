@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 
 const VideoStudio: React.FC = () => {
     const metaHeroImage = "https://i.ibb.co/4n88pYH1/jenta-branding-3d-glass-app-icon-4k-1-copy.png";
@@ -7,7 +7,7 @@ const VideoStudio: React.FC = () => {
     const metaUrl = "https://www.meta.ai/";
     const grokUrl = "https://grok.com/imagine";
 
-    const [activeFilter, setActiveFilter] = React.useState<string>('');
+    const [activeFilter, setActiveFilter] = useState<string>('');
 
     const filters = [
         { id: '', label: 'None' },

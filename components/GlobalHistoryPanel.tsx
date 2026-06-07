@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     History, ImageIcon, Mic, Video, FileText, Search, Filter, 
     Download, ExternalLink, Calendar, Trash2, Clock, 
-    Layers, Zap, Terminal, Play, Volume2, Maximize2, Trash
+    Layers, Zap, Terminal, Play, Volume2, Maximize2, Trash, Rocket
 } from 'lucide-react';
 
 const STUDIO_INFO: Record<AppView, { label: string; icon: any; color: string }> = {
@@ -22,6 +22,7 @@ const STUDIO_INFO: Record<AppView, { label: string; icon: any; color: string }> 
     marketing_studio: { label: 'Marketing', icon: Search, color: 'text-lime-400' },
     controller_studio: { label: 'Controller', icon: History, color: 'text-slate-400' },
     branding_studio: { label: 'Branding', icon: Layers, color: 'text-fuchsia-400' },
+    prepilot_agency_suite: { label: 'PrePilot', icon: Rocket, color: 'text-blue-500' },
     admin_studio: { label: 'Control', icon: Filter, color: 'text-white' },
     archives: { label: 'Archives', icon: History, color: 'text-slate-400' },
     asset_library: { label: 'Vault', icon: Layers, color: 'text-cyan-400' },
