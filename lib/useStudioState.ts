@@ -29,13 +29,13 @@ export function useStudioState<T extends { id: string; studioType: string }>(
   const loaded = useRef(false);
   const saveTimer = useRef<number | null>(null);
 
-  const storageKey = `${STORAGE_PREFIX}${storageKey}`;
+  const storageKeyFull = `${STORAGE_PREFIX}${storageKey}`;
 
   // Load from localStorage on mount + attempt D1 merge
   useEffect(() => {
     const loadData = async () => {
       try {
-        const raw = localStorage.getItem(storageKey);
+        const raw = localStorage.getItem(storageKeyFull);
         if (raw) {
           const saved: StudioState<T> = JSON.parse(raw);
           if (saved.projects?.length > 0) {
@@ -49,9 +49,9 @@ export function useStudioState<T extends { id: string; studioType: string }>(
       // Attempt D1 sync in background
       setSyncStatus('syncing');
       try {
-        const localRaw = localStorage.getItem(storageKey);
+        const localRaw = localStorage.getItem(storageKeyFull);
         if (localRaw) {
-          const merged = await SyncService.mergeAndSave(storageKey, JSON.parse(localRaw));
+          const merged = await SyncService.mergeAndSave(storageKeyFull, JSON.parse(localRaw));
           if (merged) {
             setProjects(merged.projects || []);
             setActiveIndex(merged.activeIndex || 0);
@@ -80,8 +80,8 @@ export function useStudioState<T extends { id: string; studioType: string }>(
     saveTimer.current = window.setTimeout(() => {
       try {
         const data = { projects, activeIndex };
-        localStorage.setItem(storageKey, JSON.stringify(data));
-        SyncService.push(storageKey, data).catch(() => {});
+        localStorage.setItem(storageKeyFull, JSON.stringify(data));
+        SyncService.push(storageKeyFull, data).catch(() => {});
       } catch { /* storage full */ }
     }, SAVE_DEBOUNCE);
     return () => {

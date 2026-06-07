@@ -19,6 +19,10 @@ import AISelector from './AISelector';
 import { LOGO_IMAGE_URL } from '../constants';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { ShareableLink } from './ShareableLink';
+import { CommentsOverlay } from './CommentsOverlay';
+import { VersionTimeline } from './VersionTimeline';
+import { TemplatePicker } from './TemplatePicker';
+import { Plus } from 'lucide-react';
 
 const MarketingIcon = () => <Share2 className="w-5 h-5 inline mr-2 text-[var(--color-accent)]" />;
 const CopyIcon = () => <Copy className="h-4 w-4 mr-1.5" />;
@@ -41,6 +45,14 @@ const MarketingStudio: React.FC<{
     const [copied, setCopied] = useState(false);
     const [adCopiesCopied, setAdCopiesCopied] = useState<number | null>(null);
     const [isRefining, setIsRefining] = useState(false);
+    const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
+    const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
+    const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+    const handleAddComment = (content: string) => {
+        setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
+    };
+    const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
     const cancelledRef = useRef(false);
 
     const activeTab = project.activeTab || 'strategy';
@@ -438,6 +450,9 @@ const MarketingStudio: React.FC<{
                         <p className="text-xs text-white/40 font-bold tracking-widest mt-1 ml-8 uppercase">STRATEGIC GROWTH ACCELERATOR</p>
                         </div>
                         <ShareableLink projectId={project.id} projectName={project.name || 'Marketing Strategy'} />
+                        <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
+                        <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(v.snapshot); setCurrentVersionId(v.id); }} onUndo={() => {}} onRedo={() => {}} canUndo={false} canRedo={false} />
+                        <button onClick={() => setShowTemplatePicker(true)} className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all" title="Templates"><Plus className="w-4 h-4" /></button>
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10">
                             <button 
                                 onClick={() => setProject(s => ({ ...s, language: 'ar' }))}
@@ -1173,6 +1188,16 @@ const MarketingStudio: React.FC<{
                 </div>
             )}
             </div>
+        {showTemplatePicker && (
+            <TemplatePicker
+                studioType="marketing_studio"
+                onSelect={(template) => {
+                    setShowTemplatePicker(false);
+                    setProject(s => ({ ...s, ...template.defaultData }));
+                }}
+                onDismiss={() => setShowTemplatePicker(false)}
+            />
+        )}
         </main>
     );
 };

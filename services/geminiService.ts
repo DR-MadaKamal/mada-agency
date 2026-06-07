@@ -34,17 +34,18 @@ if (!process.env.GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY || process.env.API_KEY || "dummy") as string });
 
 // Helper for Google AI calls (Correct SDK syntax)
-async function googleAICall(modelId: string, contents: any, config: any = {}) {
+async function googleAICall(modelId: string, contents: any, config: any = {}, signal?: AbortSignal) {
   const response = await ai.models.generateContent({
     model: modelId,
     contents: Array.isArray(contents) ? contents : [contents],
-    config: { ...config, safetySettings }
+    config: { ...config, safetySettings },
+    signal,
   });
   return response;
 }
 
 // Helpers for unified calling
-export async function callAI(prompt: string, config: AIConfig, systemInstruction?: string, jsonSchema?: any): Promise<string> {
+export async function callAI(prompt: string, config: AIConfig, systemInstruction?: string, jsonSchema?: any, signal?: AbortSignal): Promise<string> {
     const { provider, modelId } = config;
     const startTime = Date.now();
 
@@ -53,6 +54,7 @@ export async function callAI(prompt: string, config: AIConfig, systemInstruction
         const response = await IntegrationService.smartCall(provider as any, {
             prompt,
             systemInstruction,
+            signal,
         });
 
         await logApiInteraction(`${provider}:${modelId}`, 200, Date.now() - startTime);
@@ -67,7 +69,8 @@ export async function callAIWithImages(
     prompt: string,
     images: ImageFile[],
     config: AIConfig,
-    systemInstruction?: string
+    systemInstruction?: string,
+    signal?: AbortSignal
 ): Promise<string> {
     const { provider, modelId } = config;
     const startTime = Date.now();
@@ -85,7 +88,7 @@ export async function callAIWithImages(
             ];
             const response = await googleAICall(modelId, { parts }, {
                 systemInstruction
-            });
+            }, signal);
 
             await logApiInteraction(`Gemini:${modelId}`, 200, Date.now() - startTime);
             return response.text || '';
@@ -93,7 +96,7 @@ export async function callAIWithImages(
 
         // For simplicity, we fallback to standard callAI for providers that might not support easy base64 vision via this simple multi-modal structure yet,
         // or add support for etc.
-        return callAI(prompt, config, systemInstruction);
+        return callAI(prompt, config, systemInstruction, undefined, signal);
     } catch (err) {
         await logApiInteraction(`${provider}:${modelId}`, 500, Date.now() - startTime, err instanceof Error ? err.message : String(err));
         throw err;
@@ -143,7 +146,8 @@ export async function generateImage(
   prompt: string,
   styleImages: ImageFile[] | null,
   aspectRatio: string = "1:1",
-  config?: AIConfig
+  config?: AIConfig,
+  signal?: AbortSignal
 ): Promise<ImageFile> {
   const model = config?.modelId || 'gemini-2.0-flash';
   const parts: Part[] = [];
@@ -177,7 +181,7 @@ export async function generateImage(
   try {
     const response = await googleAICall(model, { parts: parts }, {
       imageConfig: { aspectRatio: aspectRatio as any }
-    });
+    }, signal);
 
     const result = handleApiResponse(response);
     await logApiInteraction(`Gemini:${model}`, 200, Date.now() - startTime);
@@ -193,7 +197,8 @@ export async function generateImage(
 export async function editImage(
   baseImage: ImageFile,
   prompt: string,
-  config?: AIConfig
+  config?: AIConfig,
+  signal?: AbortSignal
 ): Promise<ImageFile> {
   const model = config?.modelId || 'gemini-2.0-flash';
 
@@ -208,7 +213,7 @@ export async function editImage(
   ];
 
   try {
-    const response = await googleAICall(model, { parts: parts });
+    const response = await googleAICall(model, { parts: parts }, undefined, signal);
     return handleApiResponse(response);
 
   } catch (error) {
@@ -219,15 +224,17 @@ export async function editImage(
 
 export async function expandImage(
   image: ImageFile,
-  prompt: string
+  prompt: string,
+  signal?: AbortSignal
 ): Promise<ImageFile> {
-  return editImage(image, prompt);
+  return editImage(image, prompt, undefined, signal);
 }
 
 export async function analyzeImageForPrompt(
   images: ImageFile[],
   instructions: string,
-  config?: AIConfig
+  config?: AIConfig,
+  signal?: AbortSignal
 ): Promise<string> {
   const model = config?.modelId || 'gemini-2.0-flash';
   const parts: Part[] = [];
@@ -245,14 +252,14 @@ export async function analyzeImageForPrompt(
   parts.push({ text: textPrompt });
 
   try {
-    const response = await googleAICall(model, { parts: parts });
+    const response = await googleAICall(model, { parts: parts }, undefined, signal);
     return response.text?.trim() || '';
   } catch (error) {
     throw error;
   }
 }
 
-export async function analyzeStyleImage(images: ImageFile[]): Promise<string> {
+export async function analyzeStyleImage(images: ImageFile[], signal?: AbortSignal): Promise<string> {
   const model = 'gemini-2.0-flash';
   const parts: Part[] = images.map(img => ({
     inlineData: {
@@ -263,7 +270,7 @@ export async function analyzeStyleImage(images: ImageFile[]): Promise<string> {
   parts.push({ text: "Analyze the visual style of these images. Describe the lighting, color palette, mood, and aesthetic in detail for a text-to-image prompt." });
 
   try {
-    const response = await googleAICall(model, { parts: parts });
+    const response = await googleAICall(model, { parts: parts }, undefined, signal);
     return response.text?.trim() || '';
   } catch (error) {
     console.error('Error analyzing style image:', error);
@@ -271,7 +278,7 @@ export async function analyzeStyleImage(images: ImageFile[]): Promise<string> {
   }
 }
 
-export async function analyzeLogoForBranding(images: ImageFile[]): Promise<{ colors: string[] }> {
+export async function analyzeLogoForBranding(images: ImageFile[], signal?: AbortSignal): Promise<{ colors: string[] }> {
   const model = 'gemini-2.0-flash';
   const parts: Part[] = images.map(img => ({
     inlineData: {
@@ -295,7 +302,7 @@ export async function analyzeLogoForBranding(images: ImageFile[]): Promise<{ col
         },
         required: ["colors"]
       }
-    });
+    }, signal);
     const text = response.text || '{"colors": []}';
     return JSON.parse(text);
   } catch (error) {
@@ -304,29 +311,29 @@ export async function analyzeLogoForBranding(images: ImageFile[]): Promise<{ col
   }
 }
 
-export async function generatePromptFromText(instructions: string, config?: AIConfig): Promise<string> {
+export async function generatePromptFromText(instructions: string, config?: AIConfig, signal?: AbortSignal): Promise<string> {
   const model = config?.modelId || 'gemini-2.0-flash';
   const prompt = `Expand this idea into a detailed text-to-image prompt: "${instructions}"`;
   try {
-    const response = await googleAICall(model, { parts: [{ text: prompt }] });
+    const response = await googleAICall(model, { parts: [{ text: prompt }] }, undefined, signal);
     return response.text?.trim() || '';
   } catch (error) {
     throw error;
   }
 }
 
-export async function translateText(text: string): Promise<string> {
+export async function translateText(text: string, signal?: AbortSignal): Promise<string> {
   const model = 'gemini-2.0-flash';
   const prompt = `Translate the following text to English, preserving any technical or descriptive nuances: "${text}"`;
   try {
-    const response = await googleAICall(model, { parts: [{ text: prompt }] });
+    const response = await googleAICall(model, { parts: [{ text: prompt }] }, undefined, signal);
     return response.text?.trim() || '';
   } catch (error) {
     throw error;
   }
 }
 
-export async function generateSpeech(text: string, styleInstructions: string, voiceName: string, config?: AIConfig): Promise<AudioFile> {
+export async function generateSpeech(text: string, styleInstructions: string, voiceName: string, config?: AIConfig, signal?: AbortSignal): Promise<AudioFile> {
   const model = config?.modelId || "gemini-3.1-flash-tts-preview";
   const prompt = `Speak the following text ${styleInstructions ? '(' + styleInstructions + ')' : ''}: ${text}`;
   
@@ -338,7 +345,7 @@ export async function generateSpeech(text: string, styleInstructions: string, vo
           prebuiltVoiceConfig: { voiceName: voiceName },
         },
       },
-    });
+    }, signal);
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) {
@@ -360,7 +367,8 @@ export async function generateCampaignPlan(
     userPrompt: string,
     targetMarket: string = "Global",
     dialect: string = "English",
-    config?: AIConfig
+    config?: AIConfig,
+    signal?: AbortSignal
 ): Promise<any[]> {
     const model = config?.modelId || 'gemini-2.0-flash';
     const parts: Part[] = [];
@@ -401,7 +409,7 @@ export async function generateCampaignPlan(
                     required: ["id", "scenario", "caption", "tov", "schedule"]
                 }
             }
-        });
+        }, signal);
         const text = response.text || '[]';
         return JSON.parse(text.trim());
     } catch (err) {
@@ -410,7 +418,7 @@ export async function generateCampaignPlan(
     }
 }
 
-export async function analyzeProductForCampaign(productImages: ImageFile[]): Promise<string> {
+export async function analyzeProductForCampaign(productImages: ImageFile[], signal?: AbortSignal): Promise<string> {
     const model = 'gemini-2.0-flash';
     const parts: Part[] = [];
     productImages.forEach(img => parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
@@ -424,7 +432,7 @@ export async function analyzeProductForCampaign(productImages: ImageFile[]): Pro
     parts.push({ text: prompt });
 
     try {
-        const response = await googleAICall(model, { parts });
+        const response = await googleAICall(model, { parts }, undefined, signal);
         return response.text?.trim() || '';
     } catch (error) {
         throw error;
@@ -1092,7 +1100,7 @@ export async function generateShotScript(scenes: any[], aiConfig: AIConfig): Pro
     }
 }
 
-export async function generateDirectorCritique(scene: any, previousScene: any | null, aiConfig: AIConfig): Promise<string> {
+export async function generateDirectorCritique(scene: any, previousScene: any | null, aiConfig: AIConfig, signal?: AbortSignal): Promise<string> {
     const model = aiConfig?.modelId || 'gemini-2.0-flash';
     const instruction = `Act as a Senior Film Director. Critique the following shot selection:
     Current Shot: ${scene.shotType} with ${scene.cameraMovement} movement.
@@ -1102,7 +1110,7 @@ export async function generateDirectorCritique(scene: any, previousScene: any | 
     Provide a sharp, 2-3 sentence technical critique of this cinematic choice. Mention pacing, focus, or visual impact. Return raw text.`;
 
     try {
-        const response = await googleAICall(model, { parts: [{ text: instruction }] });
+        const response = await googleAICall(model, { parts: [{ text: instruction }] }, undefined, signal);
         return response.text || "Director's feedback unavailable.";
     } catch (err) {
         return "Director's feedback unavailable.";

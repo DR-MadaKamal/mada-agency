@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
+import { VersionTimeline } from './VersionTimeline';
 import { ShareableLink } from './ShareableLink';
 import { TemplatePicker } from './TemplatePicker';
 import { cn } from '../lib/utils';
@@ -221,6 +222,13 @@ const BrandingStudio: React.FC<{
 
     const cancelRef = useRef(false);
     const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
+    const handleAddComment = (content: string) => {
+        setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
+    };
+    const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
+    const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
+    const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
     const handleCopyManual = () => {
@@ -454,6 +462,8 @@ const BrandingStudio: React.FC<{
 
                 <div className="flex items-center gap-3">
                     <ShareableLink projectId={project.id} />
+                    <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
+                    <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(() => v.snapshot); setCurrentVersionId(v.id); }} onUndo={() => { if (versions.length > 1) { const prev = versions[versions.length - 2]; setProject(() => prev.snapshot); setCurrentVersionId(prev.id); } }} onRedo={() => {}} canUndo={versions.length > 1} canRedo={false} />
                     <button
                         onClick={() => setShowTemplatePicker(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
@@ -1040,10 +1050,20 @@ const BrandingStudio: React.FC<{
 
             {showTemplatePicker && (
                 <TemplatePicker
+                    studioType="branding_studio"
                     onSelect={(template) => {
+                        const data = template.defaultData;
+                        setProject(s => ({
+                            ...s,
+                            ...data,
+                            targetAudience: data.targetAudience || s.targetAudience,
+                            brandVoice: data.brandVoice || s.brandVoice,
+                            brandPersonality: data.brandPersonality || s.brandPersonality,
+                            fontPreferences: data.fontPreferences || s.fontPreferences,
+                        }));
                         setShowTemplatePicker(false);
                     }}
-                    onClose={() => setShowTemplatePicker(false)}
+                    onDismiss={() => setShowTemplatePicker(false)}
                 />
             )}
         </main>

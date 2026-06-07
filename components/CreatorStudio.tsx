@@ -11,8 +11,12 @@ import HistoryPanel from './HistoryPanel';
 import ResultDisplay from './ResultDisplay';
 import AISelector from './AISelector';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera } from 'lucide-react';
+import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera, Plus } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
+import { ShareableLink } from './ShareableLink';
+import { CommentsOverlay } from './CommentsOverlay';
+import { VersionTimeline } from './VersionTimeline';
+import { TemplatePicker } from './TemplatePicker';
 
 interface CreatorStudioProps {
   project: CreatorStudioProject;
@@ -38,6 +42,14 @@ const CreatorStudio: React.FC<CreatorStudioProps> = ({
   setProject,
 }) => {
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
+  const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  const handleAddComment = (content: string) => {
+    setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
+  };
+  const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
   
   const translateTimeoutRef = useRef<number | null>(null);
   const translationRequestCounter = useRef(0);
@@ -402,6 +414,19 @@ Setting: Place the subject in a sophisticated and professional new environment.`
             ))}
         </div>
 
+        <div className="flex items-center justify-between">
+            <div />
+            <div className="flex items-center gap-2">
+                <ShareableLink projectId={project.id} projectName={project.name} />
+                <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
+                <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(v.snapshot); setCurrentVersionId(v.id); }} onUndo={() => {}} onRedo={() => {}} canUndo={false} canRedo={false} />
+                <button onClick={() => setShowTemplatePicker(true)} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all">
+                    <Plus className="w-3 h-3" />
+                    Template
+                </button>
+            </div>
+        </div>
+
         <main className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12 items-start">
             <div className="flex flex-col gap-6 order-1">
                 {/* Visual Context Info */}
@@ -586,6 +611,16 @@ Setting: Place the subject in a sophisticated and professional new environment.`
                 <HistoryPanel history={project.history} onSelect={(img) => updateActiveProjectState(p => { p.generatedImage = img; })} />
             </div>
         </main>
+        {showTemplatePicker && (
+            <TemplatePicker
+                studioType="creator_studio"
+                onSelect={(template) => {
+                    setShowTemplatePicker(false);
+                    updateActiveProjectState(p => { Object.assign(p, template.defaultData); });
+                }}
+                onDismiss={() => setShowTemplatePicker(false)}
+            />
+        )}
     </div>
   );
 };
