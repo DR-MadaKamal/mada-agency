@@ -11,8 +11,7 @@ import {
     ArrowUpRight, Info, Eye, Star, Clock, Maximize2
 } from 'lucide-react';
 import { SmartAsset, AppView } from '../types';
-import { db, auth } from '../lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db, auth, collection, query, where, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from '../lib/firebase';
 import { AssetIntelligence } from '../services/assetIntelligence';
 
 const NexusVault: React.FC = () => {

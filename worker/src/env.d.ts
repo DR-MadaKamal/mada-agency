@@ -1,0 +1,9 @@
+interface Env {
+  GEMINI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  StrategicOrchestrator: DurableObjectNamespace;
+  KnowledgeMiner: DurableObjectNamespace;
+  NexusAssistant: DurableObjectNamespace;
+  mada_agency_db: D1Database;
+}

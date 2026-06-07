@@ -1,45 +1,41 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    LayoutDashboard, 
-    Users, 
-    Rocket, 
-    Target, 
-    Zap, 
-    BarChart3, 
-    Plus, 
-    Search, 
-    Filter, 
-    MoreVertical, 
-    CheckCircle2, 
-    AlertCircle, 
-    Clock, 
-    TrendingUp, 
-    Briefcase, 
-    Globe, 
-    Languages,
-    ArrowRight,
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+    Users,
+    Rocket,
+    Target,
+    Zap,
+    Plus,
+    Search,
+    Filter,
+    MoreVertical,
+    CheckCircle2,
+    AlertCircle,
+    Clock,
+    TrendingUp,
+    Globe,
     Sparkles,
-    Trash2,
     Edit3,
     DollarSign,
     ShieldCheck,
     Cpu,
     Activity,
     LineChart,
-    PieChart,
-    Calendar,
     ChevronRight,
-    ExternalLink,
     RefreshCcw,
     Terminal,
-    Image as ImageIcon,
     Database,
     Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PrePilotAgencySuiteProject, PrePilotClient, PrePilotCampaign } from '../types';
 import { cn } from '../lib/utils';
+import { strategicOrchestrator, knowledgeMiner } from '../lib/agent-client';
+import PrePilotOverview from './PrePilotOverview';
+import PrePilotCRM from './PrePilotCRM';
+import PrePilotTeam from './PrePilotTeam';
+import PrePilotAgents from './PrePilotAgents';
+import PrePilotWorkflows from './PrePilotWorkflows';
 
 // --- Mock Initial Data for new projects ---
 const INITIAL_METRICS = {
@@ -59,121 +55,73 @@ const PrePilotAgencySuite: React.FC<{
 
     const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
     const [isSimulating, setIsSimulating] = useState(false);
+    const [agentError, setAgentError] = useState<string | null>(null);
+
+    const syncAgentsFromWorker = useCallback(async () => {
+      try {
+        const orch = strategicOrchestrator();
+        const miner = knowledgeMiner();
+        const [orchState, minerState] = await Promise.all([
+          orch.getState().catch(() => null),
+          miner.getState().catch(() => null),
+        ]);
+
+        if (orchState) {
+          setProject(prev => ({
+            ...prev,
+            agents: prev.agents.map(a =>
+              a.id === 'master-agent'
+                ? { ...a, metrics: orchState.metrics, status: orchState.status }
+                : a
+            ),
+            workflows: orchState.workflows || prev.workflows,
+          }));
+        }
+        if (minerState) {
+          setProject(prev => ({
+            ...prev,
+            agents: prev.agents.map(a =>
+              a.id === 'data-agent'
+                ? { ...a, metrics: minerState.metrics, status: minerState.status }
+                : a
+            ),
+            knowledgeBases: minerState.knowledgeBases || prev.knowledgeBases,
+          }));
+        }
+        setAgentError(null);
+      } catch (err) {
+        setAgentError('Agent Worker unreachable');
+      }
+    }, []);
+
+    useEffect(() => {
+      syncAgentsFromWorker();
+      const interval = setInterval(syncAgentsFromWorker, 30000);
+      return () => clearInterval(interval);
+    }, [syncAgentsFromWorker]);
 
     const activeTab = project.activeTab;
     
     // Default data for empty states
-    const MOCK_LEADS = [
-        { id: 'l1', company: 'TechNova', contact: 'Sarah J.', value: '$45,000', stage: 'qualified', probability: 80 },
-        { id: 'l2', company: 'GreenPath', contact: 'Mark R.', value: '$12,000', stage: 'proposal', probability: 65 },
-        { id: 'l3', company: 'Global Logistics', contact: 'Elena V.', value: '$88,000', stage: 'negotiation', probability: 40 },
-    ];
+    const renderCRM = () => <PrePilotCRM project={project} />;
 
-    const MOCK_TEAM = [
-        { id: 't1', name: 'Alex Rivera', role: 'Chief Strategist', dept: 'Strategy', load: 85 },
-        { id: 't2', name: 'Jordan Chen', role: 'Head of Creative', dept: 'Creative', load: 42 },
-        { id: 't3', name: 'Sam Taylor', role: 'DevOps Lead', dept: 'Tech', load: 91 },
-    ];
+    const renderTeam = () => <PrePilotTeam project={project} />;
 
-    const renderCRM = () => (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold tracking-tight">Sales Pipeline</h2>
-                    <p className="text-[10px] text-white/40 uppercase font-black">Lead Tracking & Conversion Growth</p>
-                </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-[10px] font-black uppercase transition-all">
-                    <Plus className="w-4 h-4" /> New Lead
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                {['Leads', 'Qualified', 'Proposal', 'Negotiation', 'Closed'].map((stage, i) => (
-                    <div key={stage} className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{stage}</span>
-                            <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40">
-                                {stage === 'Leads' ? 5 : stage === 'Qualified' ? 2 : 1}
-                            </div>
-                        </div>
-                        <div className="space-y-3 min-h-[200px] p-2 bg-white/[0.02] border border-dashed border-white/5 rounded-2xl">
-                            {MOCK_LEADS.filter(l => l.stage === stage.toLowerCase()).map(lead => (
-                                <div key={lead.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-white/20 transition-all cursor-move group">
-                                    <div className="text-xs font-bold mb-1 group-hover:text-emerald-400 transition-colors">{lead.company}</div>
-                                    <div className="text-[9px] text-white/40 mb-3">{lead.contact}</div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-[10px] font-bold text-emerald-400/80">{lead.value}</div>
-                                        <div className="text-[9px] font-black text-white/20">{lead.probability}%</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    const renderTeam = () => (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold tracking-tight">Agency Talent</h2>
-                    <p className="text-[10px] text-white/40 uppercase font-black">Capacity Planning & Skill Matrix</p>
-                </div>
-                <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-white/60">Recruitment</button>
-                    <button className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[10px] font-black uppercase shadow-[0_0_20px_rgba(59,130,246,0.3)]">Invite Member</button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {MOCK_TEAM.map((member, i) => (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={member.id} 
-                        className="p-6 bg-white/5 border border-white/10 rounded-3xl group hover:border-white/20 transition-all"
-                    >
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-lg font-bold border border-white/10">
-                                {member.name[0]}
-                            </div>
-                            <div>
-                                <div className="text-sm font-bold">{member.name}</div>
-                                <div className="text-[10px] text-white/40 uppercase font-black">{member.role}</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[9px] font-black uppercase text-white/30">Availability</span>
-                                    <span className={cn("text-[10px] font-bold", member.load > 90 ? 'text-red-400' : 'text-green-400')}>{member.load}%</span>
-                                </div>
-                                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                    <div className={cn("h-full transition-all duration-1000", member.load > 90 ? 'bg-red-400' : 'bg-blue-400')} style={{ width: `${member.load}%` }} />
-                                </div>
-                            </div>
-                            
-                            <div className="flex gap-2 pt-2">
-                                <span className="px-2 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase text-white/40">{member.dept}</span>
-                                <span className="px-2 py-1 bg-green-500/10 rounded-lg text-[8px] font-black uppercase text-green-400">Online</span>
-                            </div>
-                        </div>
-
-                        <button className="w-full mt-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase text-white/60 hover:text-white transition-all">Schedule Task</button>
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-    );
+    const executeAgentTask = useCallback(async (agentName: string, task: string) => {
+      try {
+        const client = agentName === 'data-agent' ? knowledgeMiner() : strategicOrchestrator();
+        await client.call('executeTask', task);
+        await syncAgentsFromWorker();
+      } catch (err) {
+        console.error(`Agent ${agentName} task failed:`, err);
+      }
+    }, [syncAgentsFromWorker]);
 
     const handleSimulatePilot = async () => {
         if (project.campaigns.length === 0) return;
         setIsSimulating(true);
         try {
+            await executeAgentTask('master-agent', `Simulate pilot for campaign: ${project.campaigns[project.campaigns.length - 1].name}`);
             const { callAI } = await import('../services/geminiService');
             const campaign = project.campaigns[project.campaigns.length - 1];
             const prompt = `Simulate a marketing pilot for campaign: ${campaign.name}. Budget: ${campaign.budget}. 
@@ -197,6 +145,7 @@ const PrePilotAgencySuite: React.FC<{
         if (!project.strategicGoal) return;
         setIsGeneratingStrategy(true);
         try {
+            await executeAgentTask('master-agent', `Generate strategy for: ${project.strategicGoal}`);
             const { callAI } = await import('../services/geminiService');
             const prompt = `Generate a detailed market analysis and strategic roadmap for the following goal: ${project.strategicGoal}.
             Format with professional sections: Market Context, Growth Pillars, Competitive Positioning. Use Markdown.`;
@@ -254,224 +203,9 @@ const PrePilotAgencySuite: React.FC<{
         setIsAddingCampaign(false);
     };
 
-    const renderAgents = () => (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold tracking-tight">Agent Infrastructure</h2>
-                    <p className="text-[10px] text-white/40 uppercase font-black">Declarative & Custom Engine Orchestrators</p>
-                </div>
-                <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-white/60 hover:text-white transition-all">
-                        Benchmark Models
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[10px] font-black uppercase transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-                        <Plus className="w-4 h-4" /> Create New Agent
-                    </button>
-                </div>
-            </div>
+    const renderAgents = () => <PrePilotAgents project={project} agentError={agentError} onSync={syncAgentsFromWorker} onExecuteTask={executeAgentTask} />;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {project.agents.map((agent, i) => (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={agent.id}
-                        className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:border-white/20 transition-all group relative overflow-hidden"
-                    >
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Cpu className="w-20 h-20 rotate-12" />
-                        </div>
-                        
-                        <div className="flex items-start justify-between mb-4 relative z-10">
-                            <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 group-hover:scale-110 transition-transform">
-                                <Cpu className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <div className="flex gap-2">
-                                <div className={cn(
-                                    "px-2 py-1 rounded text-[8px] font-black uppercase",
-                                    agent.type === 'engine' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                )}>
-                                    {agent.type} Agent
-                                </div>
-                                <div className={cn(
-                                    "w-2 h-2 rounded-full mt-1.5",
-                                    agent.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-white/20'
-                                )} />
-                            </div>
-                        </div>
-
-                        <div className="mb-4 relative z-10">
-                            <h3 className="text-lg font-bold text-white mb-1">{agent.name}</h3>
-                            <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">{agent.role}</p>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 mb-6 relative z-10">
-                            {[
-                                { label: 'Tasks', value: agent.metrics.tasksCompleted },
-                                { label: 'Latency', value: agent.metrics.latency },
-                                { label: 'Uptime', value: `${agent.metrics.uptime}%` },
-                            ].map(m => (
-                                <div key={m.label} className="p-2 bg-black/20 rounded-xl border border-white/5 text-center">
-                                    <div className="text-[8px] text-white/30 uppercase font-black">{m.label}</div>
-                                    <div className="text-[10px] font-bold text-white/80">{m.value}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="space-y-3 mb-6 relative z-10">
-                            <div className="text-[9px] text-white/30 font-black uppercase tracking-wider mb-2">Capabilities</div>
-                            <div className="flex flex-wrap gap-2">
-                                {agent.capabilities.map(cap => (
-                                    <div key={cap} className="px-2 py-1 bg-white/5 rounded-lg text-[9px] text-white/60 flex items-center gap-1.5 hover:bg-white/10 transition-colors cursor-default">
-                                        {cap === 'python' && <Terminal className="w-3 h-3 text-green-400" />}
-                                        {cap === 'vision' && <ImageIcon className="w-3 h-3 text-orange-400" />}
-                                        {cap === 'orchestration' && <Zap className="w-3 h-3 text-purple-400" />}
-                                        {cap === 'rest_api' && <Globe className="w-3 h-3 text-blue-400" />}
-                                        {cap === 'code_interpreter' && <Terminal className="w-3 h-3 text-cyan-400" />}
-                                        {cap.replace('_', ' ')}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2 pt-4 border-t border-white/5">
-                            <button className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase text-white/60 hover:text-white transition-all">Configure Logic</button>
-                            <button className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl text-blue-400 transition-all">
-                                <Activity className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
-
-                <button className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-6 h-full min-h-[300px] flex flex-col items-center justify-center group hover:bg-white/[0.07] transition-all">
-                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <Plus className="w-6 h-6 text-white/20" />
-                    </div>
-                    <div className="text-sm font-bold text-white/30">Orchestrate Engine</div>
-                    <p className="text-[9px] text-white/20 mt-2 uppercase font-black tracking-widest text-center px-8">Define custom reasoning loops & tool definitions</p>
-                </button>
-            </div>
-        </div>
-    );
-
-    const renderWorkflows = () => (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold tracking-tight">Enterprise Operations</h2>
-                    <p className="text-[10px] text-white/40 uppercase font-black">1,400+ Connectors & Event-Driven Automation</p>
-                </div>
-                <div className="flex gap-2">
-                   <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-white/60 hover:text-white transition-all">Telemetry Logs</button>
-                   <button className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]">
-                       <Sparkles className="w-4 h-4 mr-2 inline" /> Describe Pipeline
-                   </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                    {project.workflows.map((wf, i) => (
-                        <motion.div 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            key={wf.id}
-                            className="bg-white/5 border border-white/10 rounded-[2rem] p-6 hover:bg-white/[0.07] transition-all"
-                        >
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-4">
-                                    <div className={cn(
-                                        "p-3 rounded-2xl border",
-                                        wf.status === 'active' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
-                                    )}>
-                                        <Zap className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white">{wf.name}</h3>
-                                        <div className="text-[10px] text-white/40 uppercase font-black flex items-center gap-2">
-                                            {wf.trigger} Trigger • {wf.steps.length} Steps
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button className="p-2 bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors">
-                                        <Edit3 className="w-4 h-4" />
-                                    </button>
-                                    <button className="p-2 bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors">
-                                        <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="relative space-y-3 mb-6">
-                                {wf.steps.map((step, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 group">
-                                        <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            step.status === 'done' ? 'bg-green-500' : step.status === 'active' ? 'bg-blue-500 animate-pulse' : 'bg-white/10'
-                                        )} />
-                                        <div className="flex-1 p-3 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between group-hover:border-white/10 transition-all">
-                                            <div className="text-[11px] font-bold text-white/80">{step.action}</div>
-                                            <div className="flex items-center gap-2">
-                                                {step.agentId && <div className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[8px] font-black uppercase">AI Agent</div>}
-                                                {step.connector && <div className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded text-[8px] font-black uppercase">{step.connector}</div>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                <div className="absolute left-[3px] top-2 bottom-2 w-[2px] bg-white/5 -z-10" />
-                            </div>
-
-                            <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                <div className="text-[9px] text-white/40 uppercase font-black tracking-widest">Autonomous Reliability: 99.9%</div>
-                                <div className="flex gap-2">
-                                    <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase text-white/60">View Traces</button>
-                                    <button className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-[9px] font-black uppercase">Force Sync</button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </div>
-
-                <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-white/10 rounded-[2rem] space-y-4">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-white/80">Active Connectors</h4>
-                        <div className="grid grid-cols-2 gap-3">
-                            {['Salesforce', 'ServiceNow', 'SAP', 'Jira', 'Slack', 'SharePoint'].map(c => (
-                                <div key={c} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between group hover:bg-white/10 transition-all cursor-pointer">
-                                    <span className="text-[10px] font-bold text-white/70">{c}</span>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase text-white/40 hover:text-white transition-all">
-                            Browse 1,400+ Connectors
-                        </button>
-                    </div>
-
-                    <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h4 className="text-[11px] font-black uppercase tracking-widest text-white/80">API Gateway</h4>
-                            <div className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded text-[8px] font-black uppercase">Functional</div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="p-2 bg-black/20 rounded font-mono text-[9px] text-blue-400 flex items-center justify-between">
-                                <span>GET /api/v1/agents</span>
-                                <span className="text-white/20">200 OK</span>
-                            </div>
-                            <div className="p-2 bg-black/20 rounded font-mono text-[9px] text-blue-400 flex items-center justify-between">
-                                <span>POST /api/v1/orchestration</span>
-                                <span className="text-white/20">204 No Content</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    const renderWorkflows = () => <PrePilotWorkflows project={project} />;
 
     const renderKnowledge = () => (
         <div className="space-y-6">
@@ -712,123 +446,7 @@ const PrePilotAgencySuite: React.FC<{
     );
 
     const renderOverview = () => (
-        <div className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-blue-400' },
-                    { label: 'Live Campaigns', value: stats.liveCampaigns, icon: Rocket, color: 'text-purple-400' },
-                    { label: 'Monthly Volume', value: stats.totalBudget, icon: DollarSign, color: 'text-green-400' },
-                    { label: 'Avg. Progress', value: stats.avgProgress, icon: Activity, color: 'text-orange-400' },
-                ].map((stat, i) => (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={stat.label} 
-                        className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group hover:border-white/20 transition-all cursor-default"
-                    >
-                        <div>
-                            <div className="text-[10px] text-white/40 font-black uppercase tracking-wider mb-1">{stat.label}</div>
-                            <div className="text-2xl font-bold text-white tracking-tighter">{stat.value}</div>
-                        </div>
-                        <div className={cn("p-3 rounded-xl bg-white/5 group-hover:scale-110 transition-transform", stat.color)}>
-                            <stat.icon className="w-5 h-5" />
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Performance Charts Simulation */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/20 rounded-lg">
-                                <TrendingUp className="w-4 h-4 text-blue-400" />
-                            </div>
-                            <h3 className="text-sm font-bold text-white/90">Strategic Velocity</h3>
-                        </div>
-                        <div className="flex gap-2">
-                            {['7D', '1M', '3M', '1Y'].map(t => (
-                                <button key={t} className="px-2 py-1 rounded-md text-[9px] font-black uppercase bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors">{t}</button>
-                            ))}
-                        </div>
-                    </div>
-                    
-                    {/* Simulated Graph */}
-                    <div className="h-48 flex items-end justify-between gap-1 px-2">
-                        {Array.from({ length: 24 }).map((_, i) => (
-                            <motion.div 
-                                initial={{ height: 0 }}
-                                animate={{ height: `${20 + Math.random() * 80}%` }}
-                                transition={{ delay: i * 0.02, type: 'spring', damping: 10 }}
-                                key={i} 
-                                className="w-full bg-blue-500/20 rounded-t-sm relative group"
-                            >
-                                <div className="absolute inset-0 bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-sm" />
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/20 rounded-lg">
-                            <PieChart className="w-4 h-4 text-purple-400" />
-                        </div>
-                        <h3 className="text-sm font-bold text-white/90">Client Industry Split</h3>
-                    </div>
-                    
-                    <div className="flex items-center justify-center py-4">
-                        <div className="relative w-32 h-32">
-                           <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                             <circle cx="18" cy="18" r="16" fill="none" className="stroke-white/5" strokeWidth="3" />
-                             <circle cx="18" cy="18" r="16" fill="none" className="stroke-blue-400" strokeWidth="3" strokeDasharray="60, 100" />
-                             <circle cx="18" cy="18" r="16" fill="none" className="stroke-purple-400" strokeWidth="3" strokeDasharray="30, 100" strokeDashoffset="-60" />
-                             <circle cx="18" cy="18" r="16" fill="none" className="stroke-green-400" strokeWidth="3" strokeDasharray="10, 100" strokeDashoffset="-90" />
-                           </svg>
-                           <div className="absolute inset-0 flex items-center justify-center flex-col">
-                               <div className="text-xl font-bold">{project.clients.length}</div>
-                               <div className="text-[8px] text-white/40 uppercase font-black">Sectors</div>
-                           </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        {[
-                            { label: 'Technology', value: 60, color: 'bg-blue-400' },
-                            { label: 'Retail', value: 30, color: 'bg-purple-400' },
-                            { label: 'Services', value: 10, color: 'bg-green-400' },
-                        ].map(item => (
-                            <div key={item.label} className="flex items-center justify-between text-[10px]">
-                                <div className="flex items-center gap-2">
-                                    <div className={cn("w-2 h-2 rounded-full", item.color)} />
-                                    <span className="text-white/60">{item.label}</span>
-                                </div>
-                                <span className="font-bold">{item.value}%</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* AI Agent Status */}
-            <div className="p-4 bg-gradient-to-r from-blue-500/10 to-transparent border border-white/10 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/20 rounded-full animate-pulse">
-                        <Sparkles className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div>
-                        <div className="text-sm font-bold">PrePilot AI Assistant</div>
-                        <div className="text-[10px] text-white/50">Analyzing market fluctuations and campaign efficiency in real-time...</div>
-                    </div>
-                </div>
-                <button className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white text-[10px] font-black uppercase rounded-lg transition-all">
-                    Run New Simulation
-                </button>
-            </div>
-        </div>
+        <PrePilotOverview project={project} onGenerateStrategy={handleGenerateStrategy} isGeneratingStrategy={isGeneratingStrategy} />
     );
 
     const renderClients = () => (
@@ -1028,7 +646,7 @@ const PrePilotAgencySuite: React.FC<{
                             animate={{ opacity: 1, height: 'auto' }}
                             className="p-4 bg-white/5 border border-white/5 rounded-2xl text-[10px] text-white/60 overflow-y-auto max-h-[300px] prose prose-invert prose-xs"
                         >
-                            <div dangerouslySetInnerHTML={{ __html: project.marketAnalysis.replace(/\n/g, '<br/>') }} />
+                            <div className="whitespace-pre-wrap text-[10px] text-white/60 leading-relaxed">{project.marketAnalysis}</div>
                         </motion.div>
                     )}
                 </div>

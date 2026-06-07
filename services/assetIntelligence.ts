@@ -1,8 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { SmartAsset, ImageFile } from "../types";
-import { db, auth, sanitizeData } from "../lib/firebase";
-import { collection, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
+import { db, auth, sanitizeData, collection, addDoc, serverTimestamp, updateDoc, doc } from "../lib/firebase";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 

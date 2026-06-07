@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  setDoc,
-  deleteDoc, 
-  doc, 
-  serverTimestamp 
-} from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType, sanitizeData } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType, sanitizeData, collection, query, orderBy, onSnapshot, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp } from '../lib/firebase';
 import { 
   LineChart, 
   Line, 

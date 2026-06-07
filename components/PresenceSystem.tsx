@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { db, auth } from '../lib/firebase';
-import { collection, doc, setDoc, onSnapshot, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
+import { db, auth, collection, doc, setDoc, onSnapshot, serverTimestamp, query, where, deleteDoc } from '../lib/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PresenceSystem: React.FC = () => {

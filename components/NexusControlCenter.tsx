@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, 
   Activity, 
@@ -14,10 +14,12 @@ import {
   Settings2,
   PieChart,
   BarChart3,
-  Clock
+  Clock,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
-import { db, auth } from '../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, where } from 'firebase/firestore';
+import { db, auth, collection, query, orderBy, limit, onSnapshot, getCountFromServer, where } from '../lib/firebase';
+import { strategicOrchestrator } from '../lib/agent-client';
 
 const NexusControlCenter: React.FC = () => {
   const [stats, setStats] = useState({
@@ -30,6 +32,11 @@ const NexusControlCenter: React.FC = () => {
   });
 
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [agentOnline, setAgentOnline] = useState(false);
+
+  useEffect(() => {
+    strategicOrchestrator().healthCheck().then(setAgentOnline).catch(() => setAgentOnline(false));
+  }, []);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -56,21 +63,23 @@ const NexusControlCenter: React.FC = () => {
   return (
     <div className="w-full space-y-8 pb-12">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-white tracking-tight mb-2">NEURAL COMMAND</h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--color-accent)] opacity-80">Global System Interface & Performance Metrics</p>
-        </div>
-        <div className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 pr-6">
-          <div className="w-12 h-12 rounded-xl bg-[var(--color-accent)] flex items-center justify-center animate-pulse shadow-lg shadow-[var(--color-accent)]/20">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Network Status</div>
-            <div className="text-xs font-bold text-emerald-400">LATENCY OPTIMIZED (24ms)</div>
+            <h1 className="text-4xl font-black text-white tracking-tight mb-2">NEURAL COMMAND</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--color-accent)] opacity-80">Global System Interface & Performance Metrics</p>
+          </div>
+          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 pr-6">
+            <div className={`w-12 h-12 rounded-xl ${agentOnline ? 'bg-emerald-500' : 'bg-amber-500'} flex items-center justify-center shadow-lg`}>
+              {agentOnline ? <Wifi className="w-6 h-6 text-white" /> : <WifiOff className="w-6 h-6 text-white" />}
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Agent Worker</div>
+              <div className={`text-xs font-bold ${agentOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {agentOnline ? 'AGENTS ONLINE (24ms)' : 'LOCAL MODE'}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -119,10 +128,18 @@ const NexusControlCenter: React.FC = () => {
           <div className="space-y-4">
             <AnimatePresence mode="popLayout">
               {recentActivity.length === 0 ? (
-                <div className="py-12 text-center opacity-20">
-                  <Activity className="w-12 h-12 mx-auto mb-4" />
-                  <p className="text-xs font-bold uppercase tracking-widest">No recent neural waves detected</p>
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-12 text-center"
+                >
+                  <div className="relative inline-block mb-6">
+                    <Activity className="w-16 h-16 text-white/10 mx-auto" />
+                    <div className="absolute inset-0 bg-[var(--color-accent)] blur-3xl opacity-5" />
+                  </div>
+                  <p className="text-xs font-black uppercase tracking-widest text-white/20">Awaiting Neural Activity</p>
+                  <p className="text-[9px] font-medium text-white/10 mt-1">Activity will appear here as you work across studios</p>
+                </motion.div>
               ) : (
                 recentActivity.map((activity, idx) => (
                   <motion.div 
@@ -197,7 +214,11 @@ const StatCard = ({ label, value, subValue, icon: Icon, color, progress }: any) 
   };
 
   return (
-    <div className={`p-8 rounded-[40px] bg-gradient-to-br ${colors[color]} border border-white/5 flex flex-col gap-4 shadow-2xl relative overflow-hidden group`}>
+    <motion.div 
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`p-8 rounded-[40px] bg-gradient-to-br ${colors[color]} border border-white/5 flex flex-col gap-4 shadow-2xl relative overflow-hidden group cursor-default`}
+    >
       <div className="flex items-center justify-between relative z-10">
         <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
           <Icon className="w-6 h-6" />
@@ -207,7 +228,14 @@ const StatCard = ({ label, value, subValue, icon: Icon, color, progress }: any) 
         </div>
       </div>
       <div className="relative z-10 mt-2">
-        <h3 className="text-4xl font-black text-white tracking-tighter mb-1">{value}</h3>
+        <motion.h3 
+          key={value}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-4xl font-black text-white tracking-tighter mb-1"
+        >
+          {value}
+        </motion.h3>
         <p className="text-[10px] font-black uppercase tracking-widest text-white/40">{label}</p>
       </div>
       <div className="mt-4 flex items-center justify-between relative z-10">
@@ -220,7 +248,7 @@ const StatCard = ({ label, value, subValue, icon: Icon, color, progress }: any) 
       </div>
       {/* Decorative BG element */}
       <Icon className="absolute -right-8 -bottom-8 w-24 h-24 opacity-5" />
-    </div>
+    </motion.div>
   );
 };
 

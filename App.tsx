@@ -16,12 +16,10 @@ import {
   AdminStudioProject,
   PrePilotAgencySuiteProject
 } from './types';
-import { auth, signIn, signOut, db } from './lib/firebase';
+import { auth, signIn, signOut, db, onAuthStateChanged, doc, onSnapshot, serverTimestamp, getDoc, setDoc, updateDoc, handleFirestoreError, OperationType } from './lib/firebase';
 import { saveUnifiedProject } from './lib/admin';
 import NexusAssistant from './components/NexusAssistant';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { Shield, RefreshCcw, AlertTriangle, CheckCircle2, Rocket, Briefcase } from 'lucide-react';
+import { Shield, RefreshCcw, AlertTriangle, CheckCircle2, Rocket, Briefcase, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const CreatorStudio = lazy(() => import('./components/CreatorStudio'));
@@ -47,6 +45,9 @@ import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES, LOGO_IMAGE_URL } from './
 import GlobalSettings from './components/GlobalSettings';
 import OmniSearch from './components/OmniSearch';
 import PresenceSystem from './components/PresenceSystem';
+import { ErrorBoundary } from './lib/ErrorBoundary';
+import { cn } from './lib/utils';
+import Sidebar from './components/Sidebar';
 
 const STUDIO_METADATA: Record<string, { label: string; icon: any }> = {
   creator_studio: { label: 'Creative', icon: null },
@@ -78,18 +79,6 @@ const SettingsIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-);
-
-const ChevronRightIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 11-1.414 0z" clipRule="evenodd" />
-    </svg>
-);
-
-const ChevronLeftIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
     </svg>
 );
 
@@ -599,10 +588,10 @@ function App() {
   const [view, setView] = useState<AppView>('creator_studio');
   const [isBannerManagerOpen, setIsBannerManagerOpen] = useState(false);
   const [isOmniSearchOpen, setIsOmniSearchOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [theme, setTheme] = useState('dark');
   const contentRef = useRef<HTMLDivElement>(null);
-  const mobileNavRef = useRef<HTMLDivElement>(null);
 
   const [creatorProjects, setCreatorProjects] = useState<CreatorStudioProject[]>([]);
   const [activeCreatorIndex, setActiveCreatorIndex] = useState(0);
@@ -668,7 +657,7 @@ function App() {
     }, 5000);
   };
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(auth.currentUser);
   const isAdminUser = currentUser?.email === 'madakamal16491@gmail.com';
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
@@ -707,19 +696,16 @@ function App() {
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, async (user: any) => {
       setCurrentUser(user);
       if (user) {
-          // Sync user neural node to populations
-          const { setDoc, doc, serverTimestamp, getDoc } = await import('firebase/firestore');
-          const { handleFirestoreError, OperationType } = await import('./lib/firebase');
           try {
               const userRef = doc(db, 'users', user.uid);
               const userSnap = await getDoc(userRef);
               
               const userData: any = {
                   email: user.email,
-                  displayName: user.displayName,
+                  displayName: user.displayName || 'Local User',
                   lastLogin: serverTimestamp(),
                   role: user.email === 'madakamal16491@gmail.com' ? 'admin' : 'user',
                   updatedAt: serverTimestamp()
@@ -883,7 +869,6 @@ function App() {
 
   const updateSystemConfig = async (updates: Partial<typeof systemConfig>) => {
     try {
-        const { serverTimestamp, updateDoc } = await import('firebase/firestore');
         await updateDoc(doc(db, 'system_config', 'main'), {
             ...updates,
             updatedAt: serverTimestamp(),
@@ -897,18 +882,14 @@ function App() {
   useEffect(() => {
     document.body.dataset.theme = theme;
   }, [theme]);
-  
-  const scrollToContent = () => {
-    contentRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
-  const scrollMobileNav = (direction: 'left' | 'right') => {
-    if (mobileNavRef.current) {
-        const scrollAmount = direction === 'left' ? -100 : 100;
-        mobileNavRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  const scrollToContent = () => {
+    if (contentRef.current) {
+      const y = contentRef.current.getBoundingClientRect().top + window.scrollY - 20;
+      window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
-
+  
   const addTab = <T,>(
     projects: T[],
     setProjects: React.Dispatch<React.SetStateAction<T[]>>,
@@ -1136,18 +1117,30 @@ function App() {
   const renderContent = () => {
     return (
         <Suspense fallback={
-            <div className="flex flex-col items-center justify-center p-12 min-h-[400px] text-[var(--color-text-secondary)] animate-pulse">
-                <RefreshCcw className="w-8 h-8 animate-spin mb-4 opacity-20" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Initializing Studio Core...</span>
+            <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
+                <div className="relative mb-6">
+                    <Loader2 className="w-10 h-10 text-[var(--color-accent)] animate-spin" />
+                    <div className="absolute inset-0 bg-[var(--color-accent)] blur-2xl opacity-20 animate-pulse" />
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-3 w-48 bg-white/5 rounded-full animate-pulse" />
+                    <div className="h-2 w-32 bg-white/[0.02] rounded-full animate-pulse" />
+                </div>
+                <div className="mt-8 grid grid-cols-3 gap-4 w-full max-w-md">
+                    <div className="h-24 bg-white/5 rounded-2xl animate-pulse" style={{ animationDelay: '0.1s' }} />
+                    <div className="h-24 bg-white/5 rounded-2xl animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <div className="h-24 bg-white/5 rounded-2xl animate-pulse" style={{ animationDelay: '0.3s' }} />
+                </div>
             </div>
         }>
+            <ErrorBoundary>
             <AnimatePresence mode="wait">
                 <motion.div
                     key={view}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
                     className="w-full"
                 >
                     {(() => {
@@ -1306,7 +1299,7 @@ function App() {
                                 return (
                                     <div className="flex flex-col w-full gap-4">
                                         <TabBar
-                                            projects={controllerProjects as any}
+                                            projects={controllerProjects}
                                             activeProjectIndex={activeControllerIndex}
                                             onSelectTab={setActiveControllerIndex}
                                             onAddTab={() => currentUser && addTab(controllerProjects, setControllerProjects, setActiveControllerIndex, (count) => createNewControllerProject(count, currentUser.uid))}
@@ -1342,7 +1335,7 @@ function App() {
                                 return (
                                     <div className="flex flex-col w-full gap-4">
                                         <TabBar
-                                            projects={prePilotProjects as any}
+                                            projects={prePilotProjects}
                                             activeProjectIndex={activePrePilotIndex}
                                             onSelectTab={setActivePrePilotIndex}
                                             onAddTab={() => currentUser && addTab(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, currentUser.uid))}
@@ -1372,51 +1365,10 @@ function App() {
                     })()}
                 </motion.div>
             </AnimatePresence>
+            </ErrorBoundary>
         </Suspense>
     );
   }
-
-const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, targetView: AppView, isMobile?: boolean, studioId?: string }) => {
-      // If studioId is provided, check if it's active in systemConfig, unless user is admin
-      if (studioId && !isAdminUser && !systemConfig.activeStudios.includes(studioId)) {
-          return null;
-      }
-
-      const isActive = view === targetView;
-
-      return (
-        <motion.button 
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => { setView(targetView); scrollToContent(); }}
-          className={`
-            relative z-10 font-bold transition-all duration-300
-            ${isMobile ? 'flex-shrink-0 px-4 py-2 text-[10px]' : 'px-5 py-2.5 text-[11px]'}
-            uppercase tracking-[0.2em]
-            ${isActive 
-              ? 'text-white' 
-              : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-base)]'
-            }
-          `}
-        >
-            <span className="relative z-10">{label}</span>
-            {isActive && (
-              <motion.div 
-                layoutId="nav-pill"
-                className="absolute inset-0 bg-[var(--color-accent)] rounded-full shadow-[0_0_15px_rgba(var(--color-accent-rgb),0.3)]"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            {!isActive && (
-              <motion.div 
-                initial={false}
-                whileHover={{ opacity: 1 }}
-                className="absolute inset-0 bg-white/5 rounded-full opacity-0 transition-opacity"
-              />
-            )}
-        </motion.button>
-      );
-  };
 
   if (systemConfig.maintenanceMode && !isAdminUser) {
       return (
@@ -1439,10 +1391,43 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
   }
 
   useEffect(() => {
+    const STUDIO_KEYS: Record<string, AppView> = {
+      '1': 'creator_studio', '2': 'storyboard_studio', '3': 'branding_studio',
+      '4': 'marketing_studio', '5': 'photoshoot_director', '6': 'edit_studio',
+      '7': 'plan_studio', '8': 'command_center', '9': 'asset_library',
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === 'k') {
         e.preventDefault();
         setIsOmniSearchOpen(prev => !prev);
+        return;
+      }
+      if (mod && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const target = STUDIO_KEYS[e.key];
+        if (target) { setView(target); scrollToContent(); }
+        return;
+      }
+      if (mod && e.key === 't') {
+        e.preventDefault();
+        const studio = STUDIO_KEYS['1'];
+        if (studio) {
+          setView(studio);
+          scrollToContent();
+        }
+        return;
+      }
+      if (mod && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('studio-undo'));
+        return;
+      }
+      if (mod && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('studio-redo'));
+        return;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1481,89 +1466,16 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
         )}
       </div>
 
-      <nav className="sticky top-0 z-50 w-full backdrop-blur-2xl bg-[rgba(var(--color-background-base-rgb),0.75)] border-b border-[rgba(var(--color-text-base-rgb),0.08)] shadow-2xl shadow-black/20">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div className="flex items-center gap-4 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth'})}>
-                <div className="relative">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[var(--color-accent)]/30 transition-colors duration-500 overflow-hidden">
-                        <img src={branding.logo} alt="Jenta Logo" className="h-9 w-auto transition-all group-hover:scale-110 flex-shrink-0 relative z-10"/>
-                    </div>
-                    <div className="absolute -inset-2 bg-[var(--color-accent)] blur-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-1000" />
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-lg font-black text-[var(--color-text-base)] tracking-[-0.04em] uppercase leading-none">JENTA</span>
-                    <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-[0.4em] opacity-60 leading-tight mt-0.5">Studios</span>
-                </div>
-            </div>
-            
-            <div className="hidden xl:flex items-center bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-md">
-                <NavItem label="Creative" targetView="creator_studio" studioId="creator_studio" />
-                <NavItem label="Storyboard" targetView="storyboard_studio" studioId="storyboard_studio" />
-                <NavItem label="Brand" targetView="branding_studio" studioId="branding_studio" />
-                <NavItem label="Marketing" targetView="marketing_studio" studioId="marketing_studio" />
-                <NavItem label="Photo" targetView="photoshoot_director" studioId="photoshoot_director" />
-                <NavItem label="Edit" targetView="edit_studio" studioId="edit_studio" />
-                <NavItem label="Plan" targetView="plan_studio" studioId="plan_studio" />
-                <NavItem label="Campaign" targetView="campaign_studio" studioId="campaign_studio" />
-                <NavItem label="Voice" targetView="voice_over_studio" studioId="voice_over_studio" />
-                <div className="w-[1px] h-6 bg-white/10 mx-2" />
-                <NavItem label="PREPILOT" targetView="prepilot_agency_suite" studioId="prepilot_agency_suite" />
-                <div className="w-[1px] h-6 bg-white/10 mx-2" />
-                <NavItem label="Archives" targetView="archives" />
-                <NavItem label="Vault" targetView="asset_library" />
-                <NavItem label="Command" targetView="command_center" />
-                {isAdminUser && <NavItem label="Admin" targetView="admin_studio" />}
-            </div>
-
-            <div className="flex items-center gap-6">
-                <div className="hidden sm:block">
-                  <PresenceSystem />
-                </div>
-                <div className="hidden lg:flex items-center gap-1.5 bg-white/5 rounded-full px-2.5 py-1.5 border border-white/10">
-                    {[
-                      { id: 'dark', color: 'bg-zinc-800' },
-                      { id: 'light', color: 'bg-white' },
-                      { id: 'industrial', color: 'bg-amber-500' },
-                      { id: 'cyber', color: 'bg-cyan-400' }
-                    ].map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTheme(t.id as any)}
-                        className={`w-4 h-4 rounded-full ${t.color} border border-white/20 transition-all hover:scale-125 relative group/theme ${theme === t.id ? 'ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-black scale-110' : 'opacity-40 hover:opacity-100'}`}
-                        title={`${t.id} Theme`}
-                      >
-                         {theme === t.id && <div className="absolute inset-0 rounded-full bg-[var(--color-accent)] blur-sm opacity-50" />}
-                      </button>
-                    ))}
-                </div>
-                
-                <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => { setView('prepilot_agency_suite'); scrollToContent(); }}
-                      className="group relative px-6 py-2 rounded-full overflow-hidden transition-all active:scale-95 border border-blue-500/20 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-                    >
-                      <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-all" />
-                      <div className="relative flex items-center gap-2">
-                        <Rocket className="w-3 h-3 text-blue-400" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 group-hover:text-blue-300">
-                          Agency Suite
-                        </span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={handleAuthAction}
-                      disabled={isAuthLoading}
-                      className="group relative px-6 py-2 rounded-full overflow-hidden transition-all active:scale-95 disabled:opacity-50"
-                    >
-                      <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 border border-white/10 group-hover:border-white/20 transition-all" />
-                      <span className="relative text-[10px] font-black uppercase tracking-widest text-white/70 group-hover:text-white">
-                        {currentUser ? 'Exit Admin' : 'Admin Access'}
-                      </span>
-                    </button>
-                </div>
-            </div>
-        </div>
-      </nav>
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+        activeView={view}
+        onNavigate={(v) => { setView(v); scrollToContent(); }}
+        onOpenSearch={() => setIsOmniSearchOpen(true)}
+        theme={theme}
+        onThemeChange={(t) => setTheme(t as any)}
+        isAdmin={isAdminUser}
+      />
 
       <section className="w-full max-w-7xl mx-auto px-4 pt-4 md:pt-8 pb-12 flex flex-col justify-center min-h-[50vh] relative">
            <div className="max-w-4xl relative z-10">
@@ -1586,46 +1498,17 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
                  </button>
               </div>
            </div>
-           <div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 pr-12 pointer-events-none">
+            <div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 pr-12 xl:pr-24 pointer-events-none">
                 <div className="pointer-events-auto">
                     <InteractiveLogo />
                 </div>
            </div>
       </section>
       
-      <div className="lg:hidden sticky top-16 z-40 w-full bg-[rgba(var(--color-background-base-rgb),0.95)] backdrop-blur-sm border-b border-[rgba(var(--color-text-base-rgb),0.1)] flex items-center justify-center gap-1 px-2 py-2">
-           <button 
-                onClick={() => scrollMobileNav('left')}
-                className="p-1.5 rounded-full bg-[rgba(var(--color-text-base-rgb),0.05)] hover:bg-[rgba(var(--color-text-base-rgb),0.1)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-base)] transition-colors shadow-sm"
-             >
-                <ChevronLeftIcon />
-            </button>
-            <div 
-                ref={mobileNavRef}
-                className="flex items-center gap-1 overflow-x-auto suggestions-scrollbar scroll-smooth mask-linear-fade flex-1"
-            >
-                <NavItem label="Creator" targetView="creator_studio" isMobile studioId="creator_studio" />
-                <NavItem label="Storyboard" targetView="storyboard_studio" isMobile studioId="storyboard_studio" />
-                <NavItem label="Branding" targetView="branding_studio" isMobile studioId="branding_studio" />
-                <NavItem label="Controller" targetView="controller_studio" isMobile studioId="controller_studio" />
-                <NavItem label="Marketing" targetView="marketing_studio" isMobile studioId="marketing_studio" />
-                <NavItem label="Photoshoot" targetView="photoshoot_director" isMobile studioId="photoshoot_director" />
-                <NavItem label="Edit" targetView="edit_studio" isMobile studioId="edit_studio" />
-                <NavItem label="Plan" targetView="plan_studio" isMobile studioId="plan_studio" />
-                <NavItem label="Campaign" targetView="campaign_studio" isMobile studioId="campaign_studio" />
-                <NavItem label="Video" targetView="video_studio" isMobile studioId="video_studio" />
-                <NavItem label="Prompt" targetView="prompt_studio" isMobile studioId="prompt_studio" />
-                <NavItem label="Voice" targetView="voice_over_studio" isMobile studioId="voice_over_studio" />
-            </div>
-            <button 
-                onClick={() => scrollMobileNav('right')}
-                className="p-1.5 rounded-full bg-[rgba(var(--color-text-base-rgb),0.05)] hover:bg-[rgba(var(--color-text-base-rgb),0.1)] text-[var(--color-text-secondary)] hover:text(--color-text-base)] transition-colors shadow-sm"
-             >
-                <ChevronRightIcon />
-            </button>
-      </div>
-
-      <div ref={contentRef} className="w-full max-w-7xl flex-grow pt-8 pb-20 px-2 sm:px-4 z-10">
+      <div ref={contentRef} className={cn(
+        'flex-grow pt-8 pb-20 px-2 sm:px-4 z-10 min-w-0 overflow-x-hidden transition-all duration-300',
+        sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[220px]'
+      )}>
         {renderContent()}
       </div>
 
@@ -1638,7 +1521,7 @@ const NavItem = ({ label, targetView, isMobile, studioId }: { label: string, tar
       />
 
       {/* Global Toast Notifications [Imp 21] */}
-       <div className="fixed bottom-8 right-8 z-[1000] flex flex-col gap-4 w-full max-w-sm pointer-events-none">
+       <div className="fixed bottom-8 right-8 z-[300] flex flex-col gap-4 w-full max-w-sm pointer-events-none">
         <AnimatePresence>
           {toasts.map(toast => (
             <motion.div

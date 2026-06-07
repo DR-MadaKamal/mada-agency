@@ -5,19 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:cf": "wrangler pages dev -- live",
     "start": "node server.js",
     "build": "vite build",
+    "deploy": "vite build && wrangler pages deploy dist --branch main",
+    "deploy:worker": "cd worker && npx wrangler@4.96.0 deploy",
     "lint": "tsc",
     "preview": "vite preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@cloudflare/ai-chat": "^0.8.4",
     "@google/genai": "^1.20.0",
     "@types/express": "^5.0.6",
+    "agents": "^0.14.5",
     "clsx": "^2.1.1",
     "express": "^5.2.1",
-    "firebase": "^12.12.1",
-    "firebase-admin": "^13.8.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.11.0",
     "motion": "^12.38.0",
@@ -30,6 +33,7 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260607.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",

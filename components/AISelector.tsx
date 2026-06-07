@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AIConfig, AIProvider, AIModel, AppView } from '../types';
-import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, collection, query, where, onSnapshot } from '../lib/firebase';
 import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 

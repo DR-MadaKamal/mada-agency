@@ -1,0 +1,17 @@
+{
+  "name": "mada-agency-agents",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "agents": "^0.14.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260607.1",
+    "typescript": "~5.8.2",
+    "wrangler": "4.96.0"
+  }
+}

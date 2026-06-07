@@ -16,11 +16,11 @@ import {
     Terminal,
     Bot
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { AssistantMessage, AppView } from '../types';
-import { auth, db, sanitizeData } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { db, sanitizeData, collection, addDoc, serverTimestamp, query, where, orderBy, limit, onSnapshot, doc, setDoc } from '../lib/firebase';
+import { nexusAssistant as nexusAgent } from '../lib/agent-client';
 
+const LOCAL_USER = { uid: 'local-user', email: 'local@mada.app' };
 interface NexusAssistantProps {
     currentView: AppView;
     activeProject?: any;
@@ -41,7 +41,12 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
     const [activeModel, setActiveModel] = useState(MODELS[0]);
     const [availableModels, setAvailableModels] = useState(MODELS);
     const [isNeuralSync, setIsNeuralSync] = useState(false);
+    const [agentConnected, setAgentConnected] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        nexusAgent('health').healthCheck().then(setAgentConnected).catch(() => setAgentConnected(false));
+    }, []);
 
     useEffect(() => {
         // Fetch custom models from Nexus Infrastructure
@@ -88,11 +93,11 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
 
     // Fetch message history from Nexus
     useEffect(() => {
-        if (!auth.currentUser || !isOpen) return;
+        if (!isOpen) return;
 
         const q = query(
             collection(db, 'assistant_sessions'),
-            where('userId', '==', auth.currentUser.uid),
+            where('userId', '==', LOCAL_USER.uid),
             orderBy('timestamp', 'asc'),
             limit(50)
         );
@@ -118,10 +123,10 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
         });
 
         return () => unsub();
-    }, [isOpen, auth.currentUser]);
+    }, [isOpen]);
 
     const handleSendMessage = async () => {
-        if (!input.trim() || isLoading || !auth.currentUser) return;
+        if (!input.trim() || isLoading) return;
 
         const userMsg: AssistantMessage = {
             id: Date.now().toString(),
@@ -135,61 +140,60 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
         setIsLoading(true);
 
         try {
-            const { IntegrationService } = await import('../services/integrationService');
+            const sessionId = `session_${LOCAL_USER.uid}`;
+            const client = nexusAgent(sessionId);
             
-            const systemPrompt = `You are "Nexus Core", an elite AI design architect and creative strategist. 
-            Current Workspace: ${currentView.replace('_', ' ').toUpperCase()}
-            Active Project Data: ${activeProject ? JSON.stringify(activeProject) : 'None'}
-            Neural Sync Mode: ${isNeuralSync ? 'ON (Self-optimize and use available tools to provide a perfect solution)' : 'OFF'}
-            
-            Core Directives:
-            - Provide professional, sophisticated creative advice.
-            - When asked for colors, provide hex codes and psychological reasoning.
-            - When asked for trends, use your Google Search tool for real-time accurate data.
-            - Use technical terminology: Synthesis, Neural Flow, Aesthetic Vectors, Chromatic Balance.
-            - Format output beautifully with markdown.
-            - If Neural Sync is ON, also propose actions the user should take in this studio.`;
+            const response = await client.call('sendMessage', sessionId, {
+                id: userMsg.id,
+                role: 'user',
+                content: userMsg.content,
+                timestamp: userMsg.timestamp.toISOString(),
+                context: currentView,
+            }, activeModel.provider === 'google' ? 'gemini' : activeModel.provider);
 
-            let assistantContent = '';
-
-            const provider = (activeModel.provider === 'google' ? 'gemini' : activeModel.provider) as any;
-            
-            const response = await IntegrationService.smartCall(provider, {
-                prompt: userMsg.content,
-                systemInstruction: systemPrompt,
-                history: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                }))
-            });
-
-            assistantContent = response.message || "Synthesis pulse lost via neural relay.";
-            
             const assistantMsg: AssistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: assistantContent || "Synthesis pulse lost. Re-establishing link.",
+                content: response || "Synthesis pulse lost. Re-establishing link.",
                 timestamp: new Date()
             };
 
             setMessages(prev => [...prev, assistantMsg]);
 
-            // Save assistant response to Nexus
+            // Also save locally for fast reload
             await addDoc(collection(db, 'assistant_sessions'), sanitizeData({
                 ...assistantMsg,
-                userId: auth.currentUser.uid,
+                userId: LOCAL_USER.uid,
                 timestamp: serverTimestamp(),
                 context: currentView
             }));
 
         } catch (err) {
             console.error("Neural Failure:", err);
-            setMessages(prev => [...prev, {
-                id: 'error',
-                role: 'assistant',
-                content: "CRITICAL_ERROR: Synthesis failed. Check the neural bridge (API connection).",
-                timestamp: new Date()
-            }]);
+            // Fallback to IntegrationService if agent worker is unreachable
+            try {
+                const { IntegrationService } = await import('../services/integrationService');
+                const provider = (activeModel.provider === 'google' ? 'gemini' : activeModel.provider) as any;
+                const response = await IntegrationService.smartCall(provider, {
+                    prompt: userMsg.content,
+                    systemInstruction: `You are "Nexus Core", an elite AI design architect. Current: ${currentView}`,
+                    history: messages.map(m => ({ role: m.role, content: m.content }))
+                });
+                const assistantMsg: AssistantMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant',
+                    content: response.message || "Synthesis pulse lost via neural relay.",
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+            } catch {
+                setMessages(prev => [...prev, {
+                    id: 'error',
+                    role: 'assistant',
+                    content: "CRITICAL_ERROR: All neural bridges failed. Check API keys.",
+                    timestamp: new Date()
+                }]);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -245,8 +249,10 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
                                     <div>
                                         <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] italic">Nexus Core</h3>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            <span className="text-[8px] font-black text-emerald-500/80 uppercase tracking-widest">Neural Link Active</span>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${agentConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'} `} />
+                                            <span className={`text-[8px] font-black uppercase tracking-widest ${agentConnected ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
+                                                {agentConnected ? 'Neural Link Active' : 'Local Mode'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

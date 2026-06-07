@@ -25,17 +25,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { Integration, ApiLog } from '../types';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { 
-    collection, 
-    query, 
-    orderBy, 
-    onSnapshot, 
-    doc, 
-    updateDoc, 
-    serverTimestamp,
-    limit 
-} from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType, collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, limit } from '../lib/firebase';
 
 interface GlobalSettingsProps {
     isOpen: boolean;

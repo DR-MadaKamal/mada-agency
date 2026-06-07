@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mada-agency-agents",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "StrategicOrchestrator", "class_name": "StrategicOrchestrator" },
+      { "name": "KnowledgeMiner", "class_name": "KnowledgeMiner" },
+      { "name": "NexusAssistant", "class_name": "NexusAssistant" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["StrategicOrchestrator", "KnowledgeMiner", "NexusAssistant"] }
+  ],
+  "d1_databases": [
+    {
+      "binding": "mada_agency_db",
+      "database_name": "mada-agency-db",
+      "database_id": "f62f76cf-f7d4-40a4-8af4-44476c2ef4e6"
+    }
+  ]
+}

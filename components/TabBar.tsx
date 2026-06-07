@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreatorStudioProject, PhotoshootDirectorProject, PromptStudioProject, VoiceOverStudioProject, BrandingStudioProject, CampaignStudioProject, PlanStudioProject, EditStudioProject, StoryboardStudioProject, MarketingStudioProject } from '../types';
+import { CreatorStudioProject, PhotoshootDirectorProject, PromptStudioProject, VoiceOverStudioProject, BrandingStudioProject, CampaignStudioProject, PlanStudioProject, EditStudioProject, StoryboardStudioProject, MarketingStudioProject, ControllerStudioProject, PrePilotAgencySuiteProject } from '../types';
 import { Plus, X } from 'lucide-react';
 
 type ProjectUnion = 
@@ -14,7 +14,9 @@ type ProjectUnion =
   | PlanStudioProject 
   | EditStudioProject 
   | StoryboardStudioProject 
-  | MarketingStudioProject;
+  | MarketingStudioProject
+  | ControllerStudioProject
+  | PrePilotAgencySuiteProject;
 
 interface TabBarProps {
   projects: ProjectUnion[];

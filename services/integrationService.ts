@@ -1,5 +1,4 @@
-import { db, auth } from '../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth, collection, query, where, getDocs } from '../lib/firebase';
 
 export interface AiCallParams {
     prompt: string;

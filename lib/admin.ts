@@ -1,6 +1,5 @@
 
-import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, orderBy, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType, sanitizeData } from './firebase';
+import { db, auth, handleFirestoreError, OperationType, sanitizeData, collection, addDoc, serverTimestamp, query, where, getDocs, limit, orderBy, doc, setDoc, deleteDoc, writeBatch } from './firebase';
 import { GlobalHistoryItem, Integration, UnifiedProject } from '../types';
 
 /**
