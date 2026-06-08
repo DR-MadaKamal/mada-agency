@@ -16,10 +16,9 @@ import {
   AdminStudioProject,
   PrePilotAgencySuiteProject
 } from './types';
-import { auth, signIn, signOut, db, onAuthStateChanged, doc, onSnapshot, serverTimestamp, getDoc, setDoc, updateDoc, handleFirestoreError, OperationType } from './lib/firebase';
-import { saveUnifiedProject } from './lib/admin';
+
 import NexusAssistant from './components/NexusAssistant';
-import { Shield, RefreshCcw, AlertTriangle, CheckCircle2, Rocket, Briefcase, Loader2 } from 'lucide-react';
+import { AlertTriangle, Rocket, Briefcase, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const CreatorStudio = lazy(() => import('./components/CreatorStudio'));
@@ -685,9 +684,7 @@ function App() {
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
   };
 
-  const [currentUser, setCurrentUser] = useState<any>(auth.currentUser);
-  const isAdminUser = currentUser?.email === 'madakamal16491@gmail.com';
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const isAdminUser = true;
 
   useEffect(() => {
     const handleRemoteNav = (e: any) => {
@@ -705,73 +702,9 @@ function App() {
     return () => window.removeEventListener('nav-studio', handleRemoteNav);
   }, []);
 
-  // --- Nexus Persistence Relay ---
-
-  const handleAuthAction = async () => {
-    if (isAuthLoading) return;
-    setIsAuthLoading(true);
-    try {
-      if (currentUser) {
-        await signOut();
-      } else {
-        await signIn();
-      }
-    } catch (error) {
-      console.error("Auth action failed:", error);
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
+  // Initialize first project for each studio on mount
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user: any) => {
-      setCurrentUser(user);
-      if (user) {
-          try {
-              const userRef = doc(db, 'users', user.uid);
-              const userSnap = await getDoc(userRef);
-              
-              const userData: any = {
-                  email: user.email,
-                  displayName: user.displayName || 'Local User',
-                  lastLogin: serverTimestamp(),
-                  role: user.email === 'madakamal16491@gmail.com' ? 'admin' : 'user',
-                  updatedAt: serverTimestamp()
-              };
-
-              if (!userSnap.exists()) {
-                  userData.createdAt = serverTimestamp();
-              }
-
-              await setDoc(userRef, userData, { merge: true });
-          } catch (err) {
-              handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
-          }
-      }
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) {
-        // Reset all projects on logout
-        setCreatorProjects([]);
-        setPhotoshootProjects([]);
-        setPromptStudioProjects([]);
-        setVoiceOverProjects([]);
-        setBrandingProjects([]);
-        setCampaignProjects([]);
-        setPlanProjects([]);
-        setStoryboardProjects([]);
-        setMarketingProjects([]);
-        setControllerProjects([]);
-        setEditProjects([]);
-        setPrePilotProjects([]);
-        return;
-    }
-
-    // Initialize first project for each studio if empty
-    const uid = currentUser.uid;
+    const uid = 'local';
     setCreatorProjects(prev => prev.length === 0 ? [createNewCreatorProject(0, uid)] : prev);
     setPhotoshootProjects(prev => prev.length === 0 ? [createNewPhotoshootProject(0, uid)] : prev);
     setPromptStudioProjects(prev => prev.length === 0 ? [createNewPromptStudioProject(0, uid)] : prev);
@@ -784,58 +717,7 @@ function App() {
     setControllerProjects(prev => prev.length === 0 ? [createNewControllerProject(0, uid)] : prev);
     setEditProjects(prev => prev.length === 0 ? [createNewEditProject(0, uid)] : prev);
     setPrePilotProjects(prev => prev.length === 0 ? [createNewPrePilotProject(0, uid)] : prev);
-
-  }, [currentUser]);
-
-  // Neural Persistence Watcher - Sync local state to Firestore Nexus
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const syncToNexus = async () => {
-        // Find current project based on view
-        let activeProject: any = null;
-        switch (view) {
-            case 'creator_studio': activeProject = creatorProjects[activeCreatorIndex]; break;
-            case 'photoshoot_director': activeProject = photoshootProjects[activePhotoshootIndex]; break;
-            case 'prompt_studio': activeProject = promptStudioProjects[activePromptStudioIndex]; break;
-            case 'voice_over_studio': activeProject = voiceOverProjects[activeVoiceOverIndex]; break;
-            case 'branding_studio': activeProject = brandingProjects[activeBrandingIndex]; break;
-            case 'campaign_studio': activeProject = campaignProjects[activeCampaignIndex]; break;
-            case 'plan_studio': activeProject = planProjects[activePlanIndex]; break;
-            case 'storyboard_studio': activeProject = storyboardProjects[activeStoryboardIndex]; break;
-            case 'marketing_studio': activeProject = marketingProjects[activeMarketingIndex]; break;
-            case 'edit_studio': activeProject = editProjects[activeEditIndex]; break;
-            case 'controller_studio': activeProject = controllerProjects[activeControllerIndex]; break;
-            case 'prepilot_agency_suite': activeProject = prePilotProjects[activePrePilotIndex]; break;
-            case 'calendar': activeProject = null; break;
-        }
-
-        if (activeProject && activeProject.id && !activeProject.id.includes('landing')) {
-             await saveUnifiedProject({
-                 ...activeProject,
-                 studioType: view,
-                 updatedAt: new Date() // Will be replaced by serverTimestamp in lib/admin
-             });
-        }
-    };
-
-    const timer = setTimeout(syncToNexus, 5000); // 5s debounce for neural sync
-    return () => clearTimeout(timer);
-  }, [
-      currentUser, view, 
-      creatorProjects[activeCreatorIndex], 
-      photoshootProjects[activePhotoshootIndex],
-      promptStudioProjects[activePromptStudioIndex],
-      voiceOverProjects[activeVoiceOverIndex],
-      brandingProjects[activeBrandingIndex],
-      campaignProjects[activeCampaignIndex],
-      planProjects[activePlanIndex],
-      storyboardProjects[activeStoryboardIndex],
-      marketingProjects[activeMarketingIndex],
-      editProjects[activeEditIndex],
-      controllerProjects[activeControllerIndex],
-      prePilotProjects[activePrePilotIndex]
-  ]);
+  }, []);
 
   const handleEngageProject = (project: any) => {
       // Switches the view and sets the active project index
@@ -869,44 +751,8 @@ function App() {
       scrollToContent();
   };
 
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'system_config', 'main'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setSystemConfig({
-          activeStudios: data.activeStudios || [],
-          maintenanceMode: !!data.maintenanceMode,
-          allowNewRegistrations: data.allowNewRegistrations !== false
-        });
-      }
-    });
-
-    const unsubBranding = onSnapshot(doc(db, 'system_config', 'branding'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setBranding({
-          logo: data.logo || LOGO_IMAGE_URL,
-          tagline: data.tagline || 'Transform your imagination into the perfect design with the power of AI.'
-        });
-      }
-    });
-
-    return () => {
-      unsub();
-      unsubBranding();
-    };
-  }, []);
-
-  const updateSystemConfig = async (updates: Partial<typeof systemConfig>) => {
-    try {
-        await updateDoc(doc(db, 'system_config', 'main'), {
-            ...updates,
-            updatedAt: serverTimestamp(),
-            updatedBy: auth.currentUser?.email
-        });
-    } catch (err) {
-        console.error("Failed to update system config:", err);
-    }
+  const updateSystemConfig = (updates: Partial<typeof systemConfig>) => {
+    setSystemConfig(prev => ({ ...prev, ...updates }));
   };
 
   useEffect(() => {
@@ -1182,8 +1028,8 @@ function App() {
                                             projects={creatorProjects}
                                             activeProjectIndex={activeCreatorIndex}
                                             onSelectTab={setActiveCreatorIndex}
-                                            onAddTab={() => currentUser && addTab(creatorProjects, setCreatorProjects, setActiveCreatorIndex, (count) => createNewCreatorProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, creatorProjects, setCreatorProjects, activeCreatorIndex, setActiveCreatorIndex, (count) => createNewCreatorProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(creatorProjects, setCreatorProjects, setActiveCreatorIndex, (count) => createNewCreatorProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, creatorProjects, setCreatorProjects, activeCreatorIndex, setActiveCreatorIndex, (count) => createNewCreatorProject(count, 'local'))}
                                         />
                                         <CreatorStudio 
                                             project={creatorProjects[activeCreatorIndex]}
@@ -1198,8 +1044,8 @@ function App() {
                                             projects={photoshootProjects}
                                             activeProjectIndex={activePhotoshootIndex}
                                             onSelectTab={setActivePhotoshootIndex}
-                                            onAddTab={() => currentUser && addTab(photoshootProjects, setPhotoshootProjects, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, photoshootProjects, setPhotoshootProjects, activePhotoshootIndex, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(photoshootProjects, setPhotoshootProjects, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, photoshootProjects, setPhotoshootProjects, activePhotoshootIndex, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, 'local'))}
                                         />
                                         <PhotoshootDirector 
                                             project={photoshootProjects[activePhotoshootIndex]}
@@ -1214,8 +1060,8 @@ function App() {
                                             projects={promptStudioProjects}
                                             activeProjectIndex={activePromptStudioIndex}
                                             onSelectTab={setActivePromptStudioIndex}
-                                            onAddTab={() => currentUser && addTab(promptStudioProjects, setPromptStudioProjects, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, promptStudioProjects, setPromptStudioProjects, activePromptStudioIndex, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(promptStudioProjects, setPromptStudioProjects, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, promptStudioProjects, setPromptStudioProjects, activePromptStudioIndex, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, 'local'))}
                                         />
                                         <PromptStudio
                                             project={promptStudioProjects[activePromptStudioIndex]}
@@ -1231,8 +1077,8 @@ function App() {
                                             projects={voiceOverProjects}
                                             activeProjectIndex={activeVoiceOverIndex}
                                             onSelectTab={setActiveVoiceOverIndex}
-                                            onAddTab={() => currentUser && addTab(voiceOverProjects, setVoiceOverProjects, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, voiceOverProjects, setVoiceOverProjects, activeVoiceOverIndex, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(voiceOverProjects, setVoiceOverProjects, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, voiceOverProjects, setVoiceOverProjects, activeVoiceOverIndex, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, 'local'))}
                                         />
                                         <VoiceOverStudio
                                             project={voiceOverProjects[activeVoiceOverIndex]}
@@ -1247,8 +1093,8 @@ function App() {
                                             projects={campaignProjects}
                                             activeProjectIndex={activeCampaignIndex}
                                             onSelectTab={setActiveCampaignIndex}
-                                            onAddTab={() => currentUser && addTab(campaignProjects, setCampaignProjects, setActiveCampaignIndex, (count) => createNewCampaignProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, campaignProjects, setCampaignProjects, activeCampaignIndex, setActiveCampaignIndex, (count) => createNewCampaignProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(campaignProjects, setCampaignProjects, setActiveCampaignIndex, (count) => createNewCampaignProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, campaignProjects, setCampaignProjects, activeCampaignIndex, setActiveCampaignIndex, (count) => createNewCampaignProject(count, 'local'))}
                                         />
                                         <CampaignStudio
                                             project={campaignProjects[activeCampaignIndex]}
@@ -1263,8 +1109,8 @@ function App() {
                                             projects={planProjects}
                                             activeProjectIndex={activePlanIndex}
                                             onSelectTab={setActivePlanIndex}
-                                            onAddTab={() => currentUser && addTab(planProjects, setPlanProjects, setActivePlanIndex, (count) => createNewPlanProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, planProjects, setPlanProjects, activePlanIndex, setActivePlanIndex, (count) => createNewPlanProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(planProjects, setPlanProjects, setActivePlanIndex, (count) => createNewPlanProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, planProjects, setPlanProjects, activePlanIndex, setActivePlanIndex, (count) => createNewPlanProject(count, 'local'))}
                                         />
                                         <PlanStudio
                                             project={planProjects[activePlanIndex]}
@@ -1281,8 +1127,8 @@ function App() {
                                             projects={storyboardProjects}
                                             activeProjectIndex={activeStoryboardIndex}
                                             onSelectTab={setActiveStoryboardIndex}
-                                            onAddTab={() => currentUser && addTab(storyboardProjects, setStoryboardProjects, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, storyboardProjects, setStoryboardProjects, activeStoryboardIndex, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(storyboardProjects, setStoryboardProjects, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, storyboardProjects, setStoryboardProjects, activeStoryboardIndex, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, 'local'))}
                                         />
                                         <StoryboardStudio
                                             project={storyboardProjects[activeStoryboardIndex]}
@@ -1297,8 +1143,8 @@ function App() {
                                             projects={marketingProjects}
                                             activeProjectIndex={activeMarketingIndex}
                                             onSelectTab={setActiveMarketingIndex}
-                                            onAddTab={() => currentUser && addTab(marketingProjects, setMarketingProjects, setActiveMarketingIndex, (count) => createNewMarketingProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, marketingProjects, setMarketingProjects, activeMarketingIndex, setActiveMarketingIndex, (count) => createNewMarketingProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(marketingProjects, setMarketingProjects, setActiveMarketingIndex, (count) => createNewMarketingProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, marketingProjects, setMarketingProjects, activeMarketingIndex, setActiveMarketingIndex, (count) => createNewMarketingProject(count, 'local'))}
                                         />
                                         <MarketingStudio
                                             project={marketingProjects[activeMarketingIndex]}
@@ -1313,8 +1159,8 @@ function App() {
                                             projects={brandingProjects}
                                             activeProjectIndex={activeBrandingIndex}
                                             onSelectTab={setActiveBrandingIndex}
-                                            onAddTab={() => currentUser && addTab(brandingProjects, setBrandingProjects, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, brandingProjects, setBrandingProjects, activeBrandingIndex, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(brandingProjects, setBrandingProjects, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, brandingProjects, setBrandingProjects, activeBrandingIndex, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, 'local'))}
                                         />
                                         <BrandingStudio
                                             project={brandingProjects[activeBrandingIndex]}
@@ -1332,8 +1178,8 @@ function App() {
                                             projects={controllerProjects}
                                             activeProjectIndex={activeControllerIndex}
                                             onSelectTab={setActiveControllerIndex}
-                                            onAddTab={() => currentUser && addTab(controllerProjects, setControllerProjects, setActiveControllerIndex, (count) => createNewControllerProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, controllerProjects, setControllerProjects, activeControllerIndex, setActiveControllerIndex, (count) => createNewControllerProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(controllerProjects, setControllerProjects, setActiveControllerIndex, (count) => createNewControllerProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, controllerProjects, setControllerProjects, activeControllerIndex, setActiveControllerIndex, (count) => createNewControllerProject(count, 'local'))}
                                         />
                                         <ControllerStudio
                                             project={controllerProjects[activeControllerIndex]}
@@ -1348,8 +1194,8 @@ function App() {
                                             projects={editProjects}
                                             activeProjectIndex={activeEditIndex}
                                             onSelectTab={setActiveEditIndex}
-                                            onAddTab={() => currentUser && addTab(editProjects, setEditProjects, setActiveEditIndex, (count) => createNewEditProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, editProjects, setEditProjects, activeEditIndex, setActiveEditIndex, (count) => createNewEditProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(editProjects, setEditProjects, setActiveEditIndex, (count) => createNewEditProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, editProjects, setEditProjects, activeEditIndex, setActiveEditIndex, (count) => createNewEditProject(count, 'local'))}
                                         />
                                         <EditStudio
                                             project={editProjects[activeEditIndex]}
@@ -1368,8 +1214,8 @@ function App() {
                                             projects={prePilotProjects}
                                             activeProjectIndex={activePrePilotIndex}
                                             onSelectTab={setActivePrePilotIndex}
-                                            onAddTab={() => currentUser && addTab(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, currentUser.uid))}
-                                            onCloseTab={(idx) => currentUser && closeTab(idx, prePilotProjects, setPrePilotProjects, activePrePilotIndex, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, currentUser.uid))}
+                                            onAddTab={() => addTab(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, prePilotProjects, setPrePilotProjects, activePrePilotIndex, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, 'local'))}
                                         />
                                         <PrePilotAgencySuite 
                                             project={prePilotProjects[activePrePilotIndex]}
@@ -1492,19 +1338,7 @@ function App() {
       )}
       <div className="film-grain" />
       
-      {/* Global Pulse Indicator */}
-      <div className="fixed top-24 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-        {(isAuthLoading) && (
-            <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-[var(--color-accent)]/80 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 shadow-2xl flex items-center gap-2"
-            >
-                <RefreshCcw className="w-3 h-3 text-white animate-spin" />
-                <span className="text-[9px] font-black text-white uppercase tracking-widest">Neural Link Syncing...</span>
-            </motion.div>
-        )}
-      </div>
+
 
       <Sidebar
         collapsed={sidebarCollapsed}
