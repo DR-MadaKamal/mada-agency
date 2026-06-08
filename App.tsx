@@ -43,7 +43,7 @@ import { CalendarStudio } from './components/CalendarStudio';
 import { CalendarEvent } from './components/CalendarStudio';
 
 import TabBar from './components/TabBar';
-import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES } from './constants';
+import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES, LOGO_IMAGE_URL } from './constants';
 import GlobalSettings from './components/GlobalSettings';
 import OmniSearch from './components/OmniSearch';
 import PresenceSystem from './components/PresenceSystem';
@@ -175,7 +175,7 @@ const InteractiveLogo = () => {
                 <img
                 src="/logo.png"
                 alt="Mada Agency"
-                className="w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-2xl opacity-90 hover:opacity-100 transition-opacity"
+                className="w-72 md:w-[32rem] object-contain drop-shadow-2xl opacity-90 hover:opacity-100 transition-opacity"
                 />
           </div>
       </div>

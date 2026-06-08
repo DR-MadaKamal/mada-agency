@@ -21,7 +21,7 @@ import ImageWorkspace from './ImageWorkspace';
 import BrandingResultsGrid from './BrandingResultsGrid';
 import AISelector from './AISelector';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ASPECT_RATIOS, LOGO_IMAGE_URL } from '../constants';
+import { ASPECT_RATIOS } from '../constants';
 import { 
     Download, 
     Copy, 
