@@ -50,9 +50,6 @@ const STUDIOS: StudioEntry[] = [
 
 const THEMES = [
   { id: 'dark', icon: Moon },
-  { id: 'light', icon: Sun },
-  { id: 'industrial', icon: Monitor },
-  { id: 'cyber', icon: Monitor },
 ];
 
 const FAVORITES: AppView[] = ['creator_studio', 'branding_studio', 'marketing_studio', 'prepilot_agency_suite'];
@@ -96,14 +93,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, activeVi
         <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
           <img
             src={LOGO_IMAGE_URL}
-            alt="Jenta"
+            alt="Mada Agency"
             className="w-7 h-7 object-contain"
           />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="text-sm font-black tracking-tight uppercase leading-none">Jenta</span>
-            <span className="text-[8px] font-bold text-[var(--color-accent)] uppercase tracking-[0.3em] opacity-60 leading-tight mt-0.5">Studios</span>
+            <span className="text-sm font-black tracking-tight uppercase leading-none">Mada</span>
+            <span className="text-[8px] font-bold text-[var(--color-accent)] uppercase tracking-[0.3em] opacity-60 leading-tight mt-0.5">Agency</span>
           </div>
         )}
       </div>

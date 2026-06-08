@@ -174,7 +174,7 @@ const InteractiveLogo = () => {
           <div className="animate-float">
                 <img
                 src="/logo.png"
-                alt="Jenta 3D Icon"
+                alt="Mada Agency"
                 className="w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-2xl opacity-90 hover:opacity-100 transition-opacity"
                 />
           </div>
@@ -660,7 +660,7 @@ function App() {
     tagline: string;
   }>({
     logo: "/logo.png",
-    tagline: 'Transform your imagination into the perfect design photo with the power of Ai.'
+    tagline: 'Transform your imagination into the perfect design with the power of AI.'
   });
 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
@@ -886,7 +886,7 @@ function App() {
         const data = snap.data();
         setBranding({
           logo: data.logo || LOGO_IMAGE_URL,
-          tagline: data.tagline || 'Transform your imagination into the perfect design photo with the power of Ai.'
+          tagline: data.tagline || 'Transform your imagination into the perfect design with the power of AI.'
         });
       }
     });
@@ -1422,7 +1422,7 @@ function App() {
                       <div className="h-full bg-[var(--color-accent)] w-1/3 animate-[shimmer_2s_infinite]" />
                   </div>
                   <p className="text-xs text-white/30 leading-relaxed">
-                      JENTA Design tool is undergoing scheduled core maintenance to bring you new cinematic capabilities. Please check back shortly.
+                      Mada Agency is undergoing scheduled maintenance to bring you new capabilities. Please check back shortly.
                   </p>
               </div>
           </div>
