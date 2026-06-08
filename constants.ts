@@ -1,7 +1,7 @@
 
 import { LightingStyle, CameraPerspective, AspectRatio, ControllerSlider } from './types';
 
-export const LOGO_IMAGE_URL = "https://i.ibb.co/4n88pYH1/jenta-branding-3d-glass-app-icon-4k-1-copy.png"; 
+export const LOGO_IMAGE_URL = "/logo.png"; 
 
 export const LIGHTING_STYLES: { value: LightingStyle; label: string }[] = [
   { value: 'Natural Light', label: 'Natural Light' },

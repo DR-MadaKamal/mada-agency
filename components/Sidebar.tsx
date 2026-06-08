@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { AppView } from '../types';
 import { cn } from '../lib/utils';
+import { LOGO_IMAGE_URL } from '../constants';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -94,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, activeVi
       <div className={cn('flex items-center border-b border-white/5', collapsed ? 'justify-center p-3' : 'px-4 py-4 gap-3')}>
         <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
           <img
-            src="https://i.ibb.co/4n88pYH1/jenta-branding-3d-glass-app-icon-4k-1-copy.png"
+            src={LOGO_IMAGE_URL}
             alt="Jenta"
             className="w-7 h-7 object-contain"
           />

@@ -43,7 +43,7 @@ import { CalendarStudio } from './components/CalendarStudio';
 import { CalendarEvent } from './components/CalendarStudio';
 
 import TabBar from './components/TabBar';
-import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES, LOGO_IMAGE_URL } from './constants';
+import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES } from './constants';
 import GlobalSettings from './components/GlobalSettings';
 import OmniSearch from './components/OmniSearch';
 import PresenceSystem from './components/PresenceSystem';
@@ -173,7 +173,7 @@ const InteractiveLogo = () => {
       >
           <div className="animate-float">
                 <img
-                src="https://i.ibb.co/4n88pYH1/jenta-branding-3d-glass-app-icon-4k-1-copy.png"
+                src="/logo.png"
                 alt="Jenta 3D Icon"
                 className="w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-2xl opacity-90 hover:opacity-100 transition-opacity"
                 />
@@ -659,7 +659,7 @@ function App() {
     logo: string;
     tagline: string;
   }>({
-    logo: LOGO_IMAGE_URL,
+    logo: "/logo.png",
     tagline: 'Transform your imagination into the perfect design photo with the power of Ai.'
   });
 
