@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { createAICall } from '../lib/ai';
 import { Sparkles, Copy, Check, Loader2, FileText, Download } from 'lucide-react';
+import { useToast } from '../lib/useToast';
+import { MiniAISelector } from './MiniAISelector';
 import type { BrandingStudioProject } from '../types';
 
 interface ToolDef {
@@ -523,6 +525,8 @@ export function BrandTools({ project, setProject, brandName, specialty, audience
 }) {
   const [loadingTool, setLoadingTool] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<string | null>(null);
+  const [toolProvider, setToolProvider] = useState<{ provider: string; modelId: string } | null>(null);
+  const { toast } = useToast();
 
   const section = project.brandToolsSection || SECTIONS[0].id;
   const tool = project.brandToolsSubTab || '';
@@ -545,11 +549,14 @@ export function BrandTools({ project, setProject, brandName, specialty, audience
         .replace(/\{\{audience\}\}/g, audience)
         .replace(/\{\{voice\}\}/g, voice)
         .replace(/\{\{language\}\}/g, language === 'ar' ? 'Arabic' : 'English');
-      const result = await call(prompt, { provider: aiConfig.provider, modelId: aiConfig.modelId });
+      const override = toolProvider || aiConfig;
+      const result = await call(prompt, { provider: override.provider, modelId: override.modelId, fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as any });
       setProject(p => ({ ...p, brandToolsResults: { ...(p.brandToolsResults || {}), [t.id]: result }, brandToolsSubTab: t.id }));
+      toast({ type: 'success', title: `${t.label} generated` });
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         setProject(p => ({ ...p, brandToolsError: err.message || 'Generation failed' }));
+        toast({ type: 'error', title: `${t.label} failed`, message: err.message });
       }
     } finally {
       setLoadingTool(null);
@@ -635,6 +642,12 @@ export function BrandTools({ project, setProject, brandName, specialty, audience
                   {loadingTool === currentTool.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   {loadingTool === currentTool.id ? 'Generating...' : 'Generate'}
                 </button>
+
+                <MiniAISelector
+                  provider={toolProvider?.provider || aiConfig.provider}
+                  modelId={toolProvider?.modelId || aiConfig.modelId}
+                  onChange={(p, m) => setToolProvider({ provider: p, modelId: m })}
+                />
 
                 {results[currentTool.id] && (
                   <button

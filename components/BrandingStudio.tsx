@@ -1,5 +1,7 @@
 
 import React, { useCallback, useState, useRef } from 'react';
+import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
+import { useToast } from '../lib/useToast';
 import { ImageFile, BrandingStudioProject, BrandingResultCategory, AspectRatio } from '../types';
 import { resizeImage } from '../utils';
 import { 
@@ -230,7 +232,41 @@ const BrandingStudio: React.FC<{
     const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
     const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+    const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
+    const { toast } = useToast();
     const [copied, setCopied] = useState(false);
+
+    const pushVersion = useCallback((label?: string) => {
+      const entry = { id: Date.now().toString(), timestamp: Date.now(), label: label || `v${versions.length + 1}`, snapshot: JSON.parse(JSON.stringify(project)) };
+      setVersions(prev => [...prev.slice(-49), entry]);
+      setCurrentVersionId(entry.id);
+      setRedoStack([]);
+    }, [versions.length, project]);
+
+    const handleUndo = useCallback(() => {
+      if (versions.length < 2) return;
+      const current = versions[versions.length - 1];
+      const previous = versions[versions.length - 2];
+      setRedoStack(prev => [...prev, current]);
+      setProject(() => previous.snapshot);
+      setCurrentVersionId(previous.id);
+      setVersions(prev => prev.slice(0, -1));
+    }, [versions, setProject]);
+
+    const handleRedo = useCallback(() => {
+      if (redoStack.length === 0) return;
+      const next = redoStack[redoStack.length - 1];
+      setRedoStack(prev => prev.slice(0, -1));
+      setProject(() => next.snapshot);
+      setCurrentVersionId(next.id);
+      setVersions(prev => [...prev, next]);
+    }, [redoStack, setProject]);
+
+    useGlobalShortcuts([
+      { key: 'z', meta: true, handler: handleUndo },
+      { key: 'z', meta: true, shift: true, handler: handleRedo },
+      { key: 's', meta: true, handler: () => pushVersion('Manual save') },
+    ]);
 
     const handleCopyManual = () => {
         if (!project.brandManual) return;
@@ -464,7 +500,7 @@ const BrandingStudio: React.FC<{
                 <div className="flex items-center gap-3">
                     <ShareableLink projectId={project.id} />
                     <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
-                    <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(() => v.snapshot); setCurrentVersionId(v.id); }} onUndo={() => { if (versions.length > 1) { const prev = versions[versions.length - 2]; setProject(() => prev.snapshot); setCurrentVersionId(prev.id); } }} onRedo={() => {}} canUndo={versions.length > 1} canRedo={false} />
+                    <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(() => v.snapshot); setCurrentVersionId(v.id); }} onUndo={handleUndo} onRedo={handleRedo} canUndo={versions.length > 1} canRedo={redoStack.length > 0} />
                     <button
                         onClick={() => setShowTemplatePicker(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"

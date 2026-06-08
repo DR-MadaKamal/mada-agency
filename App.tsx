@@ -48,6 +48,7 @@ import GlobalSettings from './components/GlobalSettings';
 import OmniSearch from './components/OmniSearch';
 import PresenceSystem from './components/PresenceSystem';
 import { ErrorBoundary } from './lib/ErrorBoundary';
+import { ToastProvider } from './lib/useToast';
 import { cn } from './lib/utils';
 import Sidebar from './components/Sidebar';
 
@@ -662,8 +663,6 @@ function App() {
     tagline: 'Transform your imagination into the perfect design photo with the power of Ai.'
   });
 
-  const [toasts, setToasts] = useState<any[]>([]);
-
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
     try {
       const saved = localStorage.getItem('mada_calendar_events');
@@ -684,14 +683,6 @@ function App() {
 
   const handleDeleteCalendarEvent = (id: string) => {
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
-  };
-
-  const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
   };
 
   const [currentUser, setCurrentUser] = useState<any>(auth.currentUser);
@@ -1483,6 +1474,7 @@ function App() {
   }, []);
 
   return (
+    <ToastProvider>
     <div className="min-h-screen w-full flex flex-col items-center relative font-tajawal bg-[var(--color-background-base)]">
       <OmniSearch 
           isOpen={isOmniSearchOpen} 
@@ -1568,34 +1560,7 @@ function App() {
         onUpdateSystemConfig={updateSystemConfig}
       />
 
-      {/* Global Toast Notifications [Imp 21] */}
-       <div className="fixed bottom-8 right-8 z-[300] flex flex-col gap-4 w-full max-w-sm pointer-events-none">
-        <AnimatePresence>
-          {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 50, scale: 0.9 }}
-              className={`p-5 rounded-3xl backdrop-blur-xl border flex items-start gap-4 shadow-2xl pointer-events-auto ${
-                toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                toast.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                'bg-white/10 border-white/20 text-white'
-              }`}
-            >
-              <div className="p-3 rounded-2xl bg-white/5">
-                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> :
-                 toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> :
-                 <p className="w-5 h-5 font-black flex items-center justify-center">i</p>}
-              </div>
-              <div className="flex-1">
-                <h4 className="text-[10px] font-black uppercase tracking-widest mb-1">{toast.title}</h4>
-                <p className="text-[11px] font-medium opacity-60 leading-relaxed italic">"{toast.message}"</p>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {/* Toast notifications rendered by ToastProvider */}
 
       <NexusAssistant 
         currentView={view} 
@@ -1617,6 +1582,7 @@ function App() {
         })()}
       />
     </div>
+    </ToastProvider>
   );
 }
 

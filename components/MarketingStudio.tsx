@@ -1,5 +1,7 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
+import { useToast } from '../lib/useToast';
 import { MarketingStudioProject } from '../types';
 import { 
     generateMarketingAnalysis, 
@@ -51,6 +53,41 @@ const MarketingStudio: React.FC<{
     const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
     const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+    const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
+    const { toast } = useToast();
+
+    const pushVersion = useCallback((label?: string) => {
+      const entry = { id: Date.now().toString(), timestamp: Date.now(), label: label || `v${versions.length + 1}`, snapshot: JSON.parse(JSON.stringify(project)) };
+      setVersions(prev => [...prev.slice(-49), entry]);
+      setCurrentVersionId(entry.id);
+      setRedoStack([]);
+    }, [versions.length, project]);
+
+    const handleUndo = useCallback(() => {
+      if (versions.length < 2) return;
+      const current = versions[versions.length - 1];
+      const previous = versions[versions.length - 2];
+      setRedoStack(prev => [...prev, current]);
+      setProject(previous.snapshot);
+      setCurrentVersionId(previous.id);
+      setVersions(prev => prev.slice(0, -1));
+    }, [versions, setProject]);
+
+    const handleRedo = useCallback(() => {
+      if (redoStack.length === 0) return;
+      const next = redoStack[redoStack.length - 1];
+      setRedoStack(prev => prev.slice(0, -1));
+      setProject(next.snapshot);
+      setCurrentVersionId(next.id);
+      setVersions(prev => [...prev, next]);
+    }, [redoStack, setProject]);
+
+    useGlobalShortcuts([
+      { key: 'z', meta: true, handler: handleUndo },
+      { key: 'z', meta: true, shift: true, handler: handleRedo },
+      { key: 's', meta: true, handler: () => pushVersion('Manual save') },
+    ]);
+
     const handleAddComment = (content: string) => {
         setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
     };
@@ -465,7 +502,7 @@ const MarketingStudio: React.FC<{
                         </div>
                         <ShareableLink projectId={project.id} projectName={project.name || 'Marketing Strategy'} />
                         <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
-                        <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(v.snapshot); setCurrentVersionId(v.id); }} onUndo={() => {}} onRedo={() => {}} canUndo={false} canRedo={false} />
+                        <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(v.snapshot); setCurrentVersionId(v.id); }} onUndo={handleUndo} onRedo={handleRedo} canUndo={versions.length > 1} canRedo={redoStack.length > 0} />
                         <button onClick={() => setShowTemplatePicker(true)} className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all" title="Templates"><Plus className="w-4 h-4" /></button>
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10">
                             <button 

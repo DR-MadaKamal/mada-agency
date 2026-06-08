@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, Fragment } from 'react';
+import { useToast } from '../lib/useToast';
 import { 
     EditStudioProject, 
     ImageFile, 
@@ -181,6 +182,7 @@ const EditStudio: React.FC<{
     setProject: React.Dispatch<React.SetStateAction<EditStudioProject>>;
 }> = ({ project, setProject }) => {
 
+    const { toast } = useToast();
     const [isDownloading, setIsDownloading] = useState<string | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [draggingSlot, setDraggingSlot] = useState<number | null>(null);
@@ -332,7 +334,7 @@ const EditStudio: React.FC<{
                 prompt: prompt
             });
         } catch (err) {
-            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Generation failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -526,7 +528,7 @@ const EditStudio: React.FC<{
                 prompt: 'Neural Filter: 4K Artboard Enhance'
             });
         } catch (err) {
-            alert("Upscale failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -553,7 +555,7 @@ const EditStudio: React.FC<{
                 prompt: 'AI Variations: Creative Mutation'
             });
         } catch (err) {
-            alert("Variation failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Variation failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -580,7 +582,7 @@ const EditStudio: React.FC<{
                 prompt: `Neural Filter: ${stylePrompt}`
             });
         } catch (err) {
-            alert("Style application failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -1015,7 +1017,7 @@ const EditStudio: React.FC<{
                     if (selectionMarquee) {
                         setIsGenerativeFillOpen(true);
                     } else {
-                        alert("Please select an area with the Marquee Tool (M) first.");
+                        toast({ type: 'info', title: 'Select area', message: 'Use the Marquee Tool (M) to select an area first.' });
                     }
                 }}
                 className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#2B2B2B] text-white/80 rounded shadow-lg flex items-center gap-2 text-[10px] font-bold border border-white/5 transition-all"
@@ -1528,7 +1530,7 @@ const EditStudio: React.FC<{
                 prompt: 'Neural Filter: Professional Retouch'
             });
         } catch (err) {
-            alert("Retouch failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Retouch failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -1561,14 +1563,14 @@ const EditStudio: React.FC<{
             
             setSelectionMarquee(null);
         } catch (err) {
-            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Generation failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
 
     const smartHealing = async (idx: number) => {
         if (!selectionMarquee) {
-            alert("Please select the area you want to heal/remove first.");
+            toast({ type: 'info', title: 'Select area', message: 'Select the area to heal/remove first.' });
             return;
         }
         setProject(s => ({ ...s, isProcessingAI: true }));
@@ -1593,14 +1595,14 @@ const EditStudio: React.FC<{
             });
             setSelectionMarquee(null);
         } catch (err) {
-            alert("Healing failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Healing failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
  
     const removeBackground = async (idx: number) => {
         if (!selectionMarquee) {
-            alert("Please select an object first.");
+            toast({ type: 'info', title: 'Select object', message: 'Please select an object first.' });
             return;
         }
         setProject(s => ({ ...s, isProcessingAI: true }));
@@ -1631,7 +1633,7 @@ const EditStudio: React.FC<{
             }));
             setSelectionMarquee(null);
         } catch (err) {
-            alert("AI Extraction failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Extraction failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -1660,7 +1662,7 @@ const EditStudio: React.FC<{
                 setActiveSlotIdx(idx);
             }
         } catch (err) {
-            alert("Subject selection failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Subject selection failed', message: err instanceof Error ? err.message : String(err) });
         } finally {
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
@@ -1700,7 +1702,7 @@ const EditStudio: React.FC<{
                 prompt: prompt
             });
         } catch (err) {
-            alert("Generation failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Generation failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         }
     };
@@ -1728,7 +1730,7 @@ const EditStudio: React.FC<{
                 prompt: 'Neural Filter: AI Upscale & Enhance'
             });
         } catch (err) {
-            alert("Upscale failed: " + (err instanceof Error ? err.message : String(err)));
+toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? err.message : String(err) });
             setProject(s => ({ ...s, isProcessingAI: false }));
         } finally {
             setIsUpscaling(null);
@@ -2109,7 +2111,7 @@ const EditStudio: React.FC<{
         const currentTexts = project.localTexts[idx] || [];
         const committedTexts = project.committedTexts[idx] || [];
         if (JSON.stringify(currentTexts) !== JSON.stringify(committedTexts)) {
-            alert("⚠️ Please press 'BAKE' to save your edits first.");
+            toast({ type: 'warning', title: 'Save edits', message: "Press 'BAKE' to save your edits first." });
             return;
         }
 
