@@ -188,7 +188,7 @@ const VoiceOverStudio: React.FC<{
         const url = URL.createObjectURL(wavBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Jenta-voice-over-${Date.now()}.wav`;
+        a.download = `Mada-voice-over-${Date.now()}.wav`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

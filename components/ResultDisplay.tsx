@@ -85,7 +85,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
             const link = document.createElement('a');
-            link.download = `Jenta-Result-${resolution}-${Date.now()}.png`;
+            link.download = `Mada-Result-${resolution}-${Date.now()}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
             setIsDownloading(false);

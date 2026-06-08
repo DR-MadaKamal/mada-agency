@@ -232,7 +232,7 @@ const PlanStudio: React.FC<{
         if (resolution === 'original') {
             const link = document.createElement('a');
             link.href = `data:${image.mimeType};base64,${image.base64}`;
-            link.download = `Jenta-Plan-${label.replace(/\s+/g, '-')}-${Date.now()}.png`;
+            link.download = `Mada-Plan-${label.replace(/\s+/g, '-')}-${Date.now()}.png`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -259,7 +259,7 @@ const PlanStudio: React.FC<{
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
             const link = document.createElement('a');
-            link.download = `Jenta-Plan-${label.replace(/\s+/g, '-')}-${resolution}-${Date.now()}.png`;
+            link.download = `Mada-Plan-${label.replace(/\s+/g, '-')}-${resolution}-${Date.now()}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
             setIsDownloading(null);
@@ -290,7 +290,7 @@ const PlanStudio: React.FC<{
         printWindow.document.write(`
             <html>
             <head>
-                <title>Jenta Campaign Plan - ${project.name}</title>
+                <title>Mada Campaign Plan - ${project.name}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
                 <style>
                     body { font-family: 'Tajawal', sans-serif; direction: rtl; padding: 40px; color: #333; }
@@ -310,7 +310,7 @@ const PlanStudio: React.FC<{
                 <div class="header">
                     <div class="title-box">
                         <h1>خطة الحملة الإعلانية الذكية</h1>
-                        <p>بواسطة Jenta Intelligence Tool</p>
+                        <p>بواسطة Mada Agency</p>
                     </div>
                     <img src="${LOGO_IMAGE_URL}" class="logo" />
                 </div>

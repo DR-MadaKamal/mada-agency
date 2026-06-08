@@ -34,7 +34,7 @@ const ImageResult: React.FC<{
             canvas.height = targetWidth / (img.width / img.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             const link = document.createElement('a');
-            link.download = `Jenta-${shotType.replace(/\s+/g, '-')}-${resolution}.png`;
+            link.download = `Mada-${shotType.replace(/\s+/g, '-')}-${resolution}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
             setIsDownloading(false);

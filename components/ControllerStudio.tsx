@@ -182,7 +182,7 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
     const handleExport = () => {
         if (!project.generatedImage) return;
         const link = document.createElement('a');
-        link.download = `Jenta-controller-${Date.now()}.png`;
+        link.download = `Mada-controller-${Date.now()}.png`;
         link.href = `data:${project.generatedImage.mimeType};base64,${project.generatedImage.base64}`;
         link.click();
     };
