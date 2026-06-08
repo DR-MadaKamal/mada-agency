@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
 import { useToast } from '../lib/useToast';
 import { ImageFile, BrandingStudioProject, BrandingResultCategory, AspectRatio } from '../types';
@@ -45,7 +45,9 @@ import {
     Layers,
     BookOpen,
     Zap,
-    Plus
+    Plus,
+    Users,
+    Crosshair
 } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
@@ -225,6 +227,10 @@ const BrandingStudio: React.FC<{
 
     const cancelRef = useRef(false);
     const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
+    const [editingSecColorIdx, setEditingSecColorIdx] = useState<number | null>(null);
+    const [colorPickerTab, setColorPickerTab] = useState<'hex' | 'hsl'>('hex');
+    const [fontKey, setFontKey] = useState(0);
     const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
     const handleAddComment = (content: string) => {
         setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
@@ -484,6 +490,18 @@ const BrandingStudio: React.FC<{
         }
     }, [project.logos, project.aspectRatio, project.brandPersonality, project.brandVoice, project.targetAudience, project.fontPreferences, project.name, setProject]);
 
+    useEffect(() => {
+        const fonts = [project.typography?.primary, project.typography?.secondary].filter(Boolean) as string[];
+        fonts.forEach(font => {
+            if (!font || document.getElementById(`gf-${font}`)) return;
+            const link = document.createElement('link');
+            link.id = `gf-${font}`;
+            link.href = `https://fonts.googleapis.com/css2?family=${font.replace(/\s+/g, '+')}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        });
+    }, [project.typography?.primary, project.typography?.secondary, fontKey]);
+
     if (!project) return null;
 
     return (
@@ -659,6 +677,50 @@ const BrandingStudio: React.FC<{
                                         </div>
                                     </div>
                                 </div>
+
+                                {project.brandPersona && (
+                                <div className="md:col-span-2 glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+                                        <Users className="w-64 h-64" />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                                    <Users className="w-5 h-5 text-amber-400" />
+                                                </div>
+                                                <h3 className="text-xl font-black text-white uppercase tracking-widest italic">Brand Persona</h3>
+                                            </div>
+                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Archetypal Identity</p>
+                                        </div>
+                                        <div className="prose prose-invert max-w-none text-white/50 font-medium leading-[1.8] italic suggestions-scrollbar overflow-y-auto max-h-[300px] pr-8">
+                                            {project.brandPersona}
+                                        </div>
+                                    </div>
+                                </div>
+                                )}
+
+                                {project.competitorAnalysis && (
+                                <div className="md:col-span-2 glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+                                        <Crosshair className="w-64 h-64" />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                                    <Crosshair className="w-5 h-5 text-blue-400" />
+                                                </div>
+                                                <h3 className="text-xl font-black text-white uppercase tracking-widest italic">Competitor Analysis</h3>
+                                            </div>
+                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Market Landscape Intelligence</p>
+                                        </div>
+                                        <div className="prose prose-invert max-w-none text-white/50 font-medium leading-[1.8] italic suggestions-scrollbar overflow-y-auto max-h-[300px] pr-8">
+                                            {project.competitorAnalysis}
+                                        </div>
+                                    </div>
+                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -764,30 +826,59 @@ const BrandingStudio: React.FC<{
                                     </div>
 
                                     <div className="space-y-10">
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">Primary DNA</label>
-                                            <div className="grid grid-cols-3 gap-6">
-                                                {project.colors.map((color, i) => (
-                                                    <div key={i} className="space-y-3 group">
-                                                        <div className="aspect-square rounded-[32px] shadow-2xl transition-transform group-hover:scale-[1.03] border border-white/5" style={{ background: color }}></div>
-                                                        <div className="text-center">
-                                                            <p className="text-[10px] font-black text-white uppercase">{color}</p>
-                                                            <p className="text-[8px] font-medium text-white/20 uppercase tracking-widest mt-1">Weight 0{3-i}</p>
-                                                        </div>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2 flex items-center gap-3">Primary DNA <button onClick={() => setProject(s => ({ ...s, colors: [...s.colors, '#ffffff'] }))} className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">+ Add</button></label>
+                                        <div className="grid grid-cols-3 gap-6">
+                                            {project.colors.map((color, i) => (
+                                                <div key={i} className="space-y-3 group">
+                                                    <div className="aspect-square rounded-[32px] shadow-2xl transition-transform border border-white/5 relative overflow-hidden cursor-pointer" style={{ background: editingColorIdx !== i ? color : undefined }} onClick={() => setEditingColorIdx(editingColorIdx === i ? null : i)}>
+                                                        {editingColorIdx === i ? (
+                                                            <div className="absolute inset-0 bg-[#1a1a1a] flex flex-col gap-2 p-3">
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => setColorPickerTab('hex')} className={`flex-1 py-1 text-[7px] font-black uppercase tracking-widest rounded ${colorPickerTab === 'hex' ? 'bg-[var(--color-accent)] text-white' : 'bg-white/10 text-white/40'}`}>Hex</button>
+                                                                    <button onClick={() => setColorPickerTab('hsl')} className={`flex-1 py-1 text-[7px] font-black uppercase tracking-widest rounded ${colorPickerTab === 'hsl' ? 'bg-[var(--color-accent)] text-white' : 'bg-white/10 text-white/40'}`}>HSL</button>
+                                                                </div>
+                                                                {colorPickerTab === 'hex' ? (
+                                                                    <input value={color} onChange={e => setProject(s => ({ ...s, colors: s.colors.map((c, j) => j === i ? e.target.value : c) }))} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] font-mono text-white outline-none" placeholder="#hex" />
+                                                                ) : (
+                                                                    <div className="flex flex-col gap-1.5">
+                                                                        {['Hue', 'Sat', 'Light'].map((label, hi) => (
+                                                                            <div key={label} className="flex items-center gap-2">
+                                                                                <span className="text-[6px] font-black text-white/40 w-6">{label}</span>
+                                                                                <input type="range" min={hi === 0 ? 0 : 0} max={hi === 0 ? 360 : 100} value={hi === 0 ? 0 : hi === 1 ? 100 : 50} onChange={e => {}} className="flex-1 accent-[var(--color-accent)] h-0.5" />
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                <button onClick={() => { setProject(s => ({ ...s, colors: s.colors.filter((_, j) => j !== i) })); setEditingColorIdx(null); }} className="mt-auto text-[7px] font-black text-red-400 uppercase tracking-widest">Remove</button>
+                                                            </div>
+                                                        ) : null}
                                                     </div>
-                                                ))}
-                                                {project.colors.length === 0 && Array(3).fill(0).map((_, i) => (
-                                                    <div key={i} className="aspect-square rounded-[32px] bg-white/5 border border-dashed border-white/10"></div>
-                                                ))}
-                                            </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] font-black text-white uppercase">{color}</p>
+                                                        <p className="text-[8px] font-medium text-white/20 uppercase tracking-widest mt-1">Weight 0{3-i}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {project.colors.length === 0 && Array(3).fill(0).map((_, i) => (
+                                                <div key={i} className="aspect-square rounded-[32px] bg-white/5 border border-dashed border-white/10"></div>
+                                            ))}
                                         </div>
+                                    </div>
 
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">System Complements</label>
+                                            <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2 flex items-center gap-3">System Complements <button onClick={() => setProject(s => ({ ...s, secondaryColors: [...s.secondaryColors, '#ffffff'] }))} className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">+ Add</button></label>
                                             <div className="grid grid-cols-4 gap-4">
                                                 {project.secondaryColors.map((color, i) => (
                                                     <div key={i} className="flex flex-col gap-2">
-                                                        <div className="h-12 rounded-xl border border-white/5" style={{ background: color }}></div>
+                                                        <div className="h-12 rounded-xl border border-white/5 relative overflow-hidden cursor-pointer" style={{ background: editingSecColorIdx !== i ? color : undefined }} onClick={() => setEditingSecColorIdx(editingSecColorIdx === i ? null : i)}>
+                                                            {editingSecColorIdx === i ? (
+                                                                <div className="absolute inset-0 bg-[#1a1a1a] flex items-center gap-1 p-1">
+                                                                    <input value={color} onChange={e => setProject(s => ({ ...s, secondaryColors: s.secondaryColors.map((c, j) => j === i ? e.target.value : c) }))} className="flex-1 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[7px] font-mono text-white outline-none" />
+                                                                    <button onClick={() => { setProject(s => ({ ...s, secondaryColors: s.secondaryColors.filter((_, j) => j !== i) })); setEditingSecColorIdx(null); }} className="text-[7px] text-red-400 font-black uppercase">X</button>
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
                                                         <span className="text-[9px] font-mono text-center text-white/30">{color}</span>
                                                     </div>
                                                 ))}
@@ -811,20 +902,23 @@ const BrandingStudio: React.FC<{
                                         <div className="space-y-4 group">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">Display Headings</label>
-                                                <span className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{project.typography?.primary || 'Inter'}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <input value={project.typography?.primary || 'Inter'} onChange={e => setProject(s => ({ ...s, typography: { ...s.typography, primary: e.target.value } as any }))} className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-mono text-white outline-none" />
+                                                    <button onClick={() => { fontLoaded.current = false; setFontKey(k => k + 1); }} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Preview</button>
+                                                </div>
                                             </div>
                                             <div className="p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-white/10 transition-all">
-                                                <p className="text-5xl font-black text-white uppercase tracking-tighter leading-none">The quick brown fox jumps over the lazy dog</p>
+                                                <p className="text-5xl font-black text-white uppercase tracking-tighter leading-none" style={{ fontFamily: `'${project.typography?.primary || 'Inter'}', sans-serif` }}>The quick brown fox jumps over the lazy dog</p>
                                             </div>
                                         </div>
 
                                         <div className="space-y-4 group">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">Body Content</label>
-                                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{project.typography?.secondary || 'Inter'}</span>
+                                                <input value={project.typography?.secondary || 'Inter'} onChange={e => setProject(s => ({ ...s, typography: { ...s.typography, secondary: e.target.value } as any }))} className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-mono text-white outline-none" />
                                             </div>
                                             <div className="p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-white/10 transition-all">
-                                                <p className="text-base font-medium text-white/60 leading-relaxed">Design is not just what it looks like and feels like. Design is how it works. Brand identity is the visual representation of a company's values and mission through a consistent aesthetic language.</p>
+                                                <p className="text-base font-medium text-white/60 leading-relaxed" style={{ fontFamily: `'${project.typography?.secondary || 'Inter'}', sans-serif` }}>Design is not just what it looks like and feels like. Design is how it works. Brand identity is the visual representation of a company's values and mission through a consistent aesthetic language.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -883,7 +977,21 @@ const BrandingStudio: React.FC<{
                             </div>
 
                             <div className="relative z-10">
-                                <BrandingResultsGrid results={project.results} />
+                                <BrandingResultsGrid results={project.results} onEditResult={(idx, prompt) => {
+                                    const result = project.results[idx];
+                                    if (!result) return;
+                                    setProject(s => ({ ...s, results: s.results.map((r, i) => i === idx ? { ...r, isEditing: true } : r) }));
+                                    const primaryColor = project.colors[0] || '';
+                                    const basePrompt = getPromptForCategory(result.category, project.aspectRatio, project.brandPersonality);
+                                    const fullPrompt = `${basePrompt}. Edit request: ${prompt}. Incorporate the color ${primaryColor} as a primary theme. The brand voice is ${project.brandVoice}. The target audience is ${project.targetAudience}.`;
+                                    generateImage(project.logos.length > 0 ? [project.logos[0]] : [], fullPrompt, null)
+                                        .then(image => {
+                                            setProject(s => ({ ...s, results: s.results.map((r, i) => i === idx ? { ...r, image, isEditing: false, isLoading: false } : r) }));
+                                        })
+                                        .catch(error => {
+                                            setProject(s => ({ ...s, results: s.results.map((r, i) => i === idx ? { ...r, error: error.message || 'Edit failed', isEditing: false, isLoading: false } : r) }));
+                                        });
+                                }} />
                             </div>
                         </div>
 

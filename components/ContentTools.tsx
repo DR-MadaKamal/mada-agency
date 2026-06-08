@@ -640,8 +640,17 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
               </div>
 
               {project.contentError && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
-                  <p className="text-[11px] text-red-400 font-bold">{project.contentError}</p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
+                  <p className="text-[11px] text-red-400 font-bold flex-1">{project.contentError}</p>
+                  {currentTool && (
+                    <button
+                      onClick={() => handleGenerate(currentTool)}
+                      disabled={loadingTool !== null}
+                      className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all shrink-0 disabled:opacity-30"
+                    >
+                      Retry
+                    </button>
+                  )}
                 </div>
               )}
             </div>

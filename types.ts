@@ -596,6 +596,7 @@ export interface GlobalLayer {
     dropShadowX?: number;
     dropShadowY?: number;
     isLocked?: boolean;
+    mask?: string | null;
 }
 
 export interface EditAdjustments {

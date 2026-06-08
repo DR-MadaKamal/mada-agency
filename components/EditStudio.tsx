@@ -65,7 +65,6 @@ import {
     Layers as LayersIcon,
     PenTool as PenIcon,
     Eraser,
-    Stamp,
     Scissors,
     Wand2,
     LassoSelect,
@@ -191,7 +190,7 @@ const EditStudio: React.FC<{
     const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
     const [customFonts, setCustomFonts] = useState<string[]>([]);
     const [clipboard, setClipboard] = useState<LocalText | GlobalLayer | null>(null);
-    const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'wand' | 'stamp' | 'eraser' | 'gradient' | 'blur' | 'pen' | 'slice' | 'healing' | 'path' | '3d'>('select');
+    const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'eraser' | 'pen' | 'slice' | 'healing'>('select');
     const [shapeToolType, setShapeToolType] = useState<'rect' | 'circle' | 'line' | 'star'>('rect');
     const [justSavedSlot, setJustSavedSlot] = useState<number | null>(null);
     const [showHelp, setShowHelp] = useState(false);
@@ -203,6 +202,8 @@ const EditStudio: React.FC<{
     const [currentPath, setCurrentPath] = useState<DrawPath | null>(null);
     const [activePenPath, setActivePenPath] = useState<PenPath | null>(null);
     const [activeSlice, setActiveSlice] = useState<SliceRect | null>(null);
+    const [cropRect, setCropRect] = useState<{x:number;y:number;w:number;h:number} | null>(null);
+    const [isCropping, setIsCropping] = useState(false);
     const [lassoPoints, setLassoPoints] = useState<{x:number, y:number}[]>([]);
     const [showGrid, setShowGrid] = useState(false);
     const [showRulers, setShowRulers] = useState(true);
@@ -260,7 +261,7 @@ const EditStudio: React.FC<{
             setRightPanelTab('history');
         } else if (activeTool === 'branding') {
             setRightPanelTab('branding');
-        } else if (['text', 'shapes', 'select', 'images', 'crop', 'brush', 'eyedropper', 'marquee', 'lasso', 'wand', 'stamp', 'eraser', 'gradient', 'blur'].includes(activeTool as string)) {
+        } else if (['text', 'shapes', 'select', 'images', 'crop', 'brush', 'eyedropper', 'marquee', 'lasso', 'eraser'].includes(activeTool as string)) {
             setRightPanelTab('properties');
         }
     }, [activeTool]);
@@ -649,16 +650,16 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Color Correction</h3>
                 <div className="grid grid-cols-4 gap-2">
                     {[
-                        { icon: Sun, label: 'Brightness', id: 'brightness' },
-                        { icon: Contrast, label: 'Contrast', id: 'contrast' },
-                        { icon: Droplet, label: 'Saturation', id: 'saturation' },
-                        { icon: Zap, label: 'Exposure', id: 'exposure' },
-                        { icon: Palette, label: 'Warmth', id: 'warmth' },
-                        { icon: Settings, label: 'Hue', id: 'hue' },
-                        { icon: Ghost, label: 'Opacity', id: 'opacity' },
-                        { icon: Search, label: 'Sharpness', id: 'sharpness' }
+                        { icon: Sun, label: 'Brightness', key: 'brightness', delta: 10 },
+                        { icon: Contrast, label: 'Contrast', key: 'contrast', delta: 10 },
+                        { icon: Droplet, label: 'Saturation', key: 'saturation', delta: 10 },
+                        { icon: Zap, label: 'Exposure', key: 'exposure', delta: 10 },
+                        { icon: Palette, label: 'Warmth', key: 'warmth', delta: 10 },
+                        { icon: Settings, label: 'Hue', key: 'hue', delta: 15 },
+                        { icon: Ghost, label: 'Opacity', key: 'opacity', delta: 10 },
+                        { icon: Search, label: 'Sharpness', key: 'sharpness', delta: 10 }
                     ].map(adj => (
-                        <button key={adj.label} className="aspect-square flex flex-col items-center justify-center gap-1.5 bg-black/20 hover:bg-[#3d75f2]/40 rounded-lg border border-white/5 transition-all group">
+                        <button key={adj.label} onClick={() => setProject(s => ({ ...s, adjustments: { ...s.adjustments, [adj.key]: Math.min(200, Math.max(0, ((s.adjustments as any)[adj.key] || 100) + adj.delta)) } }))} className="aspect-square flex flex-col items-center justify-center gap-1.5 bg-black/20 hover:bg-[#3d75f2]/40 rounded-lg border border-white/5 transition-all group">
                             <adj.icon className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
                             <span className="text-[8px] text-white/30 group-hover:text-white/60">{adj.label}</span>
                         </button>
@@ -743,6 +744,9 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                             {layer.name || (layer.type === 'shape' ? layer.shapeType : 'Image Layer')}
                         </span>
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 pr-2">
+                            <button onClick={(e) => { e.stopPropagation(); setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => { if (l.id !== layer.id) return l; const hasMask = l.mask !== void 0 && l.mask !== null; return { ...l, mask: hasMask ? null : '' }; }) })); }} className="hover:bg-white/10 rounded p-0.5 transition-all" title={layer.mask !== void 0 && layer.mask !== null ? 'Remove Mask' : 'Add Mask'}>
+                                {layer.mask !== void 0 && layer.mask !== null ? <span className="text-emerald-400 text-[8px]">M</span> : <span className="text-white/20 text-[8px]">M</span>}
+                            </button>
                             <Lock className={cn("w-2.5 h-2.5 transition-colors", layer.isLocked ? "text-emerald-500 opacity-100" : "text-white/20")} />
                         </div>
                     </div>
@@ -1170,7 +1174,13 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             >
                 {contextMenu.type === 'layer' ? (
                     <>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer flex justify-between">
+                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer flex justify-between" onClick={() => {
+                            const layer = project.globalLayers.find(l => l.id === contextMenu.id);
+                            if (layer) {
+                                const dup = { ...layer, id: Math.random().toString(36).substr(2, 9), zIndex: (layer.zIndex || 5) + 1, x: (layer.x || 0) + 2, y: (layer.y || 0) + 2 };
+                                setProject(s => ({ ...s, globalLayers: [...s.globalLayers, dup] }));
+                            }
+                        }}>
                             <span>Duplicate Layer</span>
                             <span className="opacity-30">Cmd+J</span>
                         </div>
@@ -1287,6 +1297,14 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             } else {
                 setActivePenPath(prev => prev ? { ...prev, points: [...prev.points, { x, y }] } : null);
             }
+        } else if (activeTool === 'crop') {
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            setCropRect({ x, y, w: 0, h: 0 });
+            setIsCropping(true);
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'slice') {
             const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
             if (!rect) return;
@@ -1335,6 +1353,12 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             const dy = (e.clientY - lastPointerPos.y) / (zoomLevel / 100);
             setCanvasPos(prev => ({ x: prev.x + dx, y: prev.y + dy }));
             setLastPointerPos({ x: e.clientX, y: e.clientY });
+        } else if (isCropping && cropRect) {
+            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
+            if (!rect) return;
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            setCropRect(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
         } else if (isDrawingSelection && selectionMarquee) {
             const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
             if (!rect) return;
@@ -1376,6 +1400,9 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 setGuideLines(prev => [...prev, { type: isCreatingGuide === 'v' ? 'v' : 'h', pos }]);
             }
             setIsCreatingGuide(null);
+        }
+        if (isCropping) {
+            setIsCropping(false);
         }
         if (isDrawing && currentPath && activeSlotIdx !== null) {
             setProject(s => ({
@@ -1942,7 +1969,6 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                     case 'i': setActiveTool('eyedropper'); break;
                     case 'l': setActiveTool('lasso'); break;
                     case 'p': setActiveTool('pen'); break;
-                    case 's': setActiveTool('stamp'); break;
                     case 'j': setActiveTool('healing'); break;
                     case 'k': setActiveTool('slice'); break;
                     case 'g': setShowGrid(prev => !prev); break;
@@ -2395,24 +2421,16 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         { icon: MousePointer2, id: 'select', tooltip: 'Move tool (V)' },
                         { icon: BoxSelect, id: 'marquee', tooltip: 'Rectangular Marquee (M)' },
                         { icon: LassoSelect, id: 'lasso', tooltip: 'Lasso tool (L)' },
-                        { icon: Wand2, id: 'wand', tooltip: 'Magic Wand (W)' },
                         { icon: Crop, id: 'crop', tooltip: 'Crop (C)' },
-                        { icon: Slice, id: 'slice', tooltip: 'Slice tool (K)' },
                         { icon: Pipette, id: 'eyedropper', tooltip: 'Eyedropper (I)' },
                         { icon: Sparkles, id: 'healing', tooltip: 'Spot Healing Brush (J)' },
                         { icon: Brush, id: 'brush', tooltip: 'Brush Tool (B)' },
-                        { icon: Stamp, id: 'stamp', tooltip: 'Clone Stamp (S)' },
-                        { icon: History, id: 'history_brush', tooltip: 'History Brush (Y)' },
                         { icon: Eraser, id: 'eraser', tooltip: 'Eraser (E)' },
-                        { icon: Palette, id: 'gradient', tooltip: 'Gradient Tool (G)' },
-                        { icon: Droplet, id: 'blur', tooltip: 'Blur tool' },
                         { icon: PenIcon, id: 'pen', tooltip: 'Pen tool (P)' },
                         { icon: TextIcon, id: 'text', tooltip: 'Horizontal Type tool (T)' },
-                        { icon: MousePointer2, id: 'path', tooltip: 'Path Selection tool (A)' },
                         { icon: Square, id: 'shapes', tooltip: 'Rectangle tool (U)' },
                         { icon: Move, id: 'hand', tooltip: 'Hand tool (H)' },
                         { icon: Search, id: 'zoom', tooltip: 'Zoom tool (Z)' },
-                        { icon: Box, id: '3d', tooltip: '3D Orbit tool' },
                         { icon: Sparkles, id: 'ai_gen', tooltip: 'AI Image Creator' },
                     ].map((tool) => (
                         <button 
@@ -2961,27 +2979,57 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 {ChannelFilters()}
                                                 
                                                 {/* Crop Tool Overlay */}
-                     
-                                                {/* Crop Tool Overlay */}
                                                 {activeTool === 'crop' && activeSlotIdx === idx && (
-                                                    <div className="absolute inset-0 border-4 border-[#3d75f2]/40 z-[100] cursor-crosshair">
-                                                        <div className="absolute inset-0 border border-white/20 grid grid-cols-3 grid-rows-3 pointer-events-none">
-                                                            <div className="border-r border-b border-white/10" />
-                                                            <div className="border-r border-b border-white/10" />
-                                                            <div className="border-b border-white/10" />
-                                                            <div className="border-r border-b border-white/10" />
-                                                            <div className="border-r border-b border-white/10" />
-                                                            <div className="border-b border-white/10" />
-                                                        </div>
-                                                        {/* Handles */}
-                                                        {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => (
-                                                            <div key={pos} className={cn("absolute w-4 h-4 border-2 border-white bg-[#3d75f2] z-50", 
-                                                                pos === 'top-left' ? "-top-2 -left-2 rounded-tl" :
-                                                                pos === 'top-right' ? "-top-2 -right-2 rounded-tr" :
-                                                                pos === 'bottom-left' ? "-bottom-2 -left-2 rounded-bl" :
-                                                                "-bottom-2 -right-2 rounded-br"
-                                                            )} />
-                                                        ))}
+                                                    <div className="absolute inset-0 z-[100] cursor-crosshair">
+                                                        {/* Darkened areas outside crop */}
+                                                        {cropRect && Math.abs(cropRect.w) > 1 && Math.abs(cropRect.h) > 1 && (
+                                                            <>
+                                                                <div className="absolute inset-0 bg-black/50 pointer-events-none" style={{ clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cropRect.x}% ${cropRect.y}%, ${cropRect.x}% ${cropRect.y + cropRect.h}%, ${cropRect.x + cropRect.w}% ${cropRect.y + cropRect.h}%, ${cropRect.x + cropRect.w}% ${cropRect.y}%, ${cropRect.x}% ${cropRect.y}%)` }} />
+                                                                <div className="absolute border-2 border-[#3d75f2] pointer-events-none" style={{ left: `${cropRect.x}%`, top: `${cropRect.y}%`, width: `${cropRect.w}%`, height: `${cropRect.h}%` }}>
+                                                                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                                                                        <div className="border-r border-b border-white/30" />
+                                                                        <div className="border-r border-b border-white/30" />
+                                                                        <div className="border-b border-white/30" />
+                                                                        <div className="border-r border-b border-white/30" />
+                                                                        <div className="border-r border-b border-white/30" />
+                                                                        <div className="border-b border-white/30" />
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (!cropRect || activeSlotIdx === null) return;
+                                                                            const r = { x: Math.min(cropRect.x, cropRect.x + cropRect.w), y: Math.min(cropRect.y, cropRect.y + cropRect.h), w: Math.abs(cropRect.w), h: Math.abs(cropRect.h) };
+                                                                            // Crop active slot image if it exists
+                                                                            const slotData = project.slots[activeSlotIdx];
+                                                                            if (slotData?.image?.base64) {
+                                                                                const img = new Image();
+                                                                                img.src = `data:${slotData.image.mimeType};base64,${slotData.image.base64}`;
+                                                                                img.onload = () => {
+                                                                                    const canvas = document.createElement('canvas');
+                                                                                    const sx = (r.x / 100) * img.width;
+                                                                                    const sy = (r.y / 100) * img.height;
+                                                                                    const sw = (r.w / 100) * img.width;
+                                                                                    const sh = (r.h / 100) * img.height;
+                                                                                    canvas.width = sw;
+                                                                                    canvas.height = sh;
+                                                                                    const ctx = canvas.getContext('2d');
+                                                                                    if (ctx) {
+                                                                                        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+                                                                                        const mimeType = slotData.image.mimeType || 'image/png';
+                                                                                        const base64 = canvas.toDataURL(mimeType).split(',')[1];
+                                                                                        setProject(s => ({ ...s, slots: { ...s.slots, [activeSlotIdx]: { ...s.slots[activeSlotIdx], image: { ...s.slots[activeSlotIdx].image, base64, mimeType } as any } } }));
+                                                                                    }
+                                                                                };
+                                                                            }
+                                                                            setCropRect(null);
+                                                                            setActiveTool('select');
+                                                                        }}
+                                                                        className="absolute -bottom-10 right-0 px-4 py-2 bg-[#3d75f2] text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:brightness-110 transition-all"
+                                                                    >
+                                                                        Crop
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -3090,6 +3138,10 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                                         filter: layer.dropShadowBlur ? `drop-shadow(${layer.dropShadowX || 0}px ${layer.dropShadowY || 4}px ${layer.dropShadowBlur}px ${layer.dropShadowColor || 'rgba(0,0,0,0.5)'})` : undefined
                                                                     }} 
                                                                 />
+                                                            )}
+                                                            {/* Layer Mask */}
+                                                            {layer.mask !== void 0 && layer.mask !== null && (
+                                                                <div className="absolute inset-0 pointer-events-none" style={{ maskImage: layer.mask ? 'url(' + layer.mask + ')' : void 0, WebkitMaskImage: layer.mask ? 'url(' + layer.mask + ')' : void 0, background: layer.mask === '' ? 'transparent' : 'black' }} />
                                                             )}
                                                             {/* Transform Handles UI */}
                                                             {selectedLayerId === layer.id && (

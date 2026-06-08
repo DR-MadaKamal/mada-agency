@@ -231,57 +231,66 @@ const MarketingStudio: React.FC<{
                 return;
             }
 
-            const [strategy, ads, emails, ic, assets] = await Promise.all([
-                generateMarketingAnalysis(data as any, project.language, project.aiConfig),
-                generateAdCopies({
+            const safeCall = async <T,>(fn: () => Promise<T>, label: string): Promise<[T | null, string | null]> => {
+                try { return [await fn(), null]; }
+                catch (err: any) { return [null, `${label}: ${err.message || 'failed'}`]; }
+            };
+            const [[strategy, sErr], [ads, aErr], [emails, eErr], [ic, iErr], [assets, asErr]] = await Promise.all([
+                safeCall(() => generateMarketingAnalysis(data as any, project.language, project.aiConfig), 'Strategy'),
+                safeCall(() => generateAdCopies({
                     name: project.brandName || project.websiteLink || 'Brand',
                     platforms: project.platforms,
                     tone: project.campaignTone,
                     goal: project.campaignGoal,
                     brief: project.brief || 'General campaign',
                     language: project.language
-                }, project.aiConfig),
-                generateEmailSequence({
+                }, project.aiConfig), 'Ad Copies'),
+                safeCall(() => generateEmailSequence({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'Direct to Consumer',
                     goal: project.campaignGoal,
                     brief: project.brief || 'General intro',
                     language: project.language
-                }, project.aiConfig),
-                generateInfluencerAndCalendar({
+                }, project.aiConfig), 'Email Sequence'),
+                safeCall(() => generateInfluencerAndCalendar({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'General Lifestyle',
                     goal: project.campaignGoal,
                     brief: project.brief || 'Social expansion',
                     language: project.language
-                }, project.aiConfig),
-                generateMarketingAssets({
+                }, project.aiConfig), 'Influencer/Calendar'),
+                safeCall(() => generateMarketingAssets({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'Industry',
                     brief: project.brief || 'Analysis',
                     language: project.language
-                }, project.aiConfig)
+                }, project.aiConfig), 'Assets')
             ]);
+
+            const errors = [sErr, aErr, eErr, iErr, asErr].filter(Boolean).join('; ');
 
             setProject(s => ({ 
                 ...s, 
                 result: strategy, 
                 adCopies: ads, 
                 emailSequence: emails, 
-                influencerStrategy: ic.influencerStrategy,
-                contentCalendar: ic.contentCalendar,
-                socialBios: assets.socialBios,
-                hashtags: assets.hashtags,
-                customerJourney: assets.customerJourney,
-                isGenerating: false 
+                influencerStrategy: ic?.influencerStrategy || null,
+                contentCalendar: ic?.contentCalendar || null,
+                socialBios: assets?.socialBios || null,
+                hashtags: assets?.hashtags || null,
+                customerJourney: assets?.customerJourney || null,
+                isGenerating: false,
+                error: errors || null
             }));
 
-            await logHistory({
-                type: 'text',
-                studio: 'marketing_studio',
-                content: strategy,
-                prompt: 'Marketing Growth Strategy'
-            });
+            if (strategy) {
+                await logHistory({
+                    type: 'text',
+                    studio: 'marketing_studio',
+                    content: strategy,
+                    prompt: 'Marketing Growth Strategy'
+                });
+            }
 
             if (ads && ads.length > 0) {
                 await logHistory({
@@ -923,8 +932,8 @@ const MarketingStudio: React.FC<{
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-1">Economic & Regulatory Impact</label>
                                         <textarea 
-                                            value={project.customerPainPoints}
-                                            onChange={e => setProject(s => ({ ...s, customerPainPoints: e.target.value }))}
+                                            value={project.economicImpact || ''}
+                                            onChange={e => setProject(s => ({ ...s, economicImpact: e.target.value }))}
                                             rows={4}
                                             placeholder="Taxes, laws, economic climate effects..."
                                             className="w-full bg-white/5 border border-white/10 rounded-3xl p-6 text-sm font-medium text-white outline-none resize-none"
