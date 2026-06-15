@@ -50,6 +50,7 @@ const MarketingStudio: React.FC<{
     const [adCopiesCopied, setAdCopiesCopied] = useState<number | null>(null);
     const [isRefining, setIsRefining] = useState(false);
     const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [generatingSteps, setGeneratingSteps] = useState<{label:string;done:boolean}[]>([]);
     const [comments, setComments] = useState<{id: string; author: string; content: string; timestamp: number}[]>([]);
     const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -231,13 +232,26 @@ const MarketingStudio: React.FC<{
                 return;
             }
 
-            const safeCall = async <T,>(fn: () => Promise<T>, label: string): Promise<[T | null, string | null]> => {
-                try { return [await fn(), null]; }
-                catch (err: any) { return [null, `${label}: ${err.message || 'failed'}`]; }
+            setGeneratingSteps([
+                { label: 'Strategy', done: false },
+                { label: 'Ad Copies', done: false },
+                { label: 'Email Sequence', done: false },
+                { label: 'Influencer & Calendar', done: false },
+                { label: 'Marketing Assets', done: false },
+            ]);
+
+            const trackCall = async <T,>(fn: () => Promise<T>, label: string): Promise<[T | null, string | null]> => {
+                try {
+                    const r = await fn();
+                    setGeneratingSteps(prev => prev.map(s => s.label === label ? { ...s, done: true } : s));
+                    return [r, null];
+                } catch (err: any) {
+                    return [null, `${label}: ${err.message || 'failed'}`];
+                }
             };
             const [[strategy, sErr], [ads, aErr], [emails, eErr], [ic, iErr], [assets, asErr]] = await Promise.all([
-                safeCall(() => generateMarketingAnalysis(data as any, project.language, project.aiConfig), 'Strategy'),
-                safeCall(() => generateAdCopies({
+                trackCall(() => generateMarketingAnalysis(data as any, project.language, project.aiConfig), 'Strategy'),
+                trackCall(() => generateAdCopies({
                     name: project.brandName || project.websiteLink || 'Brand',
                     platforms: project.platforms,
                     tone: project.campaignTone,
@@ -245,30 +259,31 @@ const MarketingStudio: React.FC<{
                     brief: project.brief || 'General campaign',
                     language: project.language
                 }, project.aiConfig), 'Ad Copies'),
-                safeCall(() => generateEmailSequence({
+                trackCall(() => generateEmailSequence({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'Direct to Consumer',
                     goal: project.campaignGoal,
                     brief: project.brief || 'General intro',
                     language: project.language
                 }, project.aiConfig), 'Email Sequence'),
-                safeCall(() => generateInfluencerAndCalendar({
+                trackCall(() => generateInfluencerAndCalendar({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'General Lifestyle',
                     goal: project.campaignGoal,
                     brief: project.brief || 'Social expansion',
                     language: project.language
-                }, project.aiConfig), 'Influencer/Calendar'),
-                safeCall(() => generateMarketingAssets({
+                }, project.aiConfig), 'Influencer & Calendar'),
+                trackCall(() => generateMarketingAssets({
                     name: project.brandName || project.websiteLink || 'Brand',
                     specialty: project.specialty || 'Industry',
                     brief: project.brief || 'Analysis',
                     language: project.language
-                }, project.aiConfig), 'Assets')
+                }, project.aiConfig), 'Marketing Assets')
             ]);
 
             const errors = [sErr, aErr, eErr, iErr, asErr].filter(Boolean).join('; ');
 
+            setGeneratingSteps([]);
             setProject(s => ({ 
                 ...s, 
                 result: strategy, 
@@ -438,7 +453,7 @@ const MarketingStudio: React.FC<{
         <main className="w-full flex flex-col gap-8 pt-4 pb-12 animate-in fade-in duration-700">
             {project.isGenerating && (
                 <div className="relative">
-                    <AILoadingOverlay message="Generating marketing strategy..." onCancel={() => { cancelledRef.current = true; setProject(s => ({ ...s, isGenerating: false })); }} />
+                    <AILoadingOverlay message="Generating marketing strategy..." steps={generatingSteps} onCancel={() => { cancelledRef.current = true; setProject(s => ({ ...s, isGenerating: false })); }} />
                 </div>
             )}
             <div className="relative">

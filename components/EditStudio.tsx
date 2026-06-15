@@ -65,6 +65,7 @@ import {
     Layers as LayersIcon,
     PenTool as PenIcon,
     Eraser,
+    Stamp,
     Scissors,
     Wand2,
     LassoSelect,
@@ -190,7 +191,7 @@ const EditStudio: React.FC<{
     const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
     const [customFonts, setCustomFonts] = useState<string[]>([]);
     const [clipboard, setClipboard] = useState<LocalText | GlobalLayer | null>(null);
-    const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'eraser' | 'pen' | 'slice' | 'healing'>('select');
+    const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'stamp' | 'eraser' | 'pen' | 'slice' | 'healing'>('select');
     const [shapeToolType, setShapeToolType] = useState<'rect' | 'circle' | 'line' | 'star'>('rect');
     const [justSavedSlot, setJustSavedSlot] = useState<number | null>(null);
     const [showHelp, setShowHelp] = useState(false);
@@ -210,6 +211,10 @@ const EditStudio: React.FC<{
     const [brushSize, setBrushSize] = useState(20);
     const [brushColor, setBrushColor] = useState('#ff0000');
     const [brushOpacity, setBrushOpacity] = useState(1);
+    const brushCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const [isBrushing, setIsBrushing] = useState(false);
+    const [lastBrushPos, setLastBrushPos] = useState<{x:number;y:number}|null>(null);
+    const [cloneSource, setCloneSource] = useState<{x:number;y:number}|null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
     const [isGenerativeFillOpen, setIsGenerativeFillOpen] = useState(false);
     const [isLassoDrawing, setIsLassoDrawing] = useState(false);
@@ -1274,18 +1279,25 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'brush' || activeTool === 'eraser') {
             setIsDrawing(true);
-            const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
-            if (!rect) return;
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-            setCurrentPath({
-                id: Math.random().toString(36).substr(2, 9),
-                points: [{ x, y }],
-                color: (activeTool === 'eraser') ? '#ffffff' : brushColor,
-                width: brushSize / 5, // scaled
-                opacity: brushOpacity,
-                blendMode: (activeTool === 'eraser') ? 'normal' : 'normal'
-            });
+            setLastBrushPos(null);
+            const canvas = brushCanvasRef.current;
+            if (canvas) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * 2;
+                const y = (e.clientY - rect.top) * 2;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    const color = activeTool === 'eraser' ? 'rgba(0,0,0,0)' : brushColor;
+                    ctx.globalCompositeOperation = activeTool === 'eraser' ? 'destination-out' : 'source-over';
+                    ctx.globalAlpha = brushOpacity;
+                    ctx.beginPath();
+                    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                setLastBrushPos({ x, y });
+            }
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'pen') {
             const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
@@ -1304,6 +1316,32 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setCropRect({ x, y, w: 0, h: 0 });
             setIsCropping(true);
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } else if (activeTool === 'stamp') {
+            if (e.altKey) {
+                const cvs = brushCanvasRef.current;
+                if (cvs) {
+                    const r = cvs.getBoundingClientRect();
+                    setCloneSource({ x: e.clientX - r.left, y: e.clientY - r.top });
+                }
+                return;
+            }
+            if (!cloneSource || activeSlotIdx === null) return;
+            setIsDrawing(true);
+            const r2 = imageWrapperRefs.current[activeSlotIdx]?.getBoundingClientRect();
+            if (!r2) return;
+            const tX = e.clientX - r2.left, tY = e.clientY - r2.top;
+            const cvs = brushCanvasRef.current;
+            if (cvs) {
+                const ctx = cvs.getContext('2d');
+                if (ctx) {
+                    const sX = cloneSource.x * 2, sY = cloneSource.y * 2;
+                    ctx.drawImage(cvs, sX, sY, brushSize * 2, brushSize * 2, tX * 2 - brushSize, tY * 2 - brushSize, brushSize * 2, brushSize * 2);
+                    const dx = tX - (lastBrushPos?.x || tX), dy = tY - (lastBrushPos?.y || tY);
+                    setCloneSource({ x: cloneSource.x + dx, y: cloneSource.y + dy });
+                }
+            }
+            setLastBrushPos({ x: tX, y: tY });
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'slice') {
             const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
@@ -1377,6 +1415,44 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setLassoPoints(prev => [...prev, { x, y }]);
+        } else if (isDrawing && activeTool === 'brush') {
+            const canvas = brushCanvasRef.current;
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * 2;
+            const y = (e.clientY - rect.top) * 2;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.globalAlpha = brushOpacity;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = brushColor;
+            if (lastBrushPos) {
+                ctx.beginPath();
+                ctx.moveTo(lastBrushPos.x, lastBrushPos.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            setLastBrushPos({ x, y });
+        } else if (isDrawing && activeTool === 'stamp') {
+            if (!cloneSource || activeSlotIdx === null) return;
+            const cnvs = brushCanvasRef.current;
+            if (!cnvs) return;
+            const ctx = cnvs.getContext('2d');
+            if (!ctx) return;
+            const r3 = imageWrapperRefs.current[activeSlotIdx]?.getBoundingClientRect();
+            if (!r3) return;
+            const tX = e.clientX - r3.left, tY = e.clientY - r3.top;
+            const sX = cloneSource.x * 2, sY = cloneSource.y * 2;
+            ctx.drawImage(cnvs, sX, sY, brushSize * 2, brushSize * 2, tX * 2 - brushSize, tY * 2 - brushSize, brushSize * 2, brushSize * 2);
+            const dx = tX - (lastBrushPos?.x || tX), dy = tY - (lastBrushPos?.y || tY);
+            setCloneSource({ x: cloneSource.x + dx, y: cloneSource.y + dy });
+            setLastBrushPos({ x: tX, y: tY });
         } else if (isDrawing && currentPath) {
             const rect = imageWrapperRefs.current[activeSlotIdx ?? 0]?.getBoundingClientRect();
             if (!rect) return;
@@ -1415,6 +1491,10 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             setCurrentPath(null);
             setIsDrawing(false);
         }
+        if (isDrawing && activeTool === 'stamp') {
+            setIsDrawing(false);
+            setLastBrushPos(null);
+        }
         if (activeSlice && activeSlotIdx !== null) {
             setProject(s => ({
                 ...s,
@@ -1443,6 +1523,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
         setIsPanning(false);
         setIsDrawingSelection(false);
         setIsDrawing(false);
+        setLastBrushPos(null);
         setDraggingOffset(null);
         setActiveGuides([]);
     };
@@ -1969,6 +2050,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                     case 'i': setActiveTool('eyedropper'); break;
                     case 'l': setActiveTool('lasso'); break;
                     case 'p': setActiveTool('pen'); break;
+                    case 's': setActiveTool('stamp'); break;
                     case 'j': setActiveTool('healing'); break;
                     case 'k': setActiveTool('slice'); break;
                     case 'g': setShowGrid(prev => !prev); break;
@@ -2425,6 +2507,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         { icon: Pipette, id: 'eyedropper', tooltip: 'Eyedropper (I)' },
                         { icon: Sparkles, id: 'healing', tooltip: 'Spot Healing Brush (J)' },
                         { icon: Brush, id: 'brush', tooltip: 'Brush Tool (B)' },
+                        { icon: Stamp, id: 'stamp', tooltip: 'Clone Stamp (S)' },
                         { icon: Eraser, id: 'eraser', tooltip: 'Eraser (E)' },
                         { icon: PenIcon, id: 'pen', tooltip: 'Pen tool (P)' },
                         { icon: TextIcon, id: 'text', tooltip: 'Horizontal Type tool (T)' },
@@ -2559,11 +2642,126 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             />
                                         ))}
                                      </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex items-center gap-4 text-white/30 font-medium">
-                                <span className="flex items-center gap-1"><MousePointer2 className="w-3 h-3" /> Auto-Select</span>
+                                     <div className="w-[1px] h-4 bg-white/10" />
+                                     <button
+                                        onClick={() => {
+                                            const canvas = brushCanvasRef.current;
+                                            if (!canvas || activeSlotIdx === null) return;
+                                            const dataUrl = canvas.toDataURL('image/png');
+                                            const base64 = dataUrl.split(',')[1];
+                                            if (base64 && base64.length > 100) {
+                                                setProject(s => {
+                                                    const slot = s.slots[activeSlotIdx];
+                                                    if (!slot?.image?.base64) return s;
+                                                    const img = new Image();
+                                                    img.src = `data:${slot.image.mimeType};base64,${slot.image.base64}`;
+                                                    const brushImg = new Image();
+                                                    brushImg.src = dataUrl;
+                                                    const composed = document.createElement('canvas');
+                                                    composed.width = canvas.width;
+                                                    composed.height = canvas.height;
+                                                    const ctx = composed.getContext('2d');
+                                                    if (!ctx) return s;
+                                                    const mimeType = slot.image.mimeType || 'image/png';
+                                                    img.onload = () => {
+                                                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                        brushImg.onload = () => {
+                                                            ctx.drawImage(brushImg, 0, 0);
+                                                            const newBase64 = composed.toDataURL(mimeType).split(',')[1];
+                                                            setProject(s2 => ({
+                                                                ...s2,
+                                                                slots: { ...s2.slots, [activeSlotIdx]: { ...s2.slots[activeSlotIdx], image: { ...s2.slots[activeSlotIdx].image, base64: newBase64, mimeType } as any } }
+                                                            }));
+                                                            // Clear brush canvas
+                                                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                        };
+                                                        brushImg.onerror = () => {};
+                                                    };
+                                                    img.onerror = () => {};
+                                                    return s;
+                                                });
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                     >
+                                        <Zap className="w-3 h-3" /> Bake
+                                     </button>
+                                 </div>
+                              </>
+                          ) : activeTool === 'stamp' ? (
+                              <>
+                                 <div className="flex items-center gap-2 border-r border-white/5 pr-4 h-full">
+                                     <Stamp className="w-3 h-3 text-white/40" />
+                                     <span className="font-bold text-white/60">Clone Stamp</span>
+                                 </div>
+                                 <div className="flex items-center gap-4">
+                                     <div className="flex items-center gap-2">
+                                         <span className="text-[9px] text-white/30 font-black uppercase">Size</span>
+                                         <input type="range" min="1" max="500"
+                                             value={brushSize}
+                                             onChange={e => setBrushSize(parseInt(e.target.value))}
+                                             className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-[#3d75f2]"
+                                         />
+                                         <span className="text-[10px] text-white/50 w-8 font-mono">{brushSize}px</span>
+                                     </div>
+                                     <div className="w-[1px] h-4 bg-white/10" />
+                                     <div className="flex items-center gap-2 text-[10px]">
+                                         <span className={cn(
+                                             "px-2 py-1 rounded font-mono font-bold",
+                                             cloneSource ? "text-green-400 bg-green-500/10" : "text-white/30 bg-white/5"
+                                         )}>
+                                             {cloneSource ? `Src: ${Math.round(cloneSource.x)},${Math.round(cloneSource.y)}` : 'Alt+Click to sample'}
+                                         </span>
+                                     </div>
+                                     <div className="w-[1px] h-4 bg-white/10" />
+                                     <button onClick={() => setCloneSource(null)} className="text-[10px] text-white/30 hover:text-white/70">Clear</button>
+                                     {cloneSource && (
+                                         <>
+                                             <div className="w-[1px] h-4 bg-white/10" />
+                                             <button
+                                                 onClick={() => {
+                                                     const canvas = brushCanvasRef.current;
+                                                     if (!canvas || activeSlotIdx === null) return;
+                                                     const dataUrl = canvas.toDataURL('image/png');
+                                                     const base64 = dataUrl.split(',')[1];
+                                                     if (base64 && base64.length > 100) {
+                                                         setProject(s => {
+                                                             const slot = s.slots[activeSlotIdx];
+                                                             if (!slot?.image?.base64) return s;
+                                                             const img = new Image();
+                                                             img.src = `data:${slot.image.mimeType};base64,${slot.image.base64}`;
+                                                             const brushImg = new Image();
+                                                             brushImg.src = dataUrl;
+                                                             const composed = document.createElement('canvas');
+                                                             composed.width = canvas.width;
+                                                             composed.height = canvas.height;
+                                                             const ctx = composed.getContext('2d');
+                                                             if (!ctx) return s;
+                                                             const mimeType = slot.image.mimeType || 'image/png';
+                                                             img.onload = () => {
+                                                                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                                 brushImg.onload = () => {
+                                                                     ctx.drawImage(brushImg, 0, 0);
+                                                                     const newBase64 = composed.toDataURL(mimeType).split(',')[1];
+                                                                     setProject(s2 => ({ ...s2, slots: { ...s2.slots, [activeSlotIdx]: { ...s2.slots[activeSlotIdx], image: { ...s2.slots[activeSlotIdx].image, base64: newBase64, mimeType } as any } } }));
+                                                                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                                 };
+                                                             };
+                                                             return s;
+                                                         });
+                                                     }
+                                                 }}
+                                                 className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                             >
+                                                 <Zap className="w-3 h-3" /> Bake
+                                             </button>
+                                         </>
+                                     )}
+                                 </div>
+                              </>
+                          ) : (
+                             <div className="flex items-center gap-4 text-white/30 font-medium">
+                                 <span className="flex items-center gap-1"><MousePointer2 className="w-3 h-3" /> Auto-Select</span>
                                 <div className="w-[1px] h-4 bg-white/10" />
                                 <span>Show Transform Controls</span>
                                 <div className="ml-auto flex items-center gap-3">
@@ -2833,6 +3031,33 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 <div className={cn("absolute inset-0 pointer-events-none transition-opacity duration-300", showGrid ? "opacity-5" : "opacity-0")} style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '8px 8px' }} />
                                                 <div style={vignetteStyle} />
                                                 <div style={grainStyle} />
+                                                
+                                                {/* Pixel Brush Canvas */}
+                                                 {activeSlotIdx === idx && (activeTool === 'brush' || activeTool === 'eraser' || activeTool === 'stamp' || activeTool === 'healing') && (
+                                                     <canvas
+                                                         ref={(el) => {
+                                                             if (el && el !== brushCanvasRef.current) {
+                                                                 brushCanvasRef.current = el;
+                                                                 el.width = el.clientWidth * 2;
+                                                                 el.height = el.clientHeight * 2;
+                                                                 const ctx = el.getContext('2d');
+                                                                 if (ctx) {
+                                                                     ctx.scale(2, 2);
+                                                                 }
+                                                             }
+                                                         }}
+                                                         className="absolute inset-0 w-full h-full pointer-events-none z-[160]"
+                                                         style={{ imageRendering: 'pixelated' }}
+                                                     />
+                                                 )}
+                                                 {activeTool === 'stamp' && cloneSource && activeSlotIdx === idx && (
+                                                     <svg className="absolute inset-0 w-full h-full pointer-events-none z-[170]">
+                                                         <circle cx={cloneSource.x} cy={cloneSource.y} r={brushSize / 2} stroke="#3d75f2" strokeWidth="1.5" fill="none" strokeDasharray="4 2" opacity="0.8" />
+                                                         <line x1={cloneSource.x - 12} y1={cloneSource.y} x2={cloneSource.x + 12} y2={cloneSource.y} stroke="#3d75f2" strokeWidth="1.5" opacity="0.8" />
+                                                         <line x1={cloneSource.x} y1={cloneSource.y - 12} x2={cloneSource.x} y2={cloneSource.y + 12} stroke="#3d75f2" strokeWidth="1.5" opacity="0.8" />
+                                                         <text x={cloneSource.x + 14} y={cloneSource.y + 4} fill="#3d75f2" fontSize="9" fontFamily="monospace" fontWeight="bold">Src</text>
+                                                     </svg>
+                                                 )}
                                                 
                                                 {/* Drawings Rendering */}
                                                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-[180]">
