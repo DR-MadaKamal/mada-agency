@@ -59,6 +59,9 @@ export default {
     }
 
     if (url.pathname.startsWith("/sync/")) {
+      if (!env.SYNC_API_KEY || request.headers.get("Authorization") !== `Bearer ${env.SYNC_API_KEY}`) {
+        return new Response("Unauthorized", { status: 401 });
+      }
       const parts = url.pathname.split("/");
       const action = parts[2];
       const db = env.mada_agency_db;

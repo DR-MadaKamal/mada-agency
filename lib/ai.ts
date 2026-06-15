@@ -8,12 +8,6 @@ interface AIOptions {
 
 const PAGES_FUNCTION_URL = '/api/ai/proxy';
 
-const PROVIDER_PRIORITY: Record<string, string[]> = {
-  google: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'],
-  anthropic: ['claude-3-5-sonnet-20240620', 'claude-3-haiku-20240307'],
-};
-
 function getDefaultModel(provider: string): string {
   switch (provider) {
     case 'google': case 'gemini': return 'gemini-2.5-flash';
@@ -104,8 +98,13 @@ export function createAICall(key: string) {
       controller.abort();
       controllers.delete(key);
     },
-    call: (prompt: string, options?: Omit<AIOptions, 'signal'>) =>
-      callAI(prompt, { ...options, signal: controller.signal }),
+    call: async (prompt: string, options?: Omit<AIOptions, 'signal'>) => {
+      try {
+        return await callAI(prompt, { ...options, signal: controller.signal });
+      } finally {
+        controllers.delete(key);
+      }
+    },
   };
 }
 

@@ -121,7 +121,13 @@ const BrandingResultsGrid: React.FC<{
   onEditResult?: (index: number, prompt: string) => void;
 }> = ({ results, gridClassName, onEditResult }) => {
   const safeResults = Array.isArray(results) ? results.filter(r => !!r) : [];
-  if (safeResults.length === 0) return null;
+  if (safeResults.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-16 text-white/10">
+      <FileText className="w-10 h-10 mb-3" />
+      <span className="text-[10px] font-black uppercase tracking-widest">No results yet</span>
+      <span className="text-[8px] text-white/20 mt-1">Generate branding assets to see them here</span>
+    </div>
+  );
   
   return (
     <div className={gridClassName || "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"}>

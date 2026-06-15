@@ -603,12 +603,13 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                         { name: 'Watercolor', prompt: 'soft watercolor painting with drips' },
                         { name: 'Futuristic', prompt: 'sleek futuristic cyber-tech style' },
                         { name: 'Old Photo', prompt: 'distressed 19th century daguerreotype' }
-                    ].map(style => (
-                        <button 
-                            key={style.name}
-                            onClick={() => activeSlotIdx !== null && applyAIStyle(activeSlotIdx, style.prompt)}
-                            className="py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded text-[8px] font-black uppercase text-white/60 tracking-wider transition-all"
-                        >
+                                                    ].map(style => (
+                                                        <button 
+                                                            key={style.name}
+                                                            disabled={project.isProcessingAI}
+                                                            onClick={() => activeSlotIdx !== null && applyAIStyle(activeSlotIdx, style.prompt)}
+                                                            className={cn("py-2.5 border border-white/5 rounded text-[8px] font-black uppercase text-white/60 tracking-wider transition-all", project.isProcessingAI ? "bg-white/[0.02] text-white/20 cursor-not-allowed" : "bg-white/5 hover:bg-white/10")}
+                                                        >
                             {style.name}
                         </button>
                     ))}
@@ -712,7 +713,12 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 </div>
             </div>
             <div className="flex-1 overflow-y-auto px-1 py-1 flex flex-col-reverse">
-                {project.globalLayers.map(layer => (
+                {project.globalLayers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-white/10">
+                        <LayersIcon className="w-6 h-6 mb-2" />
+                        <span className="text-[8px] font-black uppercase tracking-widest">No layers</span>
+                    </div>
+                ) : project.globalLayers.map(layer => (
                     <div 
                         key={layer.id}
                         onClick={() => {
@@ -1080,21 +1086,6 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             )}
         </div>
     );
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                setIsCommandPaletteOpen(prev => !prev);
-            }
-            if (e.key === 'Escape') {
-                setIsCommandPaletteOpen(false);
-                setContextMenu(null);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
     const CommandPalette = () => {
         if (!isCommandPaletteOpen) return null;
@@ -2001,6 +1992,23 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
             const isTyping = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName);
             if (isTyping && (e.target as HTMLElement).tagName === 'TEXTAREA') return;
 
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsCommandPaletteOpen(prev => !prev);
+                return;
+            }
+            if (e.key === 'Escape') {
+                setIsCommandPaletteOpen(false);
+                setContextMenu(null);
+                return;
+            }
+
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) { redo(); } else { undo(); }
+                return;
+            }
+
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
                 if (activeSlotIdx !== null && selectedTextId) {
                     const texts = project.localTexts[activeSlotIdx] || [];
@@ -2034,7 +2042,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
             }
 
             // Photoshop Tool Shortcuts
-            if (!isTyping && !e.ctrlKey && !e.metaKey) {
+            if (!isTyping && !e.ctrlKey && !e.metaKey && !renamingId) {
                 switch (e.key.toLowerCase()) {
                     case 'v': setActiveTool('select'); break;
                     case 't': setActiveTool('text'); break;
@@ -2068,7 +2076,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeSlotIdx, selectedTextId, project.localTexts, clipboard, handleCopy, handlePaste]);
+    }, [activeSlotIdx, selectedTextId, project.localTexts, clipboard, handleCopy, handlePaste, undo, redo, renamingId]);
 
     const handleUpload = async (files: File[]) => {
         if (!files || files.length === 0) return;
