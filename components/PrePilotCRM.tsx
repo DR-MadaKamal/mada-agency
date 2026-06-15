@@ -11,13 +11,7 @@ const STAGES = [
   { key: 'closed', label: 'Closed Won', limit: 4, color: 'border-l-green-500' },
 ];
 
-const MOCK_LEADS = [
-  { id: 'l1', company: 'TechNova', contact: 'Sarah J.', value: '$45,000', stage: 'qualified', probability: 80 },
-  { id: 'l2', company: 'GreenPath', contact: 'Mark R.', value: '$12,000', stage: 'proposal', probability: 65 },
-  { id: 'l3', company: 'Global Logistics', contact: 'Elena V.', value: '$88,000', stage: 'negotiation', probability: 40 },
-];
-
-const PrePilotCRM: React.FC<{ project: PrePilotAgencySuiteProject }> = () => (
+const PrePilotCRM: React.FC<{ project: PrePilotAgencySuiteProject }> = ({ project }) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <div>
@@ -34,23 +28,23 @@ const PrePilotCRM: React.FC<{ project: PrePilotAgencySuiteProject }> = () => (
         <div key={stage.key} className={`bg-white/5 border border-white/5 rounded-3xl p-4 border-l-4 ${stage.color}`}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{stage.label}</span>
-            <span className="text-[9px] font-black text-white/30">{MOCK_LEADS.filter(l => l.stage === stage.key).length}</span>
+            <span className="text-[9px] font-black text-white/30">{project.leads.filter(l => l.stage === stage.key).length}</span>
           </div>
           <div className="space-y-3 min-h-[200px]">
-            {MOCK_LEADS.filter(l => l.stage === stage.key).map(lead => (
+            {project.leads.filter(l => l.stage === stage.key).map(lead => (
               <motion.div key={lead.id} layout className="p-3 bg-white/[0.03] border border-white/5 rounded-2xl group cursor-pointer hover:bg-white/[0.05] transition-all">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">{lead.company}</span>
                   <MoreVertical className="w-3 h-3 text-white/20 group-hover:text-white/40" />
                 </div>
-                <div className="text-[9px] text-white/40">{lead.contact}</div>
+                <div className="text-[9px] text-white/40">{lead.contactName}</div>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[10px] font-black text-white/60">{lead.value}</span>
                   <span className="text-[8px] font-black text-emerald-500/70">{lead.probability}%</span>
                 </div>
               </motion.div>
             ))}
-            {MOCK_LEADS.filter(l => l.stage === stage.key).length === 0 && (
+            {project.leads.filter(l => l.stage === stage.key).length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-white/10">
                 <Target className="w-6 h-6 mb-2" />
                 <span className="text-[8px] font-black uppercase tracking-widest">Empty</span>

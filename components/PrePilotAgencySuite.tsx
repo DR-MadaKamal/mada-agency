@@ -37,14 +37,6 @@ import PrePilotTeam from './PrePilotTeam';
 import PrePilotAgents from './PrePilotAgents';
 import PrePilotWorkflows from './PrePilotWorkflows';
 
-// --- Mock Initial Data for new projects ---
-const INITIAL_METRICS = {
-    totalRevenue: "$1.2M",
-    growth: "+14.2%",
-    burnRate: "$45k/mo",
-    efficiency: "92%"
-};
-
 const PrePilotAgencySuite: React.FC<{
     project: PrePilotAgencySuiteProject;
     setProject: React.Dispatch<React.SetStateAction<PrePilotAgencySuiteProject>>;
@@ -68,6 +60,9 @@ const PrePilotAgencySuite: React.FC<{
     };
     const selectAllClients = () => {
       setSelectedClientIds(project.clients.map(c => c.id));
+    };
+    const selectAllCampaigns = () => {
+      setSelectedCampaignIds(project.campaigns.map(c => c.id));
     };
     const clearSelection = () => {
       setSelectedClientIds([]);
@@ -162,8 +157,10 @@ const PrePilotAgencySuite: React.FC<{
             const response = await callAI(prompt, project.aiConfig || { provider: 'google', modelId: 'gemini-1.5-flash' });
             const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
-                const results = JSON.parse(jsonMatch[0]);
-                setProject(s => ({ ...s, pilotResults: results }));
+                try {
+                    const results = JSON.parse(jsonMatch[0]);
+                    setProject(s => ({ ...s, pilotResults: results }));
+                } catch { }
             }
         } catch (err) {
             console.error("Simulation failed:", err);
@@ -614,7 +611,7 @@ const PrePilotAgencySuite: React.FC<{
 
             {selectMode && (
               <div className="flex items-center gap-2 px-1 mb-3">
-                <button onClick={selectAllClients} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
+                <button onClick={selectAllCampaigns} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
                   Select All
                 </button>
                 <button onClick={clearSelection} className="px-3 py-1.5 bg-white/5 rounded-lg text-[9px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-all">
@@ -1100,63 +1097,6 @@ const PrePilotAgencySuite: React.FC<{
                                                     ))}
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {activeTab === 'financials' && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] space-y-2">
-                                            <div className="text-[10px] text-white/40 font-black uppercase">Gross Volume</div>
-                                            <div className="text-3xl font-bold tracking-tighter">$142,500</div>
-                                            <div className="text-[10px] text-green-400 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> +12.4% vs L.M.</div>
-                                        </div>
-                                        <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] space-y-2">
-                                            <div className="text-[10px] text-white/40 font-black uppercase">Pipeline Value</div>
-                                            <div className="text-3xl font-bold tracking-tighter">$2.1M</div>
-                                            <div className="text-[10px] text-blue-400 uppercase font-black underline cursor-pointer">View breakdown</div>
-                                        </div>
-                                        <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] space-y-2">
-                                            <div className="text-[10px] text-white/40 font-black uppercase">Agency Health</div>
-                                            <div className="text-3xl font-bold tracking-tighter text-blue-400">Prime</div>
-                                            <div className="flex items-center gap-1">
-                                                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="w-4 h-1 bg-blue-500 rounded-full" />)}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-8 bg-white/5 border border-white/10 rounded-[3rem]">
-                                        <div className="flex items-center justify-between mb-8">
-                                            <h3 className="font-bold">Managed Budgets</h3>
-                                            <div className="flex gap-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-3 h-3 rounded bg-blue-500" />
-                                                    <span className="text-[10px] text-white/40 font-black uppercase">Allocated</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-3 h-3 rounded bg-white/10" />
-                                                    <span className="text-[10px] text-white/40 font-black uppercase">Remaining</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="space-y-6">
-                                            {project.campaigns.map(c => (
-                                                <div key={c.id} className="space-y-2">
-                                                    <div className="flex items-center justify-between text-xs">
-                                                        <span className="font-bold opacity-80">{c.name}</span>
-                                                        <span className="font-mono text-white/40">{c.budget}</span>
-                                                    </div>
-                                                    <div className="h-3 bg-white/5 rounded-full overflow-hidden flex">
-                                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.random() * 60 + 30}%` }} />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            
-                                            {project.campaigns.length === 0 && (
-                                                <div className="text-center py-12 text-[10px] uppercase font-black tracking-widest text-white/20">No budget data available</div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>

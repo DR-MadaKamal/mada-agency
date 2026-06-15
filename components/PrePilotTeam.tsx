@@ -3,13 +3,7 @@ import { motion } from 'motion/react';
 import { Users, ShieldCheck, Activity, AlertCircle, Plus, MoreVertical } from 'lucide-react';
 import { PrePilotAgencySuiteProject } from '../types';
 
-const MOCK_TEAM = [
-  { id: 't1', name: 'Alex Rivera', role: 'Chief Strategist', dept: 'Strategy', load: 85 },
-  { id: 't2', name: 'Jordan Chen', role: 'Head of Creative', dept: 'Creative', load: 42 },
-  { id: 't3', name: 'Sam Taylor', role: 'DevOps Lead', dept: 'Tech', load: 91 },
-];
-
-const PrePilotTeam: React.FC<{ project: PrePilotAgencySuiteProject }> = () => (
+const PrePilotTeam: React.FC<{ project: PrePilotAgencySuiteProject }> = ({ project }) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <div>
@@ -22,7 +16,7 @@ const PrePilotTeam: React.FC<{ project: PrePilotAgencySuiteProject }> = () => (
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {MOCK_TEAM.map(member => (
+      {project.team.map(member => (
         <motion.div key={member.id} whileHover={{ y: -2 }} className="p-6 bg-white/5 border border-white/5 rounded-3xl group cursor-default">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center">
@@ -37,14 +31,20 @@ const PrePilotTeam: React.FC<{ project: PrePilotAgencySuiteProject }> = () => (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-white/30">
               <span>Workload</span>
-              <span className={member.load > 80 ? 'text-red-400' : 'text-emerald-400'}>{member.load}%</span>
+              <span className={member.availability > 80 ? 'text-red-400' : 'text-emerald-400'}>{100 - member.availability}%</span>
             </div>
             <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${member.load}%` }} className={`h-full rounded-full ${member.load > 80 ? 'bg-red-500' : 'bg-emerald-500'}`} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${100 - member.availability}%` }} className={`h-full rounded-full ${member.availability < 20 ? 'bg-red-500' : 'bg-emerald-500'}`} />
             </div>
           </div>
         </motion.div>
       ))}
+      {project.team.length === 0 && (
+        <div className="col-span-full flex flex-col items-center justify-center py-16 text-white/10">
+          <Users className="w-10 h-10 mb-3" />
+          <span className="text-[10px] font-black uppercase tracking-widest">No team members</span>
+        </div>
+      )}
     </div>
   </div>
 );
