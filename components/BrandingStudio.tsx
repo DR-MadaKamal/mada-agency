@@ -1,7 +1,6 @@
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
-import { useToast } from '../lib/useToast';
 import { ImageFile, BrandingStudioProject, BrandingResultCategory, AspectRatio } from '../types';
 import { resizeImage } from '../utils';
 import { 
@@ -29,9 +28,7 @@ import {
     FileText, 
     Palette, 
     MessageSquare, 
-    Type, 
     Target, 
-    TrendingUp, 
     Camera, 
     Mic, 
     Layout, 
@@ -62,10 +59,6 @@ const MOCKUP_CATEGORIES: BrandingResultCategory[] = [
     '3D Glass Logo', 'Business Card Mockup', '3D Glass App Icon', 'Creative Pen Mockup',
     'Merchandise (Tote Bag)', 'Pencil Sketch Logo', 'Notebook Mockup', 'Waving Flag Mockup',
     'Instagram Post Mockup', 'TikTok View Mockup', 'Letterhead Design', 'Email Signature'
-];
-
-const PERSONALITY_TRAITS = [
-    'Modern', 'Luxury', 'Minimalist', 'Playful', 'Professional', 'Bold', 'Friendly', 'Technical', 'Artistic', 'Vintage'
 ];
 
 const getPromptForCategory = (category: BrandingResultCategory, aspectRatio: AspectRatio, personality: string[]): string => {
@@ -149,6 +142,7 @@ const BrandingStudio: React.FC<{
                 });
             }
         } catch (err) {
+            console.error('Upload failed:', err);
             setProject(s => ({ ...s, error: 'Upload failed', isUploading: false }));
         }
     };
@@ -216,16 +210,7 @@ const BrandingStudio: React.FC<{
         }
     };
 
-    const togglePersonality = (trait: string) => {
-        setProject(s => {
-            const next = s.brandPersonality.includes(trait)
-                ? s.brandPersonality.filter(p => p !== trait)
-                : [...s.brandPersonality, trait];
-            return { ...s, brandPersonality: next };
-        });
-    };
-
-    const cancelRef = useRef(false);
+    const fontLoaded = useRef(true);
     const [showTemplatePicker, setShowTemplatePicker] = useState(false);
     const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
     const [editingSecColorIdx, setEditingSecColorIdx] = useState<number | null>(null);
@@ -239,7 +224,6 @@ const BrandingStudio: React.FC<{
     const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
     const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
-    const { toast } = useToast();
     const [copied, setCopied] = useState(false);
 
     const pushVersion = useCallback((label?: string) => {
@@ -313,6 +297,7 @@ const BrandingStudio: React.FC<{
                 }));
             }
         } catch (err) {
+            console.error('Strategy failed:', err);
             setProject(s => ({ ...s, error: 'Strategy failed', isAnalyzing: false }));
         }
     };
@@ -324,6 +309,7 @@ const BrandingStudio: React.FC<{
             const names = await generateNeuralNaming(prompt, project.aiConfig);
             setProject(s => ({ ...s, brandNaming: names, isGeneratingNaming: false }));
         } catch (err) {
+            console.error('Naming failed:', err);
             setProject(s => ({ ...s, error: 'Naming failed', isGeneratingNaming: false }));
         }
     };
@@ -347,6 +333,7 @@ const BrandingStudio: React.FC<{
                 }));
             }
         } catch (err) {
+            console.error('Visual ID failed:', err);
             setProject(s => ({ ...s, error: 'Visual ID failed', isGenerating: false }));
         }
     };
@@ -408,7 +395,7 @@ const BrandingStudio: React.FC<{
                     content: manual,
                     prompt: 'Generate Brand Manual'
                 });
-            });
+            }).catch(() => {});
             mvvPromise.then(mvv => {
                 setProject(s => ({ 
                     ...s, 
@@ -422,7 +409,7 @@ const BrandingStudio: React.FC<{
                     content: `Mission: ${mvv.mission}\nVision: ${mvv.vision}\nValues: ${mvv.values.join(', ')}`,
                     prompt: 'Generate Mission, Vision, and Values'
                 });
-            });
+            }).catch(() => {});
             personaPromise.then(persona => {
                 setProject(s => ({ ...s, brandPersona: persona }));
                 logHistory({
@@ -431,7 +418,7 @@ const BrandingStudio: React.FC<{
                     content: persona,
                     prompt: 'Generate Brand Persona'
                 });
-            });
+            }).catch(() => {});
             storyPromise.then(story => {
                 setProject(s => ({ ...s, brandStory: story }));
                 logHistory({
@@ -440,7 +427,7 @@ const BrandingStudio: React.FC<{
                     content: story,
                     prompt: 'Generate Brand Story'
                 });
-            });
+            }).catch(() => {});
             competitorPromise.then(comp => {
                 setProject(s => ({ ...s, competitorAnalysis: comp }));
                 logHistory({
@@ -464,9 +451,6 @@ const BrandingStudio: React.FC<{
                     .catch(error => ({ status: 'rejected' as const, reason: { category, error } }));
             });
 
-            // Handle manual update as soon as it filters in
-            manualPromise.then(manual => setProject(s => ({ ...s, brandManual: manual })));
-
             const settledResults = await Promise.all(promises);
             settledResults.forEach(result => {
                 if (result.status === 'fulfilled') {
@@ -484,6 +468,7 @@ const BrandingStudio: React.FC<{
                 }
             });
         } catch(err) {
+            console.error('Analysis failed:', err);
             setProject(s => ({...s, error: 'Analysis failed', isAnalyzing: false }));
         } finally {
             setProject(s => ({...s, isGenerating: false}));

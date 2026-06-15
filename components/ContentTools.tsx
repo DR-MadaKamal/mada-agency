@@ -539,9 +539,11 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
   };
 
   const handleCopy = async (text: string, key: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedIdx(key);
-    setTimeout(() => setCopiedIdx(null), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(key);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    } catch {}
   };
 
   const handleCopyTool = (toolId: string) => {

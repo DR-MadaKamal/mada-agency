@@ -109,7 +109,7 @@ const MarketingStudio: React.FC<{
     };
 
     const handleCopyAd = (copy: string, idx: number) => {
-        navigator.clipboard.writeText(copy);
+        navigator.clipboard.writeText(copy).catch(() => {});
         setAdCopiesCopied(idx);
         setTimeout(() => setAdCopiesCopied(null), 2000);
     };
@@ -339,7 +339,7 @@ const MarketingStudio: React.FC<{
                     activeTab === 'swot' ? project.swotAnalysis : 
                     activeTab === 'plan' ? project.marketingPlan : null;
         if (!res) return;
-        navigator.clipboard.writeText(res);
+        navigator.clipboard.writeText(res).catch(() => {});
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -1193,7 +1193,7 @@ const MarketingStudio: React.FC<{
                                             </div>
                                         </div>
                                         <button 
-                                            onClick={() => navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`)}
+                                            onClick={() => navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`).catch(() => {})}
                                             className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all flex items-center justify-center gap-2"
                                         >
                                             <Copy className="w-3 h-3" /> Copy Sequence

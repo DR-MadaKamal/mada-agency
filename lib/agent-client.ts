@@ -12,26 +12,39 @@ export class AgentClient {
   }
 
   async call(method: string, ...args: any[]): Promise<any> {
-    const res = await fetch(`${this.workerUrl}/call/${this.agentName}/${this.instanceName}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ args }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.warn(`Agent call failed (${res.status}):`, err);
-      return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${this.workerUrl}/call/${this.agentName}/${this.instanceName}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ args }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.warn(`Agent call failed (${res.status}):`, err);
+        return null;
+      }
+      return res.json();
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json();
   }
 
   async getState(): Promise<any> {
-    const res = await fetch(`${this.workerUrl}/state/${this.agentName}/${this.instanceName}`);
-    if (!res.ok) {
-      console.warn(`Agent state fetch failed: ${res.status}`);
-      return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${this.workerUrl}/state/${this.agentName}/${this.instanceName}`, { signal: controller.signal });
+      if (!res.ok) {
+        console.warn(`Agent state fetch failed: ${res.status}`);
+        return null;
+      }
+      return res.json();
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json();
   }
 
   async healthCheck(): Promise<boolean> {

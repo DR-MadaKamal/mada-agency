@@ -189,7 +189,6 @@ const EditStudio: React.FC<{
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const [activeSlotIdx, setActiveSlotIdx] = useState<number | null>(null);
     const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
-    const [customFonts, setCustomFonts] = useState<string[]>([]);
     const [clipboard, setClipboard] = useState<LocalText | GlobalLayer | null>(null);
     const [activeTool, setActiveTool] = useState<'images' | 'text' | 'layers' | 'branding' | 'history' | 'select' | 'shapes' | 'crop' | 'brush' | 'eyedropper' | 'hand' | 'zoom' | 'marquee' | 'lasso' | 'stamp' | 'eraser' | 'pen' | 'slice' | 'healing'>('select');
     const [shapeToolType, setShapeToolType] = useState<'rect' | 'circle' | 'line' | 'star'>('rect');
@@ -212,7 +211,6 @@ const EditStudio: React.FC<{
     const [brushColor, setBrushColor] = useState('#ff0000');
     const [brushOpacity, setBrushOpacity] = useState(1);
     const brushCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    const [isBrushing, setIsBrushing] = useState(false);
     const [lastBrushPos, setLastBrushPos] = useState<{x:number;y:number}|null>(null);
     const [cloneSource, setCloneSource] = useState<{x:number;y:number}|null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
@@ -2145,7 +2143,6 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         const fontFace = new FontFace(fontName, data as ArrayBuffer);
                         const loadedFace = await fontFace.load();
                         document.fonts.add(loadedFace);
-                        setCustomFonts(prev => [...new Set([...prev, fontName])]);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -2643,50 +2640,48 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                         ))}
                                      </div>
                                      <div className="w-[1px] h-4 bg-white/10" />
-                                     <button
-                                        onClick={() => {
-                                            const canvas = brushCanvasRef.current;
-                                            if (!canvas || activeSlotIdx === null) return;
-                                            const dataUrl = canvas.toDataURL('image/png');
-                                            const base64 = dataUrl.split(',')[1];
-                                            if (base64 && base64.length > 100) {
-                                                setProject(s => {
-                                                    const slot = s.slots[activeSlotIdx];
-                                                    if (!slot?.image?.base64) return s;
-                                                    const img = new Image();
-                                                    img.src = `data:${slot.image.mimeType};base64,${slot.image.base64}`;
-                                                    const brushImg = new Image();
-                                                    brushImg.src = dataUrl;
-                                                    const composed = document.createElement('canvas');
-                                                    composed.width = canvas.width;
-                                                    composed.height = canvas.height;
-                                                    const ctx = composed.getContext('2d');
-                                                    if (!ctx) return s;
-                                                    const mimeType = slot.image.mimeType || 'image/png';
-                                                    img.onload = () => {
-                                                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                                        brushImg.onload = () => {
-                                                            ctx.drawImage(brushImg, 0, 0);
-                                                            const newBase64 = composed.toDataURL(mimeType).split(',')[1];
-                                                            setProject(s2 => ({
-                                                                ...s2,
-                                                                slots: { ...s2.slots, [activeSlotIdx]: { ...s2.slots[activeSlotIdx], image: { ...s2.slots[activeSlotIdx].image, base64: newBase64, mimeType } as any } }
-                                                            }));
-                                                            // Clear brush canvas
-                                                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                                        };
-                                                        brushImg.onerror = () => {};
-                                                    };
-                                                    img.onerror = () => {};
-                                                    return s;
-                                                });
-                                            }
-                                        }}
-                                        className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
-                                     >
-                                        <Zap className="w-3 h-3" /> Bake
-                                     </button>
-                                 </div>
+                                      <button
+                                         onClick={() => {
+                                             const canvas = brushCanvasRef.current;
+                                             if (!canvas || activeSlotIdx === null) return;
+                                             const dataUrl = canvas.toDataURL('image/png');
+                                             const b64 = dataUrl.split(',')[1];
+                                             if (b64 && b64.length > 100) {
+                                                 setProject(s => {
+                                                     const imgData = s.baseImages[activeSlotIdx];
+                                                     if (!imgData?.base64) return s;
+                                                     const img = new Image();
+                                                     img.src = `data:${imgData.mimeType};base64,${imgData.base64}`;
+                                                     const brushImg = new Image();
+                                                     brushImg.src = dataUrl;
+                                                     const composed = document.createElement('canvas');
+                                                     composed.width = canvas.width;
+                                                     composed.height = canvas.height;
+                                                     const ctx = composed.getContext('2d');
+                                                     if (!ctx) return s;
+                                                     const mimeType = imgData.mimeType || 'image/png';
+                                                     img.onload = () => {
+                                                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                         brushImg.onload = () => {
+                                                             ctx.drawImage(brushImg, 0, 0);
+                                                             const newB64 = composed.toDataURL(mimeType).split(',')[1];
+                                                             setProject(s2 => {
+                                                                 const base = [...s2.baseImages];
+                                                                 base[activeSlotIdx] = { ...base[activeSlotIdx], base64: newB64, mimeType };
+                                                                 return { ...s2, baseImages: base };
+                                                             });
+                                                             ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                         };
+                                                     };
+                                                     return s;
+                                                 });
+                                             }
+                                         }}
+                                         className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                      >
+                                         <Zap className="w-3 h-3" /> Bake
+                                      </button>
+                                  </div>
                               </>
                           ) : activeTool === 'stamp' ? (
                               <>
@@ -2718,41 +2713,45 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                      {cloneSource && (
                                          <>
                                              <div className="w-[1px] h-4 bg-white/10" />
-                                             <button
-                                                 onClick={() => {
-                                                     const canvas = brushCanvasRef.current;
-                                                     if (!canvas || activeSlotIdx === null) return;
-                                                     const dataUrl = canvas.toDataURL('image/png');
-                                                     const base64 = dataUrl.split(',')[1];
-                                                     if (base64 && base64.length > 100) {
-                                                         setProject(s => {
-                                                             const slot = s.slots[activeSlotIdx];
-                                                             if (!slot?.image?.base64) return s;
-                                                             const img = new Image();
-                                                             img.src = `data:${slot.image.mimeType};base64,${slot.image.base64}`;
-                                                             const brushImg = new Image();
-                                                             brushImg.src = dataUrl;
-                                                             const composed = document.createElement('canvas');
-                                                             composed.width = canvas.width;
-                                                             composed.height = canvas.height;
-                                                             const ctx = composed.getContext('2d');
-                                                             if (!ctx) return s;
-                                                             const mimeType = slot.image.mimeType || 'image/png';
-                                                             img.onload = () => {
-                                                                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                                                 brushImg.onload = () => {
-                                                                     ctx.drawImage(brushImg, 0, 0);
-                                                                     const newBase64 = composed.toDataURL(mimeType).split(',')[1];
-                                                                     setProject(s2 => ({ ...s2, slots: { ...s2.slots, [activeSlotIdx]: { ...s2.slots[activeSlotIdx], image: { ...s2.slots[activeSlotIdx].image, base64: newBase64, mimeType } as any } } }));
-                                                                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                                                 };
-                                                             };
-                                                             return s;
-                                                         });
-                                                     }
-                                                 }}
-                                                 className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
-                                             >
+                                              <button
+                                                  onClick={() => {
+                                                      const canvas = brushCanvasRef.current;
+                                                      if (!canvas || activeSlotIdx === null) return;
+                                                      const dataUrl = canvas.toDataURL('image/png');
+                                                      const b64 = dataUrl.split(',')[1];
+                                                      if (b64 && b64.length > 100) {
+                                                          setProject(s => {
+                                                              const imgData = s.baseImages[activeSlotIdx];
+                                                              if (!imgData?.base64) return s;
+                                                              const img = new Image();
+                                                              img.src = `data:${imgData.mimeType};base64,${imgData.base64}`;
+                                                              const brushImg = new Image();
+                                                              brushImg.src = dataUrl;
+                                                              const composed = document.createElement('canvas');
+                                                              composed.width = canvas.width;
+                                                              composed.height = canvas.height;
+                                                              const ctx = composed.getContext('2d');
+                                                              if (!ctx) return s;
+                                                              const mimeType = imgData.mimeType || 'image/png';
+                                                              img.onload = () => {
+                                                                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                                  brushImg.onload = () => {
+                                                                      ctx.drawImage(brushImg, 0, 0);
+                                                                      const newB64 = composed.toDataURL(mimeType).split(',')[1];
+                                                                      setProject(s2 => {
+                                                                          const base = [...s2.baseImages];
+                                                                          base[activeSlotIdx] = { ...base[activeSlotIdx], base64: newB64, mimeType };
+                                                                          return { ...s2, baseImages: base };
+                                                                      });
+                                                                      ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                                  };
+                                                              };
+                                                              return s;
+                                                          });
+                                                      }
+                                                  }}
+                                                  className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                              >
                                                  <Zap className="w-3 h-3" /> Bake
                                              </button>
                                          </>
@@ -3224,27 +3223,31 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                                             if (!cropRect || activeSlotIdx === null) return;
                                                                             const r = { x: Math.min(cropRect.x, cropRect.x + cropRect.w), y: Math.min(cropRect.y, cropRect.y + cropRect.h), w: Math.abs(cropRect.w), h: Math.abs(cropRect.h) };
                                                                             // Crop active slot image if it exists
-                                                                            const slotData = project.slots[activeSlotIdx];
-                                                                            if (slotData?.image?.base64) {
-                                                                                const img = new Image();
-                                                                                img.src = `data:${slotData.image.mimeType};base64,${slotData.image.base64}`;
-                                                                                img.onload = () => {
-                                                                                    const canvas = document.createElement('canvas');
-                                                                                    const sx = (r.x / 100) * img.width;
-                                                                                    const sy = (r.y / 100) * img.height;
-                                                                                    const sw = (r.w / 100) * img.width;
-                                                                                    const sh = (r.h / 100) * img.height;
-                                                                                    canvas.width = sw;
-                                                                                    canvas.height = sh;
-                                                                                    const ctx = canvas.getContext('2d');
-                                                                                    if (ctx) {
-                                                                                        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-                                                                                        const mimeType = slotData.image.mimeType || 'image/png';
-                                                                                        const base64 = canvas.toDataURL(mimeType).split(',')[1];
-                                                                                        setProject(s => ({ ...s, slots: { ...s.slots, [activeSlotIdx]: { ...s.slots[activeSlotIdx], image: { ...s.slots[activeSlotIdx].image, base64, mimeType } as any } } }));
-                                                                                    }
-                                                                                };
-                                                                            }
+                                                                             const slotData = project.baseImages[activeSlotIdx];
+                                                                             if (slotData?.base64) {
+                                                                                 const img = new Image();
+                                                                                 img.src = `data:${slotData.mimeType};base64,${slotData.base64}`;
+                                                                                 img.onload = () => {
+                                                                                     const canvas = document.createElement('canvas');
+                                                                                     const sx = (r.x / 100) * img.width;
+                                                                                     const sy = (r.y / 100) * img.height;
+                                                                                     const sw = (r.w / 100) * img.width;
+                                                                                     const sh = (r.h / 100) * img.height;
+                                                                                     canvas.width = sw;
+                                                                                     canvas.height = sh;
+                                                                                     const ctx = canvas.getContext('2d');
+                                                                                     if (ctx) {
+                                                                                         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+                                                                                         const mimeType = slotData.mimeType || 'image/png';
+                                                                                         const b64 = canvas.toDataURL(mimeType).split(',')[1];
+                                                                                         setProject(s => {
+                                                                                             const base = [...s.baseImages];
+                                                                                             base[activeSlotIdx] = { ...base[activeSlotIdx], base64: b64, mimeType };
+                                                                                             return { ...s, baseImages: base };
+                                                                                         });
+                                                                                     }
+                                                                                 };
+                                                                             }
                                                                             setCropRect(null);
                                                                             setActiveTool('select');
                                                                         }}
@@ -3292,25 +3295,31 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                                 cursor: (activeTool === 'select' && !layer.isLocked) ? 'move' : 'default'
                                                             }}
                                                             onContextMenu={(e) => handleContextMenu(e, 'layer', layer.id)}
-                                                            onPointerDown={(e) => {
-                                                                if (activeTool !== 'select' || layer.isLocked) return;
-                                                                e.stopPropagation();
-                                                                
-                                                                if (!selectedLayerIds.includes(layer.id)) {
-                                                                    if (e.shiftKey) {
-                                                                        setSelectedLayerIds(prev => [...prev, layer.id]);
-                                                                    } else {
-                                                                        setSelectedLayerId(layer.id);
-                                                                        setSelectedLayerIds([layer.id]);
-                                                                    }
-                                                                }
-                                                                
-                                                                setSelectedTextId(null);
-                                                                setIsDragging(true);
-                                                                setActiveSlotIdx(idx);
-                                                                setLastPointerPos({ x: e.clientX, y: e.clientY });
-                                                                (e.target as HTMLElement).setPointerCapture(e.pointerId);
-                                                            }}
+                                                             onPointerDown={(e) => {
+                                                                 if (activeTool !== 'select' || layer.isLocked) return;
+                                                                 e.stopPropagation();
+                                                                 
+                                                                 if (!selectedLayerIds.includes(layer.id)) {
+                                                                     if (e.shiftKey) {
+                                                                         setSelectedLayerIds(prev => [...prev, layer.id]);
+                                                                     } else {
+                                                                         setSelectedLayerId(layer.id);
+                                                                         setSelectedLayerIds([layer.id]);
+                                                                     }
+                                                                 }
+                                                                 
+                                                                 setSelectedTextId(null);
+                                                                 setIsDragging(true);
+                                                                 setActiveSlotIdx(idx);
+                                                                 const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
+                                                                 if (rect) {
+                                                                     const px = ((e.clientX - rect.left) / rect.width) * 100;
+                                                                     const py = ((e.clientY - rect.top) / rect.height) * 100;
+                                                                     setDraggingOffset({ x: px - layer.x, y: py - layer.y });
+                                                                 }
+                                                                 setLastPointerPos({ x: e.clientX, y: e.clientY });
+                                                                 (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                                                             }}
                                                             onPointerUp={() => {
                                                                 setIsDragging(false);
                                                                 setActiveGuides([]);
