@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-    MessageSquare, 
-    X, 
-    Send, 
-    Sparkles, 
-    Globe, 
-    Zap, 
-    Brain, 
-    Cpu,
+import {
+    X,
+    Sparkles,
+    Globe,
+    Zap,
+    Brain,
     ArrowUpRight,
     Search,
     Minimize2,

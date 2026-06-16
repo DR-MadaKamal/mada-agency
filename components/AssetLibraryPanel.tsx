@@ -3,10 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { GlobalHistoryItem, AppView } from '../types';
 import { fetchGlobalHistory } from '../lib/admin';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    LayoutGrid, List, Search, Filter, Download, 
-    Trash2, ExternalLink, RefreshCw, Layers, 
-    FileImage, FileVideo, Music, FileText, 
+import {
+    LayoutGrid, List, Search, Filter, Download,
+    Trash2, ExternalLink, RefreshCw, Layers,
+    FileImage, FileVideo, Music, FileText,
     MoreVertical, Share2, Copy, Check, X
 } from 'lucide-react';
 

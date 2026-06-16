@@ -3,9 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { GlobalHistoryItem, AppView } from '../types';
 import { fetchGlobalHistory } from '../lib/admin';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    History, ImageIcon, Mic, Video, FileText, Search, Filter, 
-    Download, ExternalLink, Calendar, Trash2, Clock, 
+import {
+    History, ImageIcon, Mic, Video, FileText, Search, Filter,
+    Download, ExternalLink, Calendar, Trash2, Clock,
     Layers, Zap, Terminal, Play, Volume2, Maximize2, Trash, Rocket
 } from 'lucide-react';
 

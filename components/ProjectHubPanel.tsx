@@ -3,15 +3,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { UnifiedProject } from '../types';
 import { fetchUnifiedProjects, batchUpdateProjects, deleteUnifiedProject } from '../lib/admin';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Folder, PieChart, Download, ExternalLink, 
-    MoreVertical, Trash2, CheckCircle2, Clock, 
-    AlertCircle, FileDown, Share2, Filter, 
+import {
+    Folder, PieChart, Download, ExternalLink,
+    MoreVertical, Trash2, CheckCircle2, Clock,
+    AlertCircle, FileDown, Share2, Filter,
     Search, Plus, Layout, List, ChevronDown,
-    ArrowUpAz, ArrowDownAz, Calendar, 
+    ArrowUpAz, ArrowDownAz, Calendar,
     Zap, Tag as TagIcon, X, Check,
     Eye, MoreHorizontal, Archive,
-    AlertTriangle
 } from 'lucide-react';
 
 interface ProjectHubPanelProps {

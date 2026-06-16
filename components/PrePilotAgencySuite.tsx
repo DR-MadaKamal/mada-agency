@@ -18,7 +18,6 @@ import {
     Edit3,
     DollarSign,
     ShieldCheck,
-    Cpu,
     Activity,
     LineChart,
     ChevronRight,

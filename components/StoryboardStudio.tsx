@@ -15,31 +15,26 @@ import {
     generateDirectorCritique
 } from '../services/geminiService';
 import { logHistory } from '../lib/admin';
-import { 
-    Film, 
-    Type, 
-    Users, 
-    MapPin, 
-    Settings, 
-    Sparkles, 
-    Plus, 
-    Trash2, 
-    Download, 
-    Share2, 
-    ChevronRight, 
+import {
+    Film,
+    Type,
+    Users,
+    MapPin,
+    Sparkles,
+    Plus,
+    Trash2,
+    Download,
+    Share2,
+    ChevronRight,
     ChevronLeft,
     Play,
-    Split,
     Layout,
     Camera,
     Info,
     CheckCircle2,
-    Clock,
     FileDigit,
     ListFilter,
-    Maximize2,
     Pause,
-    Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';

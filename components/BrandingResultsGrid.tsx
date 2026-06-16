@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BrandingResult, ImageFile } from '../types';
+import { FileText } from 'lucide-react';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full">

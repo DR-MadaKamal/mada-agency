@@ -15,30 +15,27 @@ import {
 import { resizeImage, createThumbnail } from '../utils';
 import { editImage } from '../services/geminiService';
 import { logHistory } from '../lib/admin';
-import { 
-    Layers, 
-    Image as ImageIcon, 
-    Trash2, 
-    Copy, 
-    Download, 
-    Plus, 
-    Undo2, 
-    Redo2, 
-    Maximize2, 
-    Crop, 
-    Sparkles, 
+import {
+    Layers,
+    Image as ImageIcon,
+    Copy,
+    Download,
+    Plus,
+    Undo2,
+    Redo2,
+    Maximize2,
+    Crop,
+    Sparkles,
     Palette,
     History,
     Save,
     X,
-    MoreHorizontal,
     MousePointer2,
     Square,
     Circle,
     Star,
     Minus,
     Type as TextIcon,
-    Link,
     Grid3X3,
     Eye,
     EyeOff,
@@ -51,26 +48,20 @@ import {
     AlignCenterVertical,
     AlignEndVertical,
     Pipette,
-    Target,
     FlipHorizontal,
     FlipVertical,
     HelpCircle,
-    DownloadCloud,
     Maximize,
-    Minimize,
     Move,
     Search,
     Grid,
-    Check,
     Layers as LayersIcon,
     PenTool as PenIcon,
     Eraser,
     Stamp,
-    Scissors,
     Wand2,
     LassoSelect,
     BoxSelect,
-    Component,
     Box,
     Play,
     Settings,
@@ -78,12 +69,8 @@ import {
     Image as ImageFileIcon,
     Monitor,
     Zap,
-    Share2,
     Cloud,
-    Keyboard,
     Command,
-    Info,
-    Timer,
     Clock,
     Brush,
     Ghost,
@@ -91,8 +78,6 @@ import {
     Contrast,
     Sun,
     Droplet,
-    Sticker,
-    Menu,
     ChevronRight,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -212,6 +197,8 @@ const EditStudio: React.FC<{
     const [brushOpacity, setBrushOpacity] = useState(1);
     const brushCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const brushSlotRef = useRef<number | null>(null);
+    const mountedRef = useRef(true);
+    useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
     const [lastBrushPos, setLastBrushPos] = useState<{x:number;y:number}|null>(null);
     const [cloneSource, setCloneSource] = useState<{x:number;y:number}|null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
@@ -2150,6 +2137,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                 const fontName = file.name.split('.')[0];
                 const reader = new FileReader();
                 reader.onload = async (event) => {
+                    if (!mountedRef.current) return;
                     const data = event.target?.result;
                     if (data) {
                         const fontFace = new FontFace(fontName, data as ArrayBuffer);
@@ -2236,6 +2224,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
         const img = new Image();
         img.src = `data:${imgFile.mimeType};base64,${imgFile.base64}`;
         img.onload = () => {
+            if (!mountedRef.current) return;
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
@@ -2261,6 +2250,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         const lImg = new Image();
                         lImg.src = `data:${layer.file.mimeType};base64,${layer.file.base64}`;
                         lImg.onload = () => {
+                            if (!mountedRef.current) return;
                             ctx.save();
                             const posX = (layer.x / 100) * canvas.width;
                             const posY = (layer.y / 100) * canvas.height;
@@ -2672,10 +2662,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                      const ctx = composed.getContext('2d');
                                                      if (!ctx) return s;
                                                      const mimeType = imgData.mimeType || 'image/png';
-                                                     img.onload = () => {
-                                                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                                         brushImg.onload = () => {
-                                                             ctx.drawImage(brushImg, 0, 0);
+                                                      img.onload = () => {
+                                                          if (!mountedRef.current) return;
+                                                          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                          brushImg.onload = () => {
+                                                              if (!mountedRef.current) return;
+                                                              ctx.drawImage(brushImg, 0, 0);
                                                              const newB64 = composed.toDataURL(mimeType).split(',')[1];
                                                              setProject(s2 => {
                                                                  const base = [...s2.baseImages];
@@ -2745,10 +2737,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                               const ctx = composed.getContext('2d');
                                                               if (!ctx) return s;
                                                               const mimeType = imgData.mimeType || 'image/png';
-                                                              img.onload = () => {
-                                                                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                                                  brushImg.onload = () => {
-                                                                      ctx.drawImage(brushImg, 0, 0);
+                                                               img.onload = () => {
+                                                                   if (!mountedRef.current) return;
+                                                                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                                   brushImg.onload = () => {
+                                                                       if (!mountedRef.current) return;
+                                                                       ctx.drawImage(brushImg, 0, 0);
                                                                       const newB64 = composed.toDataURL(mimeType).split(',')[1];
                                                                       setProject(s2 => {
                                                                           const base = [...s2.baseImages];
@@ -2906,10 +2900,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                             Array.from(e.target.files).forEach(file => {
                                                                 const reader = new FileReader();
                                                                 reader.onload = async (re) => {
+                                                                    if (!mountedRef.current) return;
                                                                     const img = new Image();
                                                                     img.src = re.target?.result as string;
-                                                                    img.onload = () => {
-                                                                        const fileObj: ImageFile = {
+                                                                        img.onload = () => {
+                                                                            if (!mountedRef.current) return;
+                                                                            const fileObj: ImageFile = {
                                                                             name: file.name,
                                                                             mimeType: file.type,
                                                                             base64: re.target?.result as string
@@ -3241,8 +3237,9 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                                              if (slotData?.base64) {
                                                                                  const img = new Image();
                                                                                  img.src = `data:${slotData.mimeType};base64,${slotData.base64}`;
-                                                                                 img.onload = () => {
-                                                                                     const canvas = document.createElement('canvas');
+                                                                                  img.onload = () => {
+                                                                                      if (!mountedRef.current) return;
+                                                                                      const canvas = document.createElement('canvas');
                                                                                      const sx = (r.x / 100) * img.width;
                                                                                      const sy = (r.y / 100) * img.height;
                                                                                      const sw = (r.w / 100) * img.width;

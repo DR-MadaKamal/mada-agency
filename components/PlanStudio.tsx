@@ -7,18 +7,17 @@ import { logHistory } from '../lib/admin';
 import ImageWorkspace from './ImageWorkspace';
 import AISelector from './AISelector';
 import { LOGO_IMAGE_URL } from '../constants';
-import { 
-    Zap, 
-    Sparkles, 
-    Target, 
-    Globe, 
-    MessageSquare, 
-    Download, 
-    Plus, 
+import {
+    Zap,
+    Sparkles,
+    Target,
+    Globe,
+    MessageSquare,
+    Download,
+    Plus,
     Briefcase,
     Layout,
     Layers,
-    BookOpen,
     Users,
     TrendingUp,
     ShieldAlert,

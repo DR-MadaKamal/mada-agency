@@ -1,19 +1,16 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Zap, 
-  Activity, 
-  Database, 
-  Cpu, 
-  Layers, 
-  Shield, 
-  Globe, 
-  ArrowUpRight, 
-  Search,
+import {
+  Zap,
+  Activity,
+  Database,
+  Cpu,
+  Layers,
+  Shield,
+  Globe,
+  ArrowUpRight,
   Settings2,
-  PieChart,
-  BarChart3,
   Clock,
   Wifi,
   WifiOff

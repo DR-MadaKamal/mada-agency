@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-    LayoutGrid, List, Search, Filter, Download as DownloadIcon, 
-    Trash2, ExternalLink, RefreshCw, Layers, 
-    FileImage, FileVideo, Music, FileText, 
+import {
+    LayoutGrid, List, Search, Filter, Download as DownloadIcon,
+    Trash2, ExternalLink, RefreshCw, Layers,
+    FileImage, FileVideo, Music, FileText,
     MoreVertical, Share2, Copy, Check, X,
     Tag, Palette, Box, Activity, Shield,
     Sparkles, Zap, Brain, Database, Cloud,

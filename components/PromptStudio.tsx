@@ -7,8 +7,8 @@ import { logHistory } from '../lib/admin';
 import ImageWorkspace from './ImageWorkspace';
 import AISelector from './AISelector';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Copy, Check, Sparkles, Image as ImageIcon, Cpu, Target, 
+import {
+    Copy, Check, Sparkles, Image as ImageIcon, Cpu, Target,
     Camera, Zap, Settings2, History, Trash2, Send, Wand2,
     Layers, Aperture, Video, Focus, Box
 } from 'lucide-react';

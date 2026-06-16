@@ -1,28 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { resizeImage } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Trash2, 
-    Plus, 
-    X, 
-    Image as ImageIcon, 
-    Shield, 
-    Settings, 
-    Activity, 
-    Globe, 
-    AlertTriangle, 
-    CheckCircle2,
-    Lock,
-    Unlock,
+import {
+    X,
+    Image as ImageIcon,
+    Shield,
+    Settings,
+    Activity,
+    Globe,
+    AlertTriangle,
     Cpu,
     Database,
     Zap,
     Users,
-    Key,
-    Server,
     LineChart as ChartIcon,
     Terminal,
-    ChevronRight
 } from 'lucide-react';
 import { Integration, ApiLog } from '../types';
 import { db, auth, handleFirestoreError, OperationType, collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, limit } from '../lib/firebase';

@@ -15,18 +15,17 @@ import {
   Area
 } from 'recharts';
 import { Integration, ApiLog } from '../types';
-import { 
-    Settings, 
-    Plus, 
-    Trash2, 
-    RefreshCcw, 
-    Activity, 
-    Shield, 
-    Globe, 
-    Key, 
-    CheckCircle2, 
-    XCircle, 
-    AlertCircle,
+import {
+    Settings,
+    Plus,
+    Trash2,
+    RefreshCcw,
+    Activity,
+    Shield,
+    Globe,
+    Key,
+    CheckCircle2,
+    XCircle,
     Cpu,
     Zap,
     Layers,
@@ -36,7 +35,6 @@ import {
     Network,
     Lock,
     Search,
-    ExternalLink,
     Users,
     HardDrive,
     History,
