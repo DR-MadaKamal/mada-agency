@@ -427,6 +427,13 @@ export interface PlanStudioState {
     isUploading: boolean;
     error: string | null;
     activeTab: 'brief' | 'strategy' | 'market' | 'architecture' | 'roadmap' | 'pitch' | 'posts' | 'history';
+
+    // Feature 10: Multi-Plan Comparison
+    comparisonPlanIds: string[];
+    comparisonData: Record<string, any>;
+
+    // Feature 9: Brief Wizard step
+    wizardStep: number;
 }
 
 export interface PlanStudioProject extends ProjectBase, PlanStudioState {}

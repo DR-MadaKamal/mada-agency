@@ -381,6 +381,9 @@ const createNewPlanProject = (projectCount: number, ownerId: string): PlanStudio
     error: null,
     activeTab: 'brief',
     aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash' },
+    comparisonPlanIds: [],
+    comparisonData: {},
+    wizardStep: 1,
 });
 
 const createNewStoryboardProject = (projectCount: number, ownerId: string): StoryboardStudioProject => ({

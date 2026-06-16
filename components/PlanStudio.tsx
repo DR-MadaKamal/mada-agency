@@ -24,7 +24,22 @@ import {
     BarChart3,
     Compass,
     Map,
-    Presentation
+    Presentation,
+    Edit3,
+    RefreshCw,
+    Sliders,
+    Save,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Sun,
+    Contrast,
+    Search,
+    GitCompare,
+    Image as ImageIcon,
+    Type,
+    List
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -57,6 +72,19 @@ const PlanStudio: React.FC<{
     const [isDownloading, setIsDownloading] = useState<string | null>(null);
     const [selectedLang, setSelectedLang] = useState('egy');
     const [selectedFormality, setSelectedFormality] = useState('slang');
+    const [calendarView, setCalendarView] = useState(false);
+    const [ganttData, setGanttData] = useState<Record<number, { progress: number; startMonth: string; endMonth: string }>>({});
+    const [swotScores, setSwotScores] = useState<{ strengths: number; weaknesses: number; opportunities: number; threats: number }>({ strengths: 3, weaknesses: 3, opportunities: 3, threats: 3 });
+    const [canvasEditing, setCanvasEditing] = useState(false);
+    const [canvasNewItems, setCanvasNewItems] = useState<Record<string, string>>({});
+    const [postEdits, setPostEdits] = useState<Record<string, { textOverlay: string; brightness: number; contrast: number }>>({});
+    const [expandedPersonas, setExpandedPersonas] = useState<Record<number, boolean>>({});
+    const [personaEdits, setPersonaEdits] = useState<Record<number, { title: string; description: string; painPoints: string }>>({});
+    const [editingSlide, setEditingSlide] = useState<number | null>(null);
+    const [pitchEdits, setPitchEdits] = useState<Record<number, { content: string }>>({});
+    const [battleCardEditing, setBattleCardEditing] = useState<Record<number, boolean>>({});
+    const [battleCardEdits, setBattleCardEdits] = useState<Record<number, { competitor: string; strengths: string; weaknesses: string; killShot: string }>>({});
+    const [compareView, setCompareView] = useState(false);
 
     // Update dialect in project when internal selects change
     useEffect(() => {
@@ -486,6 +514,68 @@ const PlanStudio: React.FC<{
                             </div>
                         </div>
                     </div>
+
+                    {/* Feature 9: Campaign Brief Wizard */}
+                    <div className="glass-card rounded-[2.5rem] p-8 border border-white/5 mt-8">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-10 h-10 rounded-xl bg-pink-500/10 flex items-center justify-center text-pink-400">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Campaign Brief Wizard</h3>
+                        </div>
+                        <div className="flex items-center gap-2 mb-8">
+                            {[1, 2, 3, 4].map(step => (
+                                <div key={step} className="flex items-center gap-2 flex-1">
+                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all", project.wizardStep >= step ? "bg-[var(--color-accent)] text-white" : "bg-white/5 text-white/30")}>
+                                        {step}
+                                    </div>
+                                    {step < 4 && <div className={cn("flex-1 h-[2px]", project.wizardStep > step ? "bg-[var(--color-accent)]" : "bg-white/5")} />}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="min-h-[200px] mb-8">
+                            {project.wizardStep === 1 && (
+                                <div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
+                                    <ImageIcon className="w-12 h-12 text-white/20" />
+                                    <p className="text-sm text-white/50 italic">Upload product images above to begin the wizard</p>
+                                </div>
+                            )}
+                            {project.wizardStep === 2 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-2 bg-black/20 p-4 rounded-2xl border border-white/5">
+                                        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Target Market</label>
+                                        <select value={project.targetMarket} onChange={(e) => setProject(s => ({ ...s, targetMarket: e.target.value }))} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer">
+                                            {TARGET_MARKETS.map(m => <option key={m} value={m} className="bg-gray-900">{m}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-2 bg-black/20 p-4 rounded-2xl border border-white/5">
+                                        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Language</label>
+                                        <select value={selectedLang} onChange={(e) => setSelectedLang(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer">
+                                            {BASE_LANGUAGES.map(l => <option key={l.id} value={l.id} className="bg-gray-900">{l.label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                            {project.wizardStep === 3 && (
+                                <textarea value={project.prompt} onChange={(e) => setProject(s => ({ ...s, prompt: e.target.value }))} placeholder="Describe your campaign goal and vision..." className="w-full bg-black/20 rounded-2xl p-6 text-sm text-white/90 border border-white/5 focus:border-[var(--color-accent)]/50 focus:ring-0 resize-none min-h-[150px]" />
+                            )}
+                            {project.wizardStep === 4 && (
+                                <div className="flex flex-col gap-4 items-center py-8 text-center">
+                                    <div className="bg-emerald-500/10 text-emerald-400 px-6 py-3 rounded-full text-sm font-black border border-emerald-500/20">Ready to Generate</div>
+                                    <p className="text-xs text-white/30 italic">Review your market, language, and goal then generate</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <button onClick={() => setProject(s => ({ ...s, wizardStep: Math.max(1, s.wizardStep - 1) }))} disabled={project.wizardStep === 1} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-black uppercase tracking-widest border border-white/10 transition-all disabled:opacity-20 flex items-center gap-2">
+                                <ChevronLeft className="w-4 h-4" /> Back
+                            </button>
+                            <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">Step {project.wizardStep} of 4</div>
+                            <button onClick={() => { if (project.wizardStep >= 4) { handleFullSynthesis(); } else { setProject(s => ({ ...s, wizardStep: s.wizardStep + 1 })); } }} className="px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white rounded-full text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                                {project.wizardStep >= 4 ? 'Generate' : 'Next'} <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -548,6 +638,59 @@ const PlanStudio: React.FC<{
                             </div>
                         </div>
                     </div>
+
+                    {/* Feature 6: Audience Persona Detailer */}
+                    {project.personas.length > 0 && (
+                        <div className="glass-card rounded-[2.5rem] p-8 border border-white/5">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                    <Edit3 className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Enhance Persona</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {project.personas.map((p, i) => (
+                                    <div key={i} className="p-6 bg-white/[0.02] rounded-[32px] border border-white/5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-sm font-black text-white uppercase tracking-wider">{p.title}</h4>
+                                            <button onClick={() => setExpandedPersonas(s => ({ ...s, [i]: !s[i] }))} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                                                <Edit3 className="w-3 h-3" /> {expandedPersonas[i] ? 'Close' : 'Edit'}
+                                            </button>
+                                        </div>
+                                        {expandedPersonas[i] && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-white/5">
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Title</label>
+                                                    <input value={personaEdits[i]?.title ?? p.title} onChange={(e) => setPersonaEdits(s => ({ ...s, [i]: { ...s[i], title: e.target.value, description: s[i]?.description ?? p.description, painPoints: s[i]?.painPoints ?? (p.painPoints || []).join(', ') } }))} className="w-full bg-black/20 rounded-xl px-3 py-2 text-sm text-white/70 border border-white/5" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Description</label>
+                                                    <textarea value={personaEdits[i]?.description ?? p.description} onChange={(e) => setPersonaEdits(s => ({ ...s, [i]: { ...s[i], title: s[i]?.title ?? p.title, description: e.target.value, painPoints: s[i]?.painPoints ?? (p.painPoints || []).join(', ') } }))} className="w-full bg-black/20 rounded-xl p-3 text-sm text-white/70 border border-white/5 resize-none h-20" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Pain Points (comma-separated)</label>
+                                                    <input value={personaEdits[i]?.painPoints ?? (p.painPoints || []).join(', ')} onChange={(e) => setPersonaEdits(s => ({ ...s, [i]: { ...s[i], title: s[i]?.title ?? p.title, description: s[i]?.description ?? p.description, painPoints: e.target.value } }))} className="w-full bg-black/20 rounded-xl px-3 py-2 text-sm text-white/70 border border-white/5" />
+                                                </div>
+                                                <button onClick={async () => {
+                                                    const edit = personaEdits[i];
+                                                    const ppText = edit?.painPoints ?? (p.painPoints || []).join(', ');
+                                                    try {
+                                                        const { callAI } = await import('../services/geminiService');
+                                                        const result = await callAI(`Refine this audience persona for a marketing campaign. Current title: "${edit?.title || p.title}", description: "${edit?.description || p.description}", pain points: "${ppText}". Return a refined version as JSON with keys: title, description, painPoints (comma-separated string).`, project.aiConfig || { provider: 'google', modelId: 'gemini-2.0-flash' });
+                                                        const parsed = JSON.parse(result);
+                                                        setPersonaEdits(s => ({ ...s, [i]: { title: parsed.title || p.title, description: parsed.description || p.description, painPoints: parsed.painPoints || ppText } }));
+                                                        setProject(s => ({ ...s, personas: s.personas.map((per, idx) => idx === i ? { ...per, title: parsed.title || per.title, description: parsed.description || per.description, painPoints: (parsed.painPoints || ppText).split(',').map((s: string) => s.trim()) } : per) }));
+                                                    } catch (e) { /* ignore */ }
+                                                }} className="px-4 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-[9px] font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2">
+                                                    <RefreshCw className="w-3 h-3" /> AI Refine
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -630,6 +773,38 @@ const PlanStudio: React.FC<{
                                 </div>
                             </div>
                         </div>
+
+                        {/* Feature 3: SWOT Interactive Matrix */}
+                        <div className="lg:col-span-12 glass-card rounded-[2.5rem] p-8 border border-white/5">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                    <Sliders className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">SWOT Editor</h3>
+                            </div>
+                            <div className="space-y-4">
+                                {(['strengths', 'weaknesses', 'opportunities', 'threats'] as const).map(key => (
+                                    <div key={key} className="flex items-start gap-4">
+                                        <div className="flex-1">
+                                            <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1 capitalize">{key}</label>
+                                            <textarea
+                                                value={(project.swot[key] || []).join(', ')}
+                                                onChange={(e) => setProject(s => ({ ...s, swot: { ...s.swot, [key]: e.target.value.split(',').map(x => x.trim()).filter(Boolean) } }))}
+                                                placeholder={`Enter ${key} separated by commas`}
+                                                className="w-full bg-black/20 rounded-xl p-3 text-sm text-white/70 border border-white/5 resize-none h-16"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1 mt-6">
+                                            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest">Score</label>
+                                            <input type="number" min={1} max={5} value={swotScores[key]} onChange={(e) => setSwotScores(s => ({ ...s, [key]: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) }))} className="w-14 bg-black/20 rounded-xl px-2 py-1 text-sm text-white/70 border border-white/5 text-center" />
+                                        </div>
+                                    </div>
+                                ))}
+                                <button onClick={() => { /* update already done via onChange */ }} className="px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-xs font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2">
+                                    <RefreshCw className="w-4 h-4" /> Update SWOT
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -648,9 +823,12 @@ const PlanStudio: React.FC<{
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                             {/* Key Partners */}
                             <div className="md:row-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
-                                <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Key Partners</h4>
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Key Partners</h4>
+                                </div>
                                 <ul className="space-y-2">
-                                     {(project.canvas?.keyPartners || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                     {(project.canvas?.keyPartners || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, keyPartners: s.canvas.keyPartners.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                    {canvasEditing && <li><input value={canvasNewItems['keyPartners'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, keyPartners: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.keyPartners?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, keyPartners: [...(s.canvas.keyPartners || []), canvasNewItems.keyPartners.trim()] } })); setCanvasNewItems(s => ({ ...s, keyPartners: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                 </ul>
                             </div>
                             
@@ -658,13 +836,15 @@ const PlanStudio: React.FC<{
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Key Activities</h4>
                                     <ul className="space-y-2">
-                                        {(project.canvas?.keyActivities || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                        {(project.canvas?.keyActivities || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, keyActivities: s.canvas.keyActivities.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                        {canvasEditing && <li><input value={canvasNewItems['keyActivities'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, keyActivities: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.keyActivities?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, keyActivities: [...(s.canvas.keyActivities || []), canvasNewItems.keyActivities.trim()] } })); setCanvasNewItems(s => ({ ...s, keyActivities: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                     </ul>
                                 </div>
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Value Propositions</h4>
                                     <ul className="space-y-2">
-                                        {(project.canvas?.valueProps || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed font-bold">• {p}</li>)}
+                                        {(project.canvas?.valueProps || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed font-bold flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, valueProps: s.canvas.valueProps.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                        {canvasEditing && <li><input value={canvasNewItems['valueProps'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, valueProps: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.valueProps?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, valueProps: [...(s.canvas.valueProps || []), canvasNewItems.valueProps.trim()] } })); setCanvasNewItems(s => ({ ...s, valueProps: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                     </ul>
                                 </div>
                             </div>
@@ -673,13 +853,15 @@ const PlanStudio: React.FC<{
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Relations</h4>
                                     <ul className="space-y-2">
-                                        {(project.canvas?.customerRelations || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                        {(project.canvas?.customerRelations || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, customerRelations: s.canvas.customerRelations.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                        {canvasEditing && <li><input value={canvasNewItems['customerRelations'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, customerRelations: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.customerRelations?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, customerRelations: [...(s.canvas.customerRelations || []), canvasNewItems.customerRelations.trim()] } })); setCanvasNewItems(s => ({ ...s, customerRelations: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                     </ul>
                                 </div>
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Channels</h4>
                                     <ul className="space-y-2">
-                                        {(project.canvas?.channels || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                        {(project.canvas?.channels || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, channels: s.canvas.channels.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                        {canvasEditing && <li><input value={canvasNewItems['channels'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, channels: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.channels?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, channels: [...(s.canvas.channels || []), canvasNewItems.channels.trim()] } })); setCanvasNewItems(s => ({ ...s, channels: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                     </ul>
                                 </div>
                             </div>
@@ -687,22 +869,37 @@ const PlanStudio: React.FC<{
                             <div className="md:row-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Segments</h4>
                                 <ul className="space-y-2">
-                                    {(project.canvas?.segments || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                    {(project.canvas?.segments || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, segments: s.canvas.segments.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                    {canvasEditing && <li><input value={canvasNewItems['segments'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, segments: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.segments?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, segments: [...(s.canvas.segments || []), canvasNewItems.segments.trim()] } })); setCanvasNewItems(s => ({ ...s, segments: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                 </ul>
                             </div>
 
                             <div className="md:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Cost Structure</h4>
                                 <ul className="space-y-2">
-                                    {(project.canvas?.costStructure || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                    {(project.canvas?.costStructure || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, costStructure: s.canvas.costStructure.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                    {canvasEditing && <li><input value={canvasNewItems['costStructure'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, costStructure: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.costStructure?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, costStructure: [...(s.canvas.costStructure || []), canvasNewItems.costStructure.trim()] } })); setCanvasNewItems(s => ({ ...s, costStructure: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                 </ul>
                             </div>
                             <div className="md:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Revenue Streams</h4>
                                 <ul className="space-y-2">
-                                    {(project.canvas?.revenueStreams || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                    {(project.canvas?.revenueStreams || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed flex items-center gap-2">• {p}{canvasEditing && <button onClick={() => setProject(s => ({ ...s, canvas: { ...s.canvas, revenueStreams: s.canvas.revenueStreams.filter((_, idx) => idx !== i) } }))} className="text-red-400 hover:text-red-300 text-[8px]">✕</button>}</li>)}
+                                    {canvasEditing && <li><input value={canvasNewItems['revenueStreams'] || ''} onChange={(e) => setCanvasNewItems(s => ({ ...s, revenueStreams: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter' && canvasNewItems.revenueStreams?.trim()) { setProject(s => ({ ...s, canvas: { ...s.canvas, revenueStreams: [...(s.canvas.revenueStreams || []), canvasNewItems.revenueStreams.trim()] } })); setCanvasNewItems(s => ({ ...s, revenueStreams: '' })); } }} placeholder="Add item..." className="w-full bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/70 border border-white/5" /></li>}
                                 </ul>
                             </div>
+                        </div>
+
+                        {/* Feature 7: Canvas Editor */}
+                        <div className="mt-6 flex gap-4">
+                            <button onClick={() => setCanvasEditing(!canvasEditing)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                                <Edit3 className="w-4 h-4" /> {canvasEditing ? 'Cancel Edit' : 'Edit Canvas'}
+                            </button>
+                            {canvasEditing && (
+                                <button onClick={() => setCanvasEditing(false)} className="px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-xs font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2">
+                                    <Save className="w-4 h-4" /> Save Canvas
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -733,6 +930,70 @@ const PlanStudio: React.FC<{
                             </div>
                         ))}
                     </div>
+
+                    {/* Feature 1: Competitive Battle Card Editor */}
+                    {project.battleCards.length > 0 && (
+                        <div className="glass-card rounded-[2.5rem] p-8 border border-white/5">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
+                                    <Search className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Battle Card Editor</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {project.battleCards.map((card, idx) => (
+                                    <div key={idx} className="p-6 bg-white/[0.02] rounded-[32px] border border-white/5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-sm font-black text-white uppercase tracking-wider">{card.competitor}</h4>
+                                            <button onClick={() => setBattleCardEditing(s => ({ ...s, [idx]: !s[idx] }))} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                                                <Edit3 className="w-3 h-3" /> Edit
+                                            </button>
+                                        </div>
+                                        {battleCardEditing[idx] && (
+                                            <div className="space-y-4 mt-4 pt-4 border-t border-white/5">
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Competitor Name</label>
+                                                    <input value={battleCardEdits[idx]?.competitor ?? card.competitor} onChange={(e) => setBattleCardEdits(s => ({ ...s, [idx]: { ...s[idx], competitor: e.target.value, strengths: s[idx]?.strengths ?? card.strengths, weaknesses: s[idx]?.weaknesses ?? card.weaknesses, killShot: s[idx]?.killShot ?? card.killShot } }))} className="w-full bg-black/20 rounded-xl px-3 py-2 text-sm text-white/70 border border-white/5" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Strengths</label>
+                                                    <textarea value={battleCardEdits[idx]?.strengths ?? card.strengths} onChange={(e) => setBattleCardEdits(s => ({ ...s, [idx]: { ...s[idx], competitor: s[idx]?.competitor ?? card.competitor, strengths: e.target.value, weaknesses: s[idx]?.weaknesses ?? card.weaknesses, killShot: s[idx]?.killShot ?? card.killShot } }))} className="w-full bg-black/20 rounded-xl p-3 text-sm text-white/70 border border-white/5 resize-none h-16" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Weaknesses</label>
+                                                    <textarea value={battleCardEdits[idx]?.weaknesses ?? card.weaknesses} onChange={(e) => setBattleCardEdits(s => ({ ...s, [idx]: { ...s[idx], competitor: s[idx]?.competitor ?? card.competitor, strengths: s[idx]?.strengths ?? card.strengths, weaknesses: e.target.value, killShot: s[idx]?.killShot ?? card.killShot } }))} className="w-full bg-black/20 rounded-xl p-3 text-sm text-white/70 border border-white/5 resize-none h-16" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-1">Kill Shot Strategy</label>
+                                                    <textarea value={battleCardEdits[idx]?.killShot ?? card.killShot} onChange={(e) => setBattleCardEdits(s => ({ ...s, [idx]: { ...s[idx], competitor: s[idx]?.competitor ?? card.competitor, strengths: s[idx]?.strengths ?? card.strengths, weaknesses: s[idx]?.weaknesses ?? card.weaknesses, killShot: e.target.value } }))} className="w-full bg-black/20 rounded-xl p-3 text-sm text-white/70 border border-white/5 resize-none h-16" />
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <button onClick={() => {
+                                                        const edit = battleCardEdits[idx];
+                                                        if (edit) setProject(s => ({ ...s, battleCards: s.battleCards.map((c, ci) => ci === idx ? { competitor: edit.competitor || c.competitor, strengths: edit.strengths || c.strengths, weaknesses: edit.weaknesses || c.weaknesses, killShot: edit.killShot || c.killShot } : c) }));
+                                                        setBattleCardEditing(s => ({ ...s, [idx]: false }));
+                                                    }} className="px-4 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-[9px] font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2">
+                                                        <Save className="w-3 h-3" /> Save
+                                                    </button>
+                                                    <button onClick={async () => {
+                                                        const name = battleCardEdits[idx]?.competitor || card.competitor;
+                                                        try {
+                                                            const { callAI } = await import('../services/geminiService');
+                                                            const result = await callAI(`Analyze this competitor: "${name}". Provide a competitive analysis as JSON with keys: competitor (name), strengths (comma-separated), weaknesses (comma-separated), killShot (strategic advantage paragraph).`, project.aiConfig || { provider: 'google', modelId: 'gemini-2.0-flash' });
+                                                            const parsed = JSON.parse(result);
+                                                            setBattleCardEdits(s => ({ ...s, [idx]: { competitor: parsed.competitor || name, strengths: parsed.strengths || '', weaknesses: parsed.weaknesses || '', killShot: parsed.killShot || '' } }));
+                                                        } catch (e) { /* ignore */ }
+                                                    }} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-[9px] font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                                                        <Search className="w-3 h-3" /> Analyze
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -779,6 +1040,62 @@ const PlanStudio: React.FC<{
                             )}
                         </div>
                     </div>
+
+                    {/* Feature 8: Strategic Roadmap Gantt */}
+                    {project.roadmap.length > 0 && (
+                        <div className="glass-card rounded-[2.5rem] p-8 border border-white/5">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                                    <Calendar className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Gantt Chart</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {project.roadmap.map((step, i) => {
+                                    const g = ganttData[i] || { progress: 50, startMonth: 'Month 1', endMonth: 'Month 3' };
+                                    return (
+                                        <div key={i} className="space-y-3">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-32 shrink-0">
+                                                    <p className="text-[10px] font-black text-white uppercase tracking-wider">{step.phase}</p>
+                                                </div>
+                                                <div className="flex-1 bg-white/5 rounded-full h-4 overflow-hidden">
+                                                    <div className="h-full bg-[var(--color-accent)] rounded-full transition-all" style={{ width: `${g.progress}%` }}></div>
+                                                </div>
+                                                <div className="flex items-center gap-2 w-48 shrink-0">
+                                                    <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">{g.progress}%</span>
+                                                    <input type="range" min={0} max={100} value={g.progress} onChange={(e) => setGanttData(s => ({ ...s, [i]: { ...s[i], progress: parseInt(e.target.value), startMonth: s[i]?.startMonth || 'Month 1', endMonth: s[i]?.endMonth || 'Month 3' } }))} className="w-20 accent-[var(--color-accent)]" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 pl-32">
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest">Start</label>
+                                                    <select value={g.startMonth} onChange={(e) => setGanttData(s => ({ ...s, [i]: { ...s[i], progress: s[i]?.progress || 50, startMonth: e.target.value, endMonth: s[i]?.endMonth || 'Month 3' } }))} className="bg-black/20 rounded-lg px-2 py-1 text-[10px] text-white/70 border border-white/5">
+                                                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={`Month ${m}`} className="bg-gray-900">M{m}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest">End</label>
+                                                    <select value={g.endMonth} onChange={(e) => setGanttData(s => ({ ...s, [i]: { ...s[i], progress: s[i]?.progress || 50, startMonth: s[i]?.startMonth || 'Month 1', endMonth: e.target.value } }))} className="bg-black/20 rounded-lg px-2 py-1 text-[10px] text-white/70 border border-white/5">
+                                                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={`Month ${m}`} className="bg-gray-900">M{m}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden relative">
+                                                    {(() => {
+                                                        const start = parseInt(g.startMonth.replace('Month ', ''));
+                                                        const end = parseInt(g.endMonth.replace('Month ', ''));
+                                                        const left = `${((start - 1) / 12) * 100}%`;
+                                                        const width = `${((end - start + 1) / 12) * 100}%`;
+                                                        return <div className="h-full bg-emerald-500/40 rounded-full absolute" style={{ left, width }}></div>;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -797,20 +1114,65 @@ const PlanStudio: React.FC<{
                                         {String(idx + 1).padStart(2, '0')}
                                     </div>
                                     <div className="relative z-10 space-y-6">
-                                        <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-[0.4em] mb-2">{slide.slide}</h4>
-                                        <div className="text-xl font-black text-white italic leading-relaxed uppercase tracking-tighter markdown-body">
-                                            {slide.content}
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-[0.4em] mb-2">{slide.slide}</h4>
+                                            <button onClick={() => { setEditingSlide(editingSlide === idx ? null : idx); if (editingSlide !== idx) setPitchEdits(s => ({ ...s, [idx]: { content: slide.content } })); }} className="px-3 py-1 bg-white/5 hover:bg-white/10 text-white text-[8px] font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-1">
+                                                <Edit3 className="w-3 h-3" /> Edit
+                                            </button>
                                         </div>
+                                        {editingSlide === idx ? (
+                                            <textarea value={pitchEdits[idx]?.content ?? slide.content} onChange={(e) => setPitchEdits(s => ({ ...s, [idx]: { content: e.target.value } }))} className="w-full bg-black/20 rounded-xl p-4 text-lg text-white/90 border border-white/5 focus:border-[var(--color-accent)]/50 focus:ring-0 resize-none min-h-[120px]" />
+                                        ) : (
+                                            <div className="text-xl font-black text-white italic leading-relaxed uppercase tracking-tighter markdown-body">
+                                                {slide.content}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
                         )}
                     </div>
+
+                    {/* Feature 2: Pitch Deck Controls */}
+                    <div className="flex gap-4">
+                        <button onClick={() => {
+                            const newSlide = { slide: `Slide ${project.pitchDeck.length + 1}`, content: 'New slide content' };
+                            setProject(s => ({ ...s, pitchDeck: [...s.pitchDeck, newSlide] }));
+                        }} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                            <Plus className="w-4 h-4" /> Add Slide
+                        </button>
+                        <button onClick={() => {
+                            const printWin = window.open('', '_blank');
+                            if (!printWin) return;
+                            const slidesHtml = project.pitchDeck.map((s, i) => `
+                                <div style="page-break-after: always; padding: 40px; display: flex; flex-direction: column; justify-content: center; min-height: 100vh;">
+                                    <div style="color: #ff0000; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4em; margin-bottom: 20px; font-weight: 900;">${s.slide}</div>
+                                    <div style="font-size: 28px; font-weight: 900; font-style: italic; line-height: 1.4; color: #333;">${s.content}</div>
+                                </div>
+                            `).join('');
+                            printWin.document.write(`
+                                <html><head><title>Pitch Deck - ${project.name}</title>
+                                <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;900&display=swap" rel="stylesheet">
+                                <style>body { font-family: 'Tajawal', sans-serif; margin: 0; color: #333; }</style>
+                                </head><body>${slidesHtml}<div style="text-align:center;padding:20px"><button onclick="window.print()" style="background:#ff0000;color:white;border:none;padding:15px 30px;border-radius:50px;font-weight:bold;cursor:pointer;">Export PDF</button></div></body></html>
+                            `);
+                            printWin.document.close();
+                        }} className="px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-xs font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2">
+                            <FileText className="w-4 h-4" /> Export PDF
+                        </button>
+                    </div>
                 </div>
             )}
 
-            {project.activeTab === 'posts' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {project.activeTab === 'posts' && !calendarView && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Content Studio</h3>
+                        <button onClick={() => setCalendarView(true)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                            <Calendar className="w-4 h-4" /> Calendar View
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {(project.ideas || []).map((idea, idx) => (
                         <div key={idea.id} className="glass-card rounded-[2rem] overflow-hidden flex flex-col border border-white/5 group hover:border-[var(--color-accent)]/30 transition-all shadow-2xl animate-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: `${idx * 100}ms` }}>
                             <div className="aspect-[3/4] bg-black/40 relative overflow-hidden flex items-center justify-center">
@@ -911,9 +1273,112 @@ const PlanStudio: React.FC<{
                                         className="w-full bg-black/10 rounded-xl px-3 py-2 text-[10px] text-white/50 border border-dashed border-white/10 focus:border-white/30 focus:ring-0 resize-none"
                                     />
                                 </div>
+
+                                {/* Feature 4: Post Image Studio */}
+                                <div className="pt-4 border-t border-white/5 space-y-3">
+                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest flex items-center gap-2">
+                                        <Type className="w-3 h-3" /> Text Overlay
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={postEdits[idea.id]?.textOverlay || ''}
+                                            onChange={(e) => setPostEdits(s => ({ ...s, [idea.id]: { ...s[idea.id], textOverlay: e.target.value, brightness: s[idea.id]?.brightness ?? 0, contrast: s[idea.id]?.contrast ?? 0 } }))}
+                                            placeholder="Overlay text on image..."
+                                            className="flex-1 bg-black/20 rounded-xl px-3 py-2 text-[11px] text-white/70 border border-white/5"
+                                        />
+                                        <button onClick={() => {
+                                            const edit = postEdits[idea.id];
+                                            if (!edit?.textOverlay || !idea.image) return;
+                                            const canvas = document.createElement('canvas');
+                                            const ctx = canvas.getContext('2d');
+                                            if (!ctx) return;
+                                            const img = new Image();
+                                            img.onload = () => {
+                                                canvas.width = img.width;
+                                                canvas.height = img.height;
+                                                ctx.filter = `brightness(${1 + (edit.brightness || 0) / 100}) contrast(${1 + (edit.contrast || 0) / 100})`;
+                                                ctx.drawImage(img, 0, 0);
+                                                ctx.filter = 'none';
+                                                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                                                const fontSize = Math.max(20, canvas.width / 15);
+                                                ctx.font = `bold ${fontSize}px sans-serif`;
+                                                ctx.textAlign = 'center';
+                                                ctx.textBaseline = 'bottom';
+                                                const lines = edit.textOverlay.split('\n');
+                                                const lineHeight = fontSize * 1.3;
+                                                lines.forEach((line, li) => {
+                                                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                                                    const x = canvas.width / 2 + 2;
+                                                    const y = canvas.height - 40 - (lines.length - 1 - li) * lineHeight + 2;
+                                                    ctx.fillText(line, x, y);
+                                                    ctx.fillStyle = '#ffffff';
+                                                    ctx.fillText(line, canvas.width / 2, canvas.height - 40 - (lines.length - 1 - li) * lineHeight);
+                                                });
+                                                const dataUrl = canvas.toDataURL('image/png');
+                                                const byteString = dataUrl.split(',')[1];
+                                                const mimeType = 'image/png';
+                                                setProject(s => ({ ...s, ideas: s.ideas.map(ideaItem => ideaItem.id === idea.id ? { ...ideaItem, image: { base64: byteString, mimeType, name: 'overlay.png' } } : ideaItem) }));
+                                            };
+                                            img.src = `data:${idea.image.mimeType};base64,${idea.image.base64}`;
+                                        }} className="px-3 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white text-[9px] font-black rounded-xl uppercase tracking-widest transition-all">
+                                            Apply
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <Sun className="w-3 h-3 text-white/30" />
+                                            <input type="range" min={-100} max={100} value={postEdits[idea.id]?.brightness ?? 0} onChange={(e) => setPostEdits(s => ({ ...s, [idea.id]: { ...s[idea.id], textOverlay: s[idea.id]?.textOverlay || '', brightness: parseInt(e.target.value), contrast: s[idea.id]?.contrast ?? 0 } }))} className="flex-1 accent-[var(--color-accent)]" />
+                                            <span className="text-[8px] font-black text-white/30 w-8">{postEdits[idea.id]?.brightness ?? 0}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <Contrast className="w-3 h-3 text-white/30" />
+                                            <input type="range" min={-100} max={100} value={postEdits[idea.id]?.contrast ?? 0} onChange={(e) => setPostEdits(s => ({ ...s, [idea.id]: { ...s[idea.id], textOverlay: s[idea.id]?.textOverlay || '', brightness: s[idea.id]?.brightness ?? 0, contrast: parseInt(e.target.value) } }))} className="flex-1 accent-[var(--color-accent)]" />
+                                            <span className="text-[8px] font-black text-white/30 w-8">{postEdits[idea.id]?.contrast ?? 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ))}
+
+                    {/* Empty state */}
+                    {project.ideas.length === 0 && !project.isGeneratingPlan && (
+                        <div className="lg:col-span-3 py-24 text-center text-white/20 italic text-sm">Generate post ideas to see them here</div>
+                    )}
+                </div>
+                    </div>
+            )}
+
+            {project.activeTab === 'posts' && calendarView && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Calendar View</h3>
+                        <button onClick={() => setCalendarView(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black rounded-full uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2">
+                            <Layout className="w-4 h-4" /> Grid View
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-px bg-white/5 rounded-[32px] overflow-hidden border border-white/5">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                            <div key={day} className="bg-black/20 p-3 min-h-[150px]">
+                                <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">{day}</div>
+                                <div className="space-y-1">
+                                    {project.ideas.filter(idea => idea.schedule && idea.schedule.toLowerCase().includes(day.toLowerCase())).map(idea => (
+                                        <div key={idea.id} className="px-2 py-1 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 rounded text-[8px] font-bold text-white/70 leading-tight">
+                                            {idea.tov}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        <div className="col-span-7 bg-black/20 p-3">
+                            <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Unscheduled</div>
+                            <div className="flex flex-wrap gap-1">
+                                {project.ideas.filter(idea => !idea.schedule || !['mon','tue','wed','thu','fri','sat','sun'].some(d => idea.schedule.toLowerCase().includes(d))).map(idea => (
+                                    <span key={idea.id} className="px-2 py-1 bg-white/5 rounded text-[8px] font-bold text-white/40">{idea.tov}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -924,7 +1389,59 @@ const PlanStudio: React.FC<{
                             <h3 className="text-3xl font-black text-white italic uppercase tracking-tighter">Campaign Archives</h3>
                             <p className="text-xs text-white/30 font-black uppercase tracking-widest">History of Neural Strategies</p>
                         </div>
+                        {/* Feature 10: Multi-Plan Comparison */}
+                        <button onClick={() => setCompareView(!compareView)} className={cn("px-6 py-3 text-xs font-black rounded-full uppercase tracking-widest transition-all flex items-center gap-2", compareView ? "bg-[var(--color-accent)] text-white" : "bg-white/5 hover:bg-white/10 text-white border border-white/10")}>
+                            <GitCompare className="w-4 h-4" /> {compareView ? 'Show Archives' : 'Compare Plans'}
+                        </button>
                     </div>
+
+                    {compareView && (
+                        <div className="glass-card rounded-[2.5rem] p-8 border border-white/5 overflow-x-auto">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                                    <BarChart3 className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Multi-Plan Comparison</h3>
+                            </div>
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-white/5">
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Plan Name</th>
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Pillars</th>
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Personas</th>
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">SWOT Items</th>
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Roadmap Phases</th>
+                                        <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Posts</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {allProjects.map((p, i) => {
+                                        const pillarCount = p.pillars?.length || 0;
+                                        const personaCount = p.personas?.length || 0;
+                                        const swotCount = (p.swot?.strengths?.length || 0) + (p.swot?.weaknesses?.length || 0) + (p.swot?.opportunities?.length || 0) + (p.swot?.threats?.length || 0);
+                                        const roadmapCount = p.roadmap?.length || 0;
+                                        const postCount = p.ideas?.length || 0;
+                                        const completeness = pillarCount + personaCount + swotCount + roadmapCount + postCount;
+                                        return (
+                                            <tr key={p.id} className={cn("border-b border-white/5 transition-all", completeness > 10 ? "bg-emerald-500/5" : "bg-transparent")}>
+                                                <td className="p-3 text-xs font-bold text-white">
+                                                    <div className="flex items-center gap-2">
+                                                        {p.prompt || 'Untitled'}
+                                                        {completeness > 10 && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>}
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 text-xs text-white/50">{pillarCount}</td>
+                                                <td className="p-3 text-xs text-white/50">{personaCount}</td>
+                                                <td className="p-3 text-xs text-white/50">{swotCount}</td>
+                                                <td className="p-3 text-xs text-white/50">{roadmapCount}</td>
+                                                <td className="p-3 text-xs text-white/50">{postCount}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {allProjects.map((p, i) => (
