@@ -46,7 +46,9 @@ import {
     Users,
     Crosshair,
     BarChart3,
-    Eye
+    Eye,
+    Shield,
+    Image
 } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
@@ -887,6 +889,47 @@ const BrandingStudio: React.FC<{
                                 ))
                             )}
                         </div>
+
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Shield className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Trademark Check</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">AI evaluates brand name against known trademarks</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <input
+                                        value={(project as any)._trademarkName || project.name || ''}
+                                        onChange={e => setProject(s => ({ ...s, _trademarkName: e.target.value } as any))}
+                                        placeholder="Enter brand name to check"
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-3 text-sm text-white outline-none placeholder:text-white/20 font-mono"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            const name = (project as any)._trademarkName || project.name;
+                                            if (!name) return;
+                                            setProject(s => ({ ...s, isAnalyzing: true }));
+                                            try {
+                                                const { generateBrandStrategy } = await import('../services/geminiService');
+                                                const prompt = `Act as a trademark attorney. Evaluate the brand name "${name}" for potential trademark conflicts. Consider: phonetic similarity to existing trademarks, industry overlap, likelihood of confusion. Provide: 1) Risk level (Low/Medium/High) 2) Key concerns 3) Suggested alternative directions. Be specific about potential conflicts.`;
+                                                const result = await generateBrandStrategy(prompt, project.aiConfig);
+                                                setProject(s => ({ ...s, competitorAnalysis: (s.competitorAnalysis || '') + '\n\n--- Trademark Check: ' + name + ' ---\n' + result, isAnalyzing: false }));
+                                            } catch { setProject(s => ({ ...s, isAnalyzing: false })); }
+                                        }}
+                                        disabled={project.isAnalyzing}
+                                        className="px-8 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2 shrink-0"
+                                    >
+                                        <Shield className="w-3 h-3" />
+                                        {project.isAnalyzing ? 'Checking...' : 'Check Trademark'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/30">AI evaluates the brand name for potential trademark conflicts, phonetic similarity, and industry overlap. Results are appended to Competitor Analysis.</p>
+                            </div>
+                        </div>
                     </motion.div>
                 )}
 
@@ -1352,6 +1395,48 @@ const BrandingStudio: React.FC<{
                             </div>
                         </div>
 
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Layers className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Multi-Brand Workspace</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Save & switch between brand identities</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const snapshot = { id: Date.now().toString(), name: project.name || 'Untitled Brand', colors: [...project.colors], typography: { primary: project.typography?.primary || 'Inter', secondary: project.typography?.secondary || 'Inter' }, brandVoice: project.brandVoice || '', targetAudience: project.targetAudience || '', brandPersonality: project.brandPersonality || '', savedAt: new Date().toLocaleDateString() };
+                                            setProject(s => ({ ...s, brandSnapshots: [...s.brandSnapshots, snapshot] }));
+                                        }}
+                                        className="px-6 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2 shrink-0"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        Save Current Brand
+                                    </button>
+                                </div>
+                                {project.brandSnapshots.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {project.brandSnapshots.map(snap => (
+                                        <div key={snap.id} className="glass-card rounded-3xl p-6 border border-white/5 hover:border-[var(--color-accent)]/30 transition-all cursor-pointer group" onClick={() => setProject(s => ({ ...s, name: snap.name, colors: snap.colors, typography: snap.typography as any, brandVoice: snap.brandVoice, targetAudience: snap.targetAudience, brandPersonality: snap.brandPersonality }))}>
+                                            <div className="flex items-start justify-between mb-4">
+                                                <span className="text-[10px] font-black text-white/40 uppercase">{snap.name}</span>
+                                                <button onClick={e => { e.stopPropagation(); setProject(s => ({ ...s, brandSnapshots: s.brandSnapshots.filter(sn => sn.id !== snap.id) })); }} className="text-[8px] text-red-400/60 hover:text-red-400 font-black uppercase">X</button>
+                                            </div>
+                                            <div className="flex gap-1 mb-3">
+                                                {snap.colors.slice(0, 5).map((c, i) => <div key={i} className="w-5 h-5 rounded-full border border-white/10" style={{ background: c }} />)}
+                                            </div>
+                                            <p className="text-[7px] text-white/20 font-mono">{snap.savedAt}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                ) : (
+                                <p className="text-xs text-white/30">Save your current brand identity as a snapshot. Click any saved brand to instantly switch colors, typography, voice, audience, and personality.</p>
+                                )}
+                            </div>
+                        </div>
+
                         <BrandTools 
                             project={project}
                             setProject={setProject as any}
@@ -1398,6 +1483,18 @@ const BrandingStudio: React.FC<{
                                             >
                                                 <Download className="w-3 h-3" />
                                                 Export System (.MD)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const manual = project.brandManual || '# Brand Manual\n\nNo manual generated yet.';
+                                                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${project.name || 'Brand'} Style Guide</title><style>@page{size:A4;margin:2cm}body{font-family:Georgia,serif;color:#222;line-height:1.6;max-width:800px;margin:40px auto;padding:20px}h1{font-size:32px;border-bottom:3px solid #000;padding-bottom:10px;margin-top:40px}h2{font-size:24px;color:#555;margin-top:30px}h3{font-size:18px;margin-top:24px}p{margin:12px 0}@media print{body{margin:0;padding:0}}</style></head><body>${manual.split('\n').map(l => { if (l.startsWith('# ')) return '<h1>' + l.slice(2) + '</h1>'; if (l.startsWith('## ')) return '<h2>' + l.slice(3) + '</h2>'; if (l.startsWith('### ')) return '<h3>' + l.slice(4) + '</h3>'; if (l.trim() === '') return '<br>'; return '<p>' + l + '</p>'; }).join('\n')}</body></html>`;
+                                                    const w = window.open('', '_blank');
+                                                    if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 500); }
+                                                }}
+                                                className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2"
+                                            >
+                                                <FileText className="w-3 h-3" />
+                                                Export PDF
                                             </button>
                                         </div>
                                     </div>

@@ -316,6 +316,7 @@ const createNewBrandingStudioProject = (projectCount: number, ownerId: string): 
   tonePlayful: 40,
   toneWarm: 50,
   toneSimple: 50,
+  brandSnapshots: [],
 });
 
 const createNewCampaignProject = (projectCount: number, ownerId: string): CampaignStudioProject => ({

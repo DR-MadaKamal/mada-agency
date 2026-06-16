@@ -348,6 +348,9 @@ export interface BrandingStudioState {
   tonePlayful: number;
   toneWarm: number;
   toneSimple: number;
+
+  // Multi-Brand Workspace
+  brandSnapshots: { id: string; name: string; colors: string[]; typography: { primary: string; secondary: string }; brandVoice: string; targetAudience: string; brandPersonality: string; savedAt: string }[];
 }
 
 export interface BrandingStudioProject extends ProjectBase, BrandingStudioState {}
