@@ -543,6 +543,45 @@ export interface MarketingStudioState {
     
     isGenerating: boolean;
     error: string | null;
+
+    // --- Marketing Studio Feature Fields ---
+
+    // Feature 1: Campaign ROI Calculator
+    roiBudget: number;
+    roiReach: number;
+    roiConversionRate: number;
+    roiAov: number;
+    
+    // Feature 2: Content Calendar Kanban
+    kanbanItems: { id: string; title: string; status: 'draft' | 'review' | 'scheduled' | 'published'; platform: string; date: string; notes: string }[];
+    
+    // Feature 3: Ad Copy A/B Tester
+    abTestVariantA: string;
+    abTestVariantB: string;
+    abTestResult: string | null;
+
+    // Feature 4: Competitive Heat Map
+    heatMapCompetitors: string[];
+    heatMapScores: Record<string, Record<string, number>>;
+    
+    // Feature 5: Customer Persona Builder
+    personas: { id: string; name: string; age: string; gender: string; location: string; occupation: string; goals: string; painPoints: string; channels: string; avatar: string }[];
+    
+    // Feature 6: Marketing Funnel
+    funnelStages: { name: string; pct: number; color: string }[];
+    
+    // Feature 7: Social Post Scheduler
+    scheduledPosts: { id: string; day: string; platform: string; format: string; caption: string; hashtags: string; time: string }[];
+    
+    // Feature 8: Campaign Dashboard
+    dashboardMetrics: { label: string; value: string; change: string; trend: 'up' | 'down' | 'flat' }[];
+    
+    // Feature 9: Budget Allocator
+    budgetAllocations: Record<string, number>;
+    
+    // Feature 10: Automation Workflow
+    workflowNodes: { id: string; type: 'trigger' | 'action'; label: string; config: string }[];
+    workflowEdges: { from: string; to: string }[];
 }
 
 export interface MarketingStudioProject extends ProjectBase, MarketingStudioState {}
