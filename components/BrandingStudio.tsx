@@ -45,7 +45,8 @@ import {
     Plus,
     Users,
     Crosshair,
-    BarChart3
+    BarChart3,
+    Eye
 } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
@@ -1241,8 +1242,79 @@ const BrandingStudio: React.FC<{
                                 </div>
                             );
                         })()}
-                    </motion.div>
-                )}
+
+                                    {/* WCAG Color Contrast Checker */}
+                                    {project.colors.length >= 2 && (() => {
+                                        function luminance(hex: string): number {
+                                            const c = hexToHsl(hex);
+                                            const linearize = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+                                            const h = hex.replace('#', '');
+                                            const r = linearize(parseInt(h.substring(0, 2) || '00', 16));
+                                            const g = linearize(parseInt(h.substring(2, 4) || '00', 16));
+                                            const b = linearize(parseInt(h.substring(4, 6) || '00', 16));
+                                            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                                        }
+                                        function contrastRatio(a: string, b: string): number {
+                                            const la = luminance(a), lb = luminance(b);
+                                            return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+                                        }
+                                        function wcagLevel(ratio: number): { level: string; pass: boolean } {
+                                            if (ratio >= 7) return { level: 'AAA', pass: true };
+                                            if (ratio >= 4.5) return { level: 'AA', pass: true };
+                                            if (ratio >= 3) return { level: 'AA Large', pass: true };
+                                            return { level: 'Fail', pass: false };
+                                        }
+
+                                        const combos: { a: string; b: string; ratio: number; level: { level: string; pass: boolean } }[] = [];
+                                        for (let i = 0; i < project.colors.length; i++) {
+                                            for (let j = i + 1; j < project.colors.length; j++) {
+                                                const ratio = contrastRatio(project.colors[i], project.colors[j]);
+                                                combos.push({ a: project.colors[i], b: project.colors[j], ratio, level: wcagLevel(ratio) });
+                                            }
+                                            const wRatio = contrastRatio(project.colors[i], '#ffffff');
+                                            combos.push({ a: project.colors[i], b: '#ffffff', ratio: wRatio, level: wcagLevel(wRatio) });
+                                            const bRatio = contrastRatio(project.colors[i], '#000000');
+                                            combos.push({ a: project.colors[i], b: '#000000', ratio: bRatio, level: wcagLevel(bRatio) });
+                                        }
+
+                                        return (
+                                            <div className="glass-card rounded-[40px] p-10 md:p-12 border border-white/5 relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
+                                                    <Eye className="w-64 h-64" />
+                                                </div>
+                                                <div className="space-y-6 relative z-10">
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-2xl font-black text-white italic uppercase tracking-tighter">Color Accessibility</h4>
+                                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">WCAG 2.1 Contrast Ratios</p>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {combos.map((c, i) => (
+                                                            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                                                                <div className="flex -space-x-2 shrink-0">
+                                                                    <div className="w-8 h-8 rounded-full border-2 border-white/10" style={{ backgroundColor: c.a }} />
+                                                                    <div className="w-8 h-8 rounded-full border-2 border-white/10" style={{ backgroundColor: c.b }} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="text-[9px] font-mono text-white/40 truncate">{c.a}</span>
+                                                                        <span className="text-[8px] text-white/20">vs</span>
+                                                                        <span className="text-[9px] font-mono text-white/40 truncate">{c.b}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3 mt-1">
+                                                                        <span className="text-[11px] font-bold text-white/70">{c.ratio.toFixed(2)}:1</span>
+                                                                        <span className={cn("text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded", c.level.pass ? (c.level.level === 'AAA' ? 'text-emerald-400 bg-emerald-500/10' : 'text-blue-400 bg-blue-500/10') : 'text-red-400 bg-red-500/10')}>{c.level.level}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                </motion.div>
+                            )}
 
                 {project.activeTab === 'history' && (
                     <motion.div
