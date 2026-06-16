@@ -44,7 +44,8 @@ import {
     Zap,
     Plus,
     Users,
-    Crosshair
+    Crosshair,
+    BarChart3
 } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { CommentsOverlay } from './CommentsOverlay';
@@ -561,6 +562,7 @@ const BrandingStudio: React.FC<{
                         { id: 'mockups', label: 'Mockups', icon: Layout },
                         { id: 'tools', label: 'Tools', icon: Sparkles },
                         { id: 'guidelines', label: 'Guidelines', icon: BookOpen },
+                        { id: 'audit', label: 'Audit', icon: BarChart3 },
                         { id: 'history', label: 'History', icon: Briefcase }
                     ].map(tab => (
                         <button
@@ -1162,6 +1164,83 @@ const BrandingStudio: React.FC<{
                                 </motion.button>
                             ))}
                         </div>
+                    </motion.div>
+                )}
+
+                {project.activeTab === 'audit' && (
+                    <motion.div
+                        key="audit"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-8"
+                    >
+                        {(() => {
+                            const score = {
+                                logo: project.logos.length > 0 ? 20 : 0,
+                                colors: project.colors.length >= 2 ? 20 : project.colors.length === 1 ? 10 : 0,
+                                typography: project.typography ? 15 : 0,
+                                voice: project.brandVoice && project.brandArchetype ? 15 : project.brandVoice || project.brandArchetype ? 8 : 0,
+                                mission: project.missionStatement && project.visionStatement && project.coreValues.length > 0 ? 15 : 10,
+                                competitor: project.competitorAnalysis ? 5 : 0,
+                                manual: project.brandManual ? 5 : 0,
+                                story: project.brandStory || project.brandPersona ? 5 : 0,
+                            };
+                            const total = score.logo + score.colors + score.typography + score.voice + score.mission + score.competitor + score.manual + score.story;
+
+                            const categories = [
+                                { key: 'logo', label: 'Logo', max: 20, value: score.logo, tip: !project.logos.length ? 'Upload at least one logo mark' : null },
+                                { key: 'colors', label: 'Colors', max: 20, value: score.colors, tip: project.colors.length < 2 ? 'Define at least 2 brand colors' : null },
+                                { key: 'typography', label: 'Typography', max: 15, value: score.typography, tip: !project.typography ? 'Set primary & secondary fonts' : null },
+                                { key: 'voice', label: 'Voice & Archetype', max: 15, value: score.voice, tip: !project.brandVoice || !project.brandArchetype ? 'Define brand voice and archetype' : null },
+                                { key: 'mission', label: 'Mission / Vision / Values', max: 15, value: score.mission, tip: !project.missionStatement || !project.visionStatement || !project.coreValues.length ? 'Complete mission, vision, and values' : null },
+                                { key: 'competitor', label: 'Competitor Analysis', max: 5, value: score.competitor, tip: !project.competitorAnalysis ? 'Run competitor analysis in Strategy tab' : null },
+                                { key: 'manual', label: 'Brand Manual', max: 5, value: score.manual, tip: !project.brandManual ? 'Generate brand manual in Guidelines tab' : null },
+                                { key: 'story', label: 'Story & Persona', max: 5, value: score.story, tip: !project.brandStory && !project.brandPersona ? 'Create brand story or persona' : null },
+                            ];
+
+                            const grade = total >= 90 ? 'A' : total >= 75 ? 'B' : total >= 55 ? 'C' : total >= 35 ? 'D' : 'F';
+                            const gradeColor = total >= 90 ? 'text-emerald-400' : total >= 75 ? 'text-blue-400' : total >= 55 ? 'text-amber-400' : total >= 35 ? 'text-orange-400' : 'text-red-400';
+
+                            return (
+                                <div className="space-y-8">
+                                    <div className="glass-card rounded-[40px] p-10 md:p-12 border border-white/5 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
+                                            <BarChart3 className="w-64 h-64" />
+                                        </div>
+                                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-12 relative z-10">
+                                            <div className="space-y-2">
+                                                <h3 className="text-4xl font-black text-white italic uppercase tracking-tighter">Brand Audit</h3>
+                                                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.5em]">Identity Health Scorecard</p>
+                                            </div>
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-center">
+                                                    <div className={`text-7xl font-black italic ${gradeColor}`}>{grade}</div>
+                                                    <div className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">{total}/100</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                                            {categories.map(cat => (
+                                                <div key={cat.key} className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">{cat.label}</span>
+                                                        <span className="text-[11px] font-bold text-white/30">{cat.value}/{cat.max}</span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(cat.value / cat.max) * 100}%`, background: cat.value === cat.max ? '#22c55e' : cat.value > cat.max / 2 ? 'var(--color-accent)' : '#f97316' }} />
+                                                    </div>
+                                                    {cat.tip && (
+                                                        <p className="text-[8px] font-medium text-white/20 italic">&rarr; {cat.tip}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </motion.div>
                 )}
 

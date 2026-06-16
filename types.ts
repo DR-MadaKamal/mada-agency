@@ -334,7 +334,7 @@ export interface BrandingStudioState {
   isGenerating: boolean;
   isGeneratingNaming: boolean;
   aspectRatio: AspectRatio;
-  activeTab: 'strategy' | 'naming' | 'visuals' | 'mockups' | 'guidelines' | 'history' | 'tools';
+  activeTab: 'strategy' | 'naming' | 'visuals' | 'mockups' | 'guidelines' | 'history' | 'tools' | 'audit';
   
   // Brand evolution tools
   brandToolsSection: string;
