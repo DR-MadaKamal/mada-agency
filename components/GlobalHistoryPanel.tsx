@@ -26,7 +26,9 @@ const STUDIO_INFO: Record<AppView, { label: string; icon: any; color: string }> 
     admin_studio: { label: 'Control', icon: Filter, color: 'text-white' },
     archives: { label: 'Archives', icon: History, color: 'text-slate-400' },
     asset_library: { label: 'Vault', icon: Layers, color: 'text-cyan-400' },
-    command_center: { label: 'Command', icon: Zap, color: 'text-amber-400' }
+    command_center: { label: 'Command', icon: Zap, color: 'text-amber-400' },
+    calendar: { label: 'Calendar', icon: Calendar, color: 'text-sky-400' },
+    pre_pilot_studio: { label: 'PrePilot', icon: Rocket, color: 'text-blue-500' },
 };
 
 const GlobalHistoryPanel: React.FC = () => {

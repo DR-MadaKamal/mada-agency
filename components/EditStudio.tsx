@@ -416,7 +416,7 @@ toast({ type: 'error', title: 'Generation failed', message: err instanceof Error
                                                         setSelectedTextId(null);
                                                         setSelectionMarquee(null);
                                                     }
-                                                    if (item === '3D') { setRightPanelTab('3d'); setActiveTool('3d'); }
+                                                    if (item === '3D') { setRightPanelTab('3d'); }
                                                     if (item === 'Rulers') setShowRulers(s => !s);
                                                     if (item === 'Grid') setShowGrid(s => !s);
                                                     if (item === 'Fit on Screen') { setCanvasPos({ x: 0, y: 0 }); setZoomLevel(100); }

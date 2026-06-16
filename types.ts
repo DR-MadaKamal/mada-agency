@@ -112,7 +112,7 @@ export interface AssistantSession {
     updatedAt: Date;
 }
 
-export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar';
+export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar' | 'pre_pilot_studio';
 
 export interface PrePilotAgent {
     id: string;
@@ -476,6 +476,7 @@ export interface MarketingStudioState {
     monthlyBudget?: string;
     competitorStrategy?: string;
     customerPainPoints?: string;
+    economicImpact?: string;
     campaignType?: string;
     
     // Detailed Research & SWOT Inputs

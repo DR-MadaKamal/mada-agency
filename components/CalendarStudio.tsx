@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   title: string;
   date: string;
@@ -46,7 +46,7 @@ export const CalendarStudio: React.FC<CalendarStudioProps> = ({ events, onAddEve
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterType, setFilterType] = useState<string | null>(null);
 
-  const [newEvent, setNewEvent] = useState({ title: '', type: 'campaign' as const, studioType: 'marketing_studio', description: '' });
+  const [newEvent, setNewEvent] = useState<{ title: string; type: string; studioType: string; description: string }>({ title: '', type: 'campaign', studioType: 'marketing_studio', description: '' });
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();

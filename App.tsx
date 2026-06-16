@@ -307,6 +307,11 @@ const createNewBrandingStudioProject = (projectCount: number, ownerId: string): 
   aspectRatio: '1:1',
   activeTab: 'strategy',
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
+  brandToolsSection: 'strategy',
+  brandToolsSubTab: 'overview',
+  brandToolsResults: {},
+  brandToolsIsGenerating: false,
+  brandToolsError: null,
 });
 
 const createNewCampaignProject = (projectCount: number, ownerId: string): CampaignStudioProject => ({
@@ -435,6 +440,13 @@ const createNewMarketingProject = (projectCount: number, ownerId: string): Marke
     isGenerating: false,
     aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash' },
     error: null,
+    customerPainPoints: '',
+    economicImpact: '',
+    contentSection: 'content',
+    contentSubTab: 'overview',
+    contentResults: {},
+    contentIsGenerating: false,
+    contentError: null,
 });
 
 const createNewPrePilotProject = (projectCount: number, ownerId: string): PrePilotAgencySuiteProject => ({
@@ -751,7 +763,7 @@ function App() {
       scrollToContent();
   };
 
-  const updateSystemConfig = (updates: Partial<typeof systemConfig>) => {
+  const updateSystemConfig = async (updates: any): Promise<void> => {
     setSystemConfig(prev => ({ ...prev, ...updates }));
   };
 

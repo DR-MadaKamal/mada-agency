@@ -541,7 +541,7 @@ const BrandingStudio: React.FC<{
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <ShareableLink projectId={project.id} />
+                    <ShareableLink projectId={project.id} projectName={project.name} />
                     <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
                     <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(() => v.snapshot); setCurrentVersionId(v.id); }} onUndo={handleUndo} onRedo={handleRedo} canUndo={versions.length > 1} canRedo={redoStack.length > 0} />
                     <button

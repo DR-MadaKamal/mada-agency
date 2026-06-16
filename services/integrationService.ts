@@ -4,6 +4,7 @@ export interface AiCallParams {
     prompt: string;
     systemInstruction?: string;
     history?: { role: string; content: string }[];
+    signal?: AbortSignal;
 }
 
 export class IntegrationService {

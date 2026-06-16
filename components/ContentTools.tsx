@@ -525,7 +525,7 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
         .replace(/\{\{brief\}\}/g, brief)
         .replace(/\{\{language\}\}/g, language === 'ar' ? 'Arabic' : 'English');
       const override = toolProvider || aiConfig;
-      const result = await call(prompt, { provider: override.provider, modelId: override.modelId, fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as any });
+      const result = await call(prompt, { provider: override.provider as 'google' | 'openai' | 'anthropic', modelId: override.modelId, fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as ('google' | 'openai' | 'anthropic')[] });
       setProject(p => ({ ...p, contentResults: { ...(p.contentResults || {}), [t.id]: result }, contentSubTab: t.id }));
       toast({ type: 'success', title: `${t.label} generated` });
     } catch (err: any) {

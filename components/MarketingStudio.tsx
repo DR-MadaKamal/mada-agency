@@ -97,7 +97,7 @@ const MarketingStudio: React.FC<{
 
     const activeTab = project.activeTab || 'strategy';
 
-    const setTab = (tab: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan') => {
+    const setTab = (tab: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan' | 'content' | 'agents') => {
         setProject(s => ({ ...s, activeTab: tab }));
     };
 
