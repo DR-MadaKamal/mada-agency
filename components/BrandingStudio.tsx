@@ -1022,6 +1022,43 @@ const BrandingStudio: React.FC<{
                             </div>
                         </div>
 
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Image className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Moodboard-to-Brand</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Upload reference images — AI extracts palette, fonts & style</p>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (project.logos.length === 0) return;
+                                            setProject(s => ({ ...s, isAnalyzing: true }));
+                                            try {
+                                                const { generateBrandStrategy } = await import('../services/geminiService');
+                                                const prompt = `Analyze this reference image for brand identity. Extract: 1) A color palette of 5 hex colors 2) 2-3 Google font pairings 3) 5 visual style keywords. Return format: COLORS: #hex1, #hex2, #hex3, #hex4, #hex5 | FONTS: font1, font2 | STYLE: keyword1, keyword2, keyword3, keyword4, keyword5`;
+                                                const result = await generateBrandStrategy(prompt, project.aiConfig);
+                                                const colors = result.match(/#[0-9a-fA-F]{6}/g) || [];
+                                                const fontsMatch = result.match(/FONTS:\s*(.+?)(?:\||$)/);
+                                                const fonts = fontsMatch ? fontsMatch[1].split(',').map(f => f.trim()) : [];
+                                                const styleMatch = result.match(/STYLE:\s*(.+?)(?:\||$)/);
+                                                const styles = styleMatch ? styleMatch[1].split(',').map(s => s.trim()) : ['Modern', 'Minimal', 'Bold', 'Clean', 'Timeless'];
+                                                setProject(s => ({ ...s, colors: colors.length >= 3 ? colors.slice(0, 5) : s.colors, typography: { primary: fonts[0] || s.typography?.primary || 'Inter', secondary: fonts[1] || s.typography?.secondary || 'Inter' } as any, brandPersonality: styles.join(', '), isAnalyzing: false }));
+                                            } catch { setProject(s => ({ ...s, isAnalyzing: false })); }
+                                        }}
+                                        disabled={project.isAnalyzing}
+                                        className="px-6 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2"
+                                    >
+                                        <Sparkles className="w-3 h-3" />
+                                        {project.isAnalyzing ? 'Analyzing...' : 'Extract Brand DNA'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/30 max-w-2xl">Upload a reference image via the logo upload in the Mockups tab, then click "Extract Brand DNA" to auto-generate a color palette, font pairings, and visual style keywords inspired by the image.</p>
+                            </div>
+                        </div>
+
                         {project.logos.length > 0 && (
                         <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
