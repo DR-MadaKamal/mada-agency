@@ -1382,6 +1382,83 @@ const PlanStudio: React.FC<{
                 </div>
             )}
 
+            {/* Feature 5: Content Calendar Export */}
+            {project.activeTab === 'posts' && (
+                <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <Download className="w-5 h-5 text-[var(--color-accent)]" />
+                            <h3 className="text-lg font-black text-white uppercase tracking-tight">Content Calendar Export</h3>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => {
+                                const csv = ['Day,Content,Tone,Platform'];
+                                const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+                                days.forEach(day => {
+                                    project.ideas.filter(i => i.schedule?.toLowerCase().includes(day.toLowerCase())).forEach(i => {
+                                        csv.push(`${day},"${i.scenario || ''}","${i.tov || ''}",${i.platform || 'N/A'}`);
+                                    });
+                                });
+                                const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url; a.download = 'content-calendar.csv'; a.click();
+                                URL.revokeObjectURL(url);
+                            }} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2">
+                                <FileText className="w-3 h-3" /> Export CSV
+                            </button>
+                            <button onClick={() => {
+                                let md = `# Content Calendar\n\n| Day | Content | Tone | Platform |\n| --- | --- | --- | --- |\n`;
+                                const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+                                days.forEach(day => {
+                                    project.ideas.filter(i => i.schedule?.toLowerCase().includes(day.toLowerCase())).forEach(i => {
+                                        md += `| ${day} | ${i.scenario || ''} | ${i.tov || ''} | ${i.platform || 'N/A'} |\n`;
+                                    });
+                                });
+                                const blob = new Blob([md], { type: 'text/markdown' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url; a.download = 'content-calendar.md'; a.click();
+                                URL.revokeObjectURL(url);
+                            }} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2">
+                                <FileText className="w-3 h-3" /> Export MD
+                            </button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b border-white/5">
+                                    <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Day</th>
+                                    <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Content</th>
+                                    <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Tone</th>
+                                    <th className="p-3 text-[9px] font-black text-white/40 uppercase tracking-widest">Platform</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => {
+                                    const dayItems = project.ideas.filter(i => i.schedule?.toLowerCase().includes(day.toLowerCase()));
+                                    if (dayItems.length === 0) return (
+                                        <tr key={day} className="border-b border-white/5">
+                                            <td className="p-3 text-[10px] font-black text-white/30">{day}</td>
+                                            <td colSpan={3} className="p-3 text-[9px] text-white/20 italic">No content scheduled</td>
+                                        </tr>
+                                    );
+                                    return dayItems.map((i, idx) => (
+                                        <tr key={`${day}-${idx}`} className="border-b border-white/5">
+                                            {idx === 0 && <td className="p-3 text-[10px] font-black text-white/30" rowSpan={dayItems.length}>{day}</td>}
+                                            <td className="p-3 text-[9px] text-white/70">{i.scenario || '-'}</td>
+                                            <td className="p-3 text-[8px] text-white/40 uppercase tracking-widest">{i.tov || '-'}</td>
+                                            <td className="p-3 text-[8px] text-white/40 uppercase tracking-widest">{i.platform || '-'}</td>
+                                        </tr>
+                                    ));
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {project.activeTab === 'history' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex justify-between items-center">
