@@ -310,6 +310,9 @@ export interface VoiceOverStudioState {
   voiceGenderFilter: 'All' | 'Male' | 'Female';
   previewLoadingVoice: string | null;
   previewPlayingVoice: string | null;
+  speechSpeed: number;
+  speechPitch: number;
+  historySearch: string;
 }
 
 export interface VoiceOverStudioProject extends ProjectBase, VoiceOverStudioState {}

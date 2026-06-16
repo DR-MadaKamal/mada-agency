@@ -219,9 +219,29 @@ const VoiceOverStudio: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left: Controls */}
                 <div className="glass-card rounded-2xl p-4 space-y-4">
-                    <div>
-                        <label htmlFor="vo-text" className="block text-sm font-medium text-[var(--color-text-medium)] mb-2">Text to Generate</label>
-                        <textarea id="vo-text" value={project.text} onChange={e => setProject({...project, text: e.target.value})} rows={6} className="w-full glass-input rounded-md p-3 text-sm leading-relaxed" placeholder="Enter your script here..."/>
+                    <div className="flex items-center justify-between">
+                        <label htmlFor="vo-text" className="block text-sm font-medium text-[var(--color-text-medium)]">Text to Generate</label>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-[var(--color-text-muted)] font-mono">{project.text.length} chars | {project.text.split(/\s+/).filter(Boolean).length} words</span>
+                            {project.text && <button onClick={() => setProject(s => ({...s, text: ''}))} className="text-xs text-red-400/60 hover:text-red-400">&times;</button>}
+                        </div>
+                    </div>
+                    <textarea id="vo-text" value={project.text} onChange={e => setProject({...project, text: e.target.value})} rows={6} className="w-full glass-input rounded-md p-3 text-sm leading-relaxed" placeholder="Enter your script here..."/>
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <label className="text-xs text-[var(--color-text-muted)] block mb-1">Speed: {project.speechSpeed}%</label>
+                            <input type="range" min={25} max={200} value={project.speechSpeed} onChange={e => setProject(s => ({...s, speechSpeed: +e.target.value}))} className="w-full accent-[var(--color-accent)]" />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs text-[var(--color-text-muted)] block mb-1">Pitch: {project.speechPitch}%</label>
+                            <input type="range" min={25} max={200} value={project.speechPitch} onChange={e => setProject(s => ({...s, speechPitch: +e.target.value}))} className="w-full accent-[var(--color-accent)]" />
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => navigator.clipboard.writeText(project.text)} disabled={!project.text} className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-[var(--color-text-secondary)] transition-all disabled:opacity-30">Copy Text</button>
+                        <button onClick={() => setProject(s => ({...s, styleInstructions: '', selectedVoice: VOICES[0].value, generatedAudio: null}))} className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-[var(--color-text-secondary)] transition-all">Reset</button>
+                        <div className="flex-1" />
+                        <span className="text-xs text-[var(--color-text-muted)] self-center font-mono">Est: ~{Math.ceil(project.text.split(/\s+/).filter(Boolean).length / 2.5)}s</span>
                     </div>
                     <div>
                         <label htmlFor="vo-style" className="block text-sm font-medium text-[var(--color-text-medium)] mb-2">Style Instructions / Dialect</label>
@@ -351,14 +371,17 @@ const VoiceOverStudio: React.FC<{
                         </div>
                     </div>
                     <div className="glass-card rounded-2xl p-4 flex-grow flex flex-col">
-                        <h3 className="text-lg font-bold text-[var(--color-text-base)] mb-2">History</h3>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-bold text-[var(--color-text-base)]">History</h3>
+                            <input value={project.historySearch} onChange={e => setProject(s => ({...s, historySearch: e.target.value}))} placeholder="Search..." className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white outline-none placeholder:text-white/20" />
+                        </div>
                         {project.history.length === 0 ? (
                             <div className="flex-grow flex items-center justify-center">
                                 <p className="text-center text-sm text-[var(--color-text-secondary)] py-8">Your audio history is empty.</p>
                             </div>
                         ) : (
                             <div className="space-y-2 max-h-96 overflow-y-auto suggestions-scrollbar pr-2">
-                                {project.history.map((item, index) => (
+                                {project.history.filter(item => !project.historySearch || item.text.toLowerCase().includes(project.historySearch.toLowerCase())).map((item, index) => (
                                     <div key={index} className="flex items-center gap-3 p-2 bg-black/20 rounded-lg">
                                        <button onClick={() => playAudio(item.audio)} className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-[rgba(var(--color-accent-rgb),0.3)] text-white hover:bg-[rgba(var(--color-accent-rgb),0.5)] transition-colors"><PlayIcon /></button>
                                        <div className="flex-1 overflow-hidden">

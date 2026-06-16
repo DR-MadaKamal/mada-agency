@@ -290,6 +290,9 @@ const createNewVoiceOverStudioProject = (projectCount: number, ownerId: string):
   voiceGenderFilter: 'All',
   previewLoadingVoice: null,
   previewPlayingVoice: null,
+  speechSpeed: 50,
+  speechPitch: 50,
+  historySearch: '',
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash' },
 });
 
