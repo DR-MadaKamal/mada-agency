@@ -105,6 +105,26 @@ export default {
       }
     }
 
+    if (url.pathname === "/scrape" && request.method === "POST") {
+      let targetUrl = '';
+      try { ({ url: targetUrl } = await request.json() as { url: string }); } catch { return new Response("Bad request", { status: 400 }); }
+      if (!targetUrl) return new Response("Missing url", { status: 400 });
+      try {
+        const res = await fetch(targetUrl, { headers: { 'User-Agent': 'MadaAgency/1.0' } });
+        const html = await res.text();
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 8000);
+        return new Response(JSON.stringify({ text, title: html.match(/<title>([^<]*)<\/title>/i)?.[1] || '' }), { headers: { "Content-Type": "application/json" } });
+      } catch (e: any) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 502, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     return new Response("Agent Worker", { status: 200 });
   },
 } satisfies ExportedHandler<Env>;

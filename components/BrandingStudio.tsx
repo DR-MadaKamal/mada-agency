@@ -1301,6 +1301,57 @@ const BrandingStudio: React.FC<{
                         exit={{ opacity: 0, y: -20 }}
                         className="space-y-8"
                     >
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Globe className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Brand Style Scrape</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Enter a competitor URL → AI extracts brand style signals</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <input
+                                        value={project.brandToolsSection === 'scrape' ? (project as any)._scrapeUrl || '' : ''}
+                                        onChange={e => setProject(s => ({ ...s, brandToolsSection: 'scrape', _scrapeUrl: e.target.value } as any))}
+                                        placeholder="https://competitor.com"
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-3 text-sm text-white outline-none placeholder:text-white/20 font-mono"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            const scrapeUrl = (project as any)._scrapeUrl;
+                                            if (!scrapeUrl) return;
+                                            setProject(s => ({ ...s, isAnalyzing: true }));
+                                            try {
+                                                const workerUrl = 'https://mada-agency-agents.16491.workers.dev';
+                                                const scrapeRes = await fetch(`${workerUrl}/scrape`, {
+                                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ url: scrapeUrl }),
+                                                });
+                                                if (!scrapeRes.ok) throw new Error('Scrape failed');
+                                                const { text, title } = await scrapeRes.json();
+                                                if (!text) throw new Error('No content extracted');
+                                                const { generateBrandStrategy } = await import('../services/geminiService');
+                                                const prompt = `Analyze this website content for brand identity. Extract: brand name, tagline, primary colors (hex), font families used, brand voice/adjectives, target audience signals, and visual style keywords. Return as labeled sections.\n\nWebsite title: ${title}\n\nContent:\n${text.slice(0, 4000)}`;
+                                                const result = await generateBrandStrategy(prompt, project.aiConfig);
+                                                const colors = result.match(/#[0-9a-fA-F]{6}/g) || [];
+                                                const lines = result.split('\n').filter(l => l.trim());
+                                                setProject(s => ({ ...s, competitorAnalysis: (s.competitorAnalysis || '') + '\n\n--- Scraped from: ' + scrapeUrl + ' ---\n' + result, colors: colors.length >= 3 ? colors.slice(0, 5) : s.colors, isAnalyzing: false }));
+                                            } catch { setProject(s => ({ ...s, isAnalyzing: false })); }
+                                        }}
+                                        disabled={project.isAnalyzing}
+                                        className="px-8 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2 shrink-0"
+                                    >
+                                        <Sparkles className="w-3 h-3" />
+                                        {project.isAnalyzing ? 'Scraping...' : 'Scrape & Analyze'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/30">Scrapes the URL content, extracts brand identity signals via AI (colors, fonts, tone, audience, style), and populates the Competitor Analysis field + color palette.</p>
+                            </div>
+                        </div>
+
                         <BrandTools 
                             project={project}
                             setProject={setProject as any}
