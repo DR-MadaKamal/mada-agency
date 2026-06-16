@@ -235,6 +235,15 @@ export interface PhotoshootState {
   error: string | null;
   isUploading: boolean;
   customStylePrompt: string;
+  aspectRatio: string;
+  bgColor: string;
+  outputQuality: string;
+  autoEnhance: boolean;
+  shotNotes: string;
+  showContactSheet: boolean;
+  showCompare: boolean;
+  quickPreset: string;
+  generationTimestamps: string[];
 }
 
 export interface PhotoshootDirectorProject extends ProjectBase, PhotoshootState {}

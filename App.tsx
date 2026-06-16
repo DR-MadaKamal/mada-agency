@@ -235,6 +235,15 @@ const createNewPhotoshootProject = (projectCount: number, ownerId: string): Phot
   error: null,
   isUploading: false,
   customStylePrompt: '',
+  aspectRatio: '1:1',
+  bgColor: '#ffffff',
+  outputQuality: 'standard',
+  autoEnhance: false,
+  shotNotes: '',
+  showContactSheet: false,
+  showCompare: false,
+  quickPreset: '',
+  generationTimestamps: [],
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
 });
 

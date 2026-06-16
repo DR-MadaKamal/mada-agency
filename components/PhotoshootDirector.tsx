@@ -8,6 +8,7 @@ import ImageWorkspace from './ImageWorkspace';
 import ShotTypeSelector from './ShotTypeSelector';
 import ResultsGrid from './ResultsGrid';
 import AISelector from './AISelector';
+import { Download, Image as ImageIcon, Layout, Palette, RefreshCw, Maximize2, Grid, Sliders, Clock, Bookmark } from 'lucide-react';
 
 interface PhotoshootDirectorProps {
   project: PhotoshootDirectorProject;
@@ -72,7 +73,7 @@ const PhotoshootDirector: React.FC<PhotoshootDirectorProps> = ({ project, setPro
       }
     });
     
-    setProject(s => ({ ...s, isGenerating: false }));
+    setProject(s => ({ ...s, isGenerating: false, generationTimestamps: [...s.generationTimestamps, new Date().toLocaleTimeString()] }));
   }, [project, setProject]);
 
   const handleEditResult = async (index: number, prompt: string) => {
@@ -221,6 +222,50 @@ const PhotoshootDirector: React.FC<PhotoshootDirectorProps> = ({ project, setPro
             customStylePrompt={project.customStylePrompt}
             onCustomStylePromptChange={(prompt) => setProject(s => ({...s, customStylePrompt: prompt }))}
           />
+          <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Shot Config</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[7px] font-black text-white/30 uppercase tracking-widest block mb-1">Aspect</label>
+                <select value={project.aspectRatio} onChange={e => setProject(s => ({ ...s, aspectRatio: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none">
+                  {['1:1','16:9','9:16','4:3','3:4'].map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[7px] font-black text-white/30 uppercase tracking-widest block mb-1">Quality</label>
+                <select value={project.outputQuality} onChange={e => setProject(s => ({ ...s, outputQuality: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none">
+                  <option value="standard">Standard</option>
+                  <option value="high">High</option>
+                  <option value="ultra">Ultra</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-[7px] font-black text-white/30 uppercase tracking-widest">BG</label>
+                <input type="color" value={project.bgColor} onChange={e => setProject(s => ({ ...s, bgColor: e.target.value }))} className="w-8 h-8 rounded-lg border border-white/10 cursor-pointer bg-transparent" />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[7px] font-black text-white/30 uppercase tracking-widest">Enhance</label>
+                <button onClick={() => setProject(s => ({ ...s, autoEnhance: !s.autoEnhance }))} className={`px-3 py-1.5 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${project.autoEnhance ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                  {project.autoEnhance ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <input value={project.shotNotes} onChange={e => setProject(s => ({ ...s, shotNotes: e.target.value }))} placeholder="Shot notes / instructions..." className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-[9px] text-white/60 outline-none placeholder:text-white/20" />
+            </div>
+            <div className="flex gap-2">
+              {['Studio','Natural','Dramatic','Soft'].map(p => (
+                <button key={p} onClick={() => setProject(s => ({ ...s, quickPreset: s.quickPreset === p ? '' : p }))} className={`px-3 py-1.5 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${project.quickPreset === p ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="w-full px-4 py-2">
             <button
                 onClick={onGenerate}
@@ -237,12 +282,60 @@ const PhotoshootDirector: React.FC<PhotoshootDirectorProps> = ({ project, setPro
           <div className="flex flex-col flex-grow glass-card rounded-2xl p-4">
               <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold text-[var(--color-text-base)]">3. Generated Results</h3>
+                  <div className="flex gap-2">
+                    {project.results.some(r => r.image) && (
+                      <button onClick={() => {
+                        project.results.forEach((r, i) => {
+                          if (!r.image) return;
+                          const a = document.createElement('a');
+                          a.href = `data:${r.image.mimeType};base64,${r.image.base64}`;
+                          a.download = `shot-${i+1}-${r.shotType.replace(/\s+/g, '-')}.${r.image.mimeType.split('/')[1] || 'png'}`;
+                          a.click();
+                        });
+                      }} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[8px] font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1">
+                        <Download className="w-3 h-3" /> Download All
+                      </button>
+                    )}
+                    <button onClick={() => setProject(s => ({ ...s, showContactSheet: !s.showContactSheet }))} className={`px-3 py-1.5 rounded-lg text-[8px] font-bold border transition-all flex items-center gap-1 ${project.showContactSheet ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
+                      <Grid className="w-3 h-3" /> Sheet
+                    </button>
+                    {project.results.some(r => r.image) && <button onClick={() => setProject(s => ({ ...s, showCompare: !s.showCompare }))} className={`px-3 py-1.5 rounded-lg text-[8px] font-bold border transition-all flex items-center gap-1 ${project.showCompare ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
+                      <Maximize2 className="w-3 h-3" /> Compare
+                    </button>}
+                  </div>
               </div>
                {project.error && <div className="mb-4 bg-[rgba(var(--color-accent-rgb),0.2)] border border-[rgba(var(--color-accent-rgb),0.5)] text-[var(--color-accent-light)] px-4 py-3 rounded-lg" role="alert">{project.error}</div>}
-              <ResultsGrid 
-                results={project.results} 
-                onEditResult={handleEditResult}
-              />
+              {project.showContactSheet ? (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                  {project.results.filter(r => r.image).map((r, i) => (
+                    <div key={i} className="aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/5">
+                      <img src={`data:${r.image!.mimeType};base64,${r.image!.base64}`} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ResultsGrid results={project.results} onEditResult={handleEditResult} />
+              )}
+              {project.showCompare && project.productImages.length > 0 && project.results.some(r => r.image) && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl overflow-hidden bg-white/5 border border-white/5">
+                    <p className="text-[7px] font-black text-white/30 uppercase tracking-widest text-center py-1">Original</p>
+                    <img src={`data:${project.productImages[0].mimeType};base64,${project.productImages[0].base64}`} alt="" className="w-full aspect-square object-cover" />
+                  </div>
+                  <div className="rounded-xl overflow-hidden bg-white/5 border border-white/5">
+                    <p className="text-[7px] font-black text-white/30 uppercase tracking-widest text-center py-1">Generated</p>
+                    <img src={`data:${project.results.find(r => r.image)!.image!.mimeType};base64,${project.results.find(r => r.image)!.image!.base64}`} alt="" className="w-full aspect-square object-cover" />
+                  </div>
+                </div>
+              )}
+              {project.generationTimestamps.length > 0 && (
+                <div className="mt-4 flex items-center gap-3 text-[8px] text-white/30">
+                  <Clock className="w-3 h-3" />
+                  <span>Last: {project.generationTimestamps[project.generationTimestamps.length - 1]}</span>
+                  <span className="text-white/10">|</span>
+                  <span>{project.results.filter(r => r.image).length} / {project.results.length} generated</span>
+                </div>
+              )}
           </div>
         </div>
       </div>
