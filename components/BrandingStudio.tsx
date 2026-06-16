@@ -749,6 +749,70 @@ const BrandingStudio: React.FC<{
                                     </div>
                                 </div>
                                 )}
+
+                                <div className="md:col-span-2 glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+                                        <MessageSquare className="w-64 h-64" />
+                                    </div>
+                                    <div className="relative z-10 space-y-8">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-1">
+                                                <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Tone of Voice Matrix</h3>
+                                                <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Dial in your brand's vocal identity</p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    const labels = ['Formal vs Casual', 'Playful vs Authoritative', 'Warm vs Cool', 'Simple vs Complex'];
+                                                    const vals = [project.toneFormal, project.tonePlayful, project.toneWarm, project.toneSimple];
+                                                    const profile = labels.map((l, i) => `${l}: ${vals[i]}/100`).join(', ');
+                                                    const prompt = `Rewrite the following brand copy to match this tone profile: ${profile}\n\nMission: ${project.missionStatement || 'N/A'}\nVision: ${project.visionStatement || 'N/A'}\nValues: ${(project.coreValues || []).join(', ')}\nStory: ${project.brandStory || 'N/A'}\n\nReturn the rewritten mission, vision, values, and story in a clear labeled format.`;
+                                                    setProject(s => ({ ...s, isAnalyzing: true }));
+                                                    try {
+                                                        const { generateBrandStrategy } = await import('../services/geminiService');
+                                                        const result = await generateBrandStrategy(prompt, project.aiConfig);
+                                                        const lines = result.split('\n');
+                                                        let mission = '', vision = '', story = '', values: string[] = [];
+                                                        let section = '';
+                                                        for (const line of lines) {
+                                                            if (line.toLowerCase().includes('mission')) section = 'mission';
+                                                            else if (line.toLowerCase().includes('vision')) section = 'vision';
+                                                            else if (line.toLowerCase().includes('values') || line.toLowerCase().includes('core values')) section = 'values';
+                                                            else if (line.toLowerCase().includes('story')) section = 'story';
+                                                            else if (section === 'mission') mission += line + '\n';
+                                                            else if (section === 'vision') vision += line + '\n';
+                                                            else if (section === 'values' && line.trim()) values.push(line.trim());
+                                                            else if (section === 'story') story += line + '\n';
+                                                        }
+                                                        setProject(s => ({ ...s, missionStatement: mission.trim() || s.missionStatement, visionStatement: vision.trim() || s.visionStatement, coreValues: values.length > 0 ? values : s.coreValues, brandStory: story.trim() || s.brandStory, isAnalyzing: false }));
+                                                    } catch { setProject(s => ({ ...s, isAnalyzing: false })); }
+                                                }}
+                                                disabled={project.isAnalyzing}
+                                                className="px-6 py-3 bg-[var(--color-accent)] rounded-2xl text-[9px] font-black uppercase tracking-widest text-white hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                {project.isAnalyzing ? 'Rewriting...' : 'Rewrite Copy'}
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {[
+                                                { key: 'toneFormal', label: 'Formal', opposite: 'Casual', value: project.toneFormal },
+                                                { key: 'tonePlayful', label: 'Playful', opposite: 'Authoritative', value: project.tonePlayful },
+                                                { key: 'toneWarm', label: 'Warm', opposite: 'Cool', value: project.toneWarm },
+                                                { key: 'toneSimple', label: 'Simple', opposite: 'Complex', value: project.toneSimple },
+                                            ].map(t => (
+                                                <div key={t.key} className="space-y-2">
+                                                    <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
+                                                        <span className={t.value <= 30 ? 'text-[var(--color-accent)]' : 'text-white/40'}>{t.label}</span>
+                                                        <span className={t.value >= 70 ? 'text-[var(--color-accent)]' : 'text-white/40'}>{t.opposite}</span>
+                                                    </div>
+                                                    <input type="range" min={0} max={100} value={t.value} onChange={e => setProject(s => ({ ...s, [t.key]: +e.target.value }))} className="w-full accent-[var(--color-accent)] h-1" />
+                                                    <div className="text-center text-[8px] font-mono text-white/20">{t.value}/100</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 

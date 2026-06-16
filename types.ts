@@ -342,6 +342,12 @@ export interface BrandingStudioState {
   brandToolsResults: Record<string, string | null>;
   brandToolsIsGenerating: boolean;
   brandToolsError: string | null;
+
+  // Tone of Voice Matrix
+  toneFormal: number;
+  tonePlayful: number;
+  toneWarm: number;
+  toneSimple: number;
 }
 
 export interface BrandingStudioProject extends ProjectBase, BrandingStudioState {}

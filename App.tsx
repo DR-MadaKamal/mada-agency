@@ -312,6 +312,10 @@ const createNewBrandingStudioProject = (projectCount: number, ownerId: string): 
   brandToolsResults: {},
   brandToolsIsGenerating: false,
   brandToolsError: null,
+  toneFormal: 60,
+  tonePlayful: 40,
+  toneWarm: 50,
+  toneSimple: 50,
 });
 
 const createNewCampaignProject = (projectCount: number, ownerId: string): CampaignStudioProject => ({
