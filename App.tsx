@@ -983,11 +983,39 @@ function App() {
                 return next;
             });
             break;
+        case 'branding_studio':
+            setBrandingProjects(prev => {
+                const next = [...prev];
+                next[activeBrandingIndex] = { ...next[activeBrandingIndex], ...data };
+                return next;
+            });
+            break;
+        case 'storyboard_studio':
+            setStoryboardProjects(prev => {
+                const next = [...prev];
+                next[activeStoryboardIndex] = { ...next[activeStoryboardIndex], ...data };
+                return next;
+            });
+            break;
+        case 'controller_studio':
+            setControllerProjects(prev => {
+                const next = [...prev];
+                next[activeControllerIndex] = { ...next[activeControllerIndex], ...data };
+                return next;
+            });
+            break;
+        case 'pre_pilot_studio':
+            setPrePilotProjects(prev => {
+                const next = [...prev];
+                next[activePrePilotIndex] = { ...next[activePrePilotIndex], ...data };
+                return next;
+            });
+            break;
         default:
             break;
     }
     scrollToContent();
-  }, [activeCampaignIndex, activeMarketingIndex, activePhotoshootIndex, activeVoiceOverIndex, activeEditIndex, activePlanIndex, activeCreatorIndex, activePromptStudioIndex]);
+  }, [activeCampaignIndex, activeMarketingIndex, activePhotoshootIndex, activeVoiceOverIndex, activeEditIndex, activePlanIndex, activeCreatorIndex, activePromptStudioIndex, activeBrandingIndex, activeStoryboardIndex, activeControllerIndex, activePrePilotIndex]);
 
 
   const renderContent = () => {

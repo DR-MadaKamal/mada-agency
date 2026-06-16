@@ -211,6 +211,7 @@ const EditStudio: React.FC<{
     const [brushColor, setBrushColor] = useState('#ff0000');
     const [brushOpacity, setBrushOpacity] = useState(1);
     const brushCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const brushSlotRef = useRef<number | null>(null);
     const [lastBrushPos, setLastBrushPos] = useState<{x:number;y:number}|null>(null);
     const [cloneSource, setCloneSource] = useState<{x:number;y:number}|null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
@@ -782,7 +783,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                             <Eye className="w-3.5 h-3.5" />
                         </div>
                         <div className="w-10 h-10 bg-black/40 rounded border border-white/5 shrink-0 flex items-center justify-center overflow-hidden">
-                            <div className={cn("w-full h-full opacity-60", channel.id === 'rgb' ? "bg-gradient-to-br from-red-500 via-green-500 to-blue-500" : `bg-${channel.id}-500`)} />
+                            <div className="w-full h-full opacity-60" style={channel.id === 'rgb' ? { background: 'linear-gradient(135deg, #ef4444, #22c55e, #3b82f6)' } : { backgroundColor: { red: '#ef4444', green: '#22c55e', blue: '#3b82f6' }[channel.id] }} />
                         </div>
                         <div className="flex-1 flex flex-col">
                             <span className="text-[10px] text-white/60 font-medium">{channel.label}</span>
@@ -1267,6 +1268,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             setSelectionMarquee({ x, y, w: 0, h: 0 });
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
         } else if (activeTool === 'brush' || activeTool === 'eraser') {
+            if (brushSlotRef.current !== activeSlotIdx) return;
             setIsDrawing(true);
             setLastBrushPos(null);
             const canvas = brushCanvasRef.current;
@@ -1315,7 +1317,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 }
                 return;
             }
-            if (!cloneSource || activeSlotIdx === null) return;
+            if (!cloneSource || activeSlotIdx === null || brushSlotRef.current !== activeSlotIdx) return;
             setIsDrawing(true);
             const r2 = imageWrapperRefs.current[activeSlotIdx]?.getBoundingClientRect();
             if (!r2) return;
@@ -1404,7 +1406,8 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             setLassoPoints(prev => [...prev, { x, y }]);
-        } else if (isDrawing && activeTool === 'brush') {
+        } else if (isDrawing && (activeTool === 'brush' || activeTool === 'eraser')) {
+            if (brushSlotRef.current !== activeSlotIdx) return;
             const canvas = brushCanvasRef.current;
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
@@ -1413,10 +1416,11 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
             ctx.globalAlpha = brushOpacity;
+            ctx.globalCompositeOperation = activeTool === 'eraser' ? 'destination-out' : 'source-over';
             ctx.lineWidth = brushSize;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.strokeStyle = brushColor;
+            ctx.strokeStyle = activeTool === 'eraser' ? 'rgba(0,0,0,0)' : brushColor;
             if (lastBrushPos) {
                 ctx.beginPath();
                 ctx.moveTo(lastBrushPos.x, lastBrushPos.y);
@@ -3041,18 +3045,20 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 
                                                 {/* Pixel Brush Canvas */}
                                                  {activeSlotIdx === idx && (activeTool === 'brush' || activeTool === 'eraser' || activeTool === 'stamp' || activeTool === 'healing') && (
-                                                     <canvas
-                                                         ref={(el) => {
-                                                             if (el && el !== brushCanvasRef.current) {
-                                                                 brushCanvasRef.current = el;
-                                                                 el.width = el.clientWidth * 2;
-                                                                 el.height = el.clientHeight * 2;
-                                                                 const ctx = el.getContext('2d');
-                                                                 if (ctx) {
-                                                                     ctx.scale(2, 2);
-                                                                 }
-                                                             }
-                                                         }}
+                                                      <canvas
+                                                          ref={(el) => {
+                                                              if (el && el !== brushCanvasRef.current) {
+                                                                  brushCanvasRef.current = el;
+                                                                  brushSlotRef.current = activeSlotIdx;
+                                                                  el.width = el.clientWidth * 2;
+                                                                  el.height = el.clientHeight * 2;
+                                                                  const ctx = el.getContext('2d');
+                                                                  if (ctx) {
+                                                                      ctx.scale(2, 2);
+                                                                  }
+                                                              }
+                                                          }}
+
                                                          className="absolute inset-0 w-full h-full pointer-events-none z-[160]"
                                                          style={{ imageRendering: 'pixelated' }}
                                                      />

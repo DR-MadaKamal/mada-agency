@@ -5,6 +5,13 @@ import { NexusAssistant } from "./agents/nexus-assistant";
 
 export { StrategicOrchestrator, KnowledgeMiner, NexusAssistant };
 
+const ALLOWED_BINDINGS = ['StrategicOrchestrator', 'KnowledgeMiner', 'NexusAssistant'];
+
+function getBinding(name: string, env: Env): DurableObjectNamespace | null {
+  if (!ALLOWED_BINDINGS.includes(name)) return null;
+  return (env as any)[name] as DurableObjectNamespace || null;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
@@ -19,7 +26,7 @@ export default {
       const agentName = parts[2];
       const instanceName = parts[3];
       if (agentName && instanceName) {
-        const binding = (env as any)[agentName] as DurableObjectNamespace;
+        const binding = getBinding(agentName, env);
         if (binding) {
           const id = binding.idFromName(instanceName);
           const stub = binding.get(id);
@@ -36,11 +43,12 @@ export default {
       const instanceName = parts[3];
       const method = parts[4];
       if (agentName && instanceName && method) {
-        const binding = (env as any)[agentName] as DurableObjectNamespace;
+        const binding = getBinding(agentName, env);
         if (binding) {
           const id = binding.idFromName(instanceName);
           const stub = binding.get(id);
-          const { args } = await request.json() as { args: any[] };
+          let args: any[] = [];
+          try { ({ args } = await request.json() as { args: any[] }); } catch { return new Response("Bad request", { status: 400 }); }
           const res = await stub.fetch(new Request(`https://do/__call/${method}`, {
             method: "POST",
             body: JSON.stringify({ args }),
@@ -67,7 +75,8 @@ export default {
       const db = env.mada_agency_db;
 
       if (action === "push" && request.method === "POST") {
-        const { key, data } = await request.json() as { key: string; data: any };
+        let key = '', data: any = null;
+        try { ({ key, data } = await request.json() as { key: string; data: any }); } catch { return new Response("Bad request", { status: 400 }); }
         const existing = await db.prepare("SELECT id FROM projects WHERE id = ?").bind(key).first();
         if (existing) {
           await db.prepare("UPDATE projects SET data = ?, version = version + 1, updated_at = datetime('now') WHERE id = ?").bind(JSON.stringify(data), key).run();
@@ -89,7 +98,8 @@ export default {
       }
 
       if (action === "delete" && request.method === "POST") {
-        const { key } = await request.json() as { key: string };
+        let key = '';
+        try { ({ key } = await request.json() as { key: string }); } catch { return new Response("Bad request", { status: 400 }); }
         await db.prepare("DELETE FROM projects WHERE id = ?").bind(key).run();
         return new Response(JSON.stringify({ ok: true }));
       }

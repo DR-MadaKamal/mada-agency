@@ -270,7 +270,7 @@ const PlanStudio: React.FC<{
     const updateIdea = (id: string, field: keyof PlanIdea, value: string) => {
         setProject(s => ({
             ...s,
-            ideas: s.ideas.map(i => i.id === id ? { ...i, [field]: value } : i)
+            ideas: (s.ideas || []).map(i => i.id === id ? { ...i, [field]: value } : i)
         }));
     };
 
@@ -278,7 +278,7 @@ const PlanStudio: React.FC<{
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
-        const ideasRows = project.ideas.map((idea, idx) => `
+        const ideasRows = (project.ideas || []).map((idea, idx) => `
             <tr>
                 <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; width: 50px;">${idx + 1}</td>
                 <td style="padding: 15px; border-bottom: 1px solid #eee; font-weight: bold; color: #ff0000; width: 150px;">${idea.tov}</td>
@@ -537,7 +537,7 @@ const PlanStudio: React.FC<{
                                             <h4 className="text-sm font-black text-white uppercase tracking-wider mb-2">{p.title}</h4>
                                             <p className="text-xs text-white/50 leading-relaxed mb-4 italic">{p.description}</p>
                                             <div className="flex flex-wrap gap-2">
-                                                {p.painPoints.map((pp, pi) => (
+                                                {(p.painPoints || []).map((pp, pi) => (
                                                     <span key={pi} className="px-3 py-1 bg-white/5 rounded-full text-[9px] font-bold text-white/30 uppercase tracking-widest border border-white/5">
                                                         {pp}
                                                     </span>
@@ -611,7 +611,7 @@ const PlanStudio: React.FC<{
                                             Competitive Gaps
                                         </h5>
                                         <div className="space-y-3">
-                                            {project.positioning.competitorGaps.map((gap, i) => (
+                                            {(project.positioning?.competitorGaps || []).map((gap, i) => (
                                                 <div key={i} className="px-6 py-4 rounded-2xl bg-white/5 border border-white/5 text-xs text-white/60 italic font-medium">
                                                     {gap}
                                                 </div>
@@ -651,7 +651,7 @@ const PlanStudio: React.FC<{
                             <div className="md:row-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Key Partners</h4>
                                 <ul className="space-y-2">
-                                    {project.canvas.keyPartners.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                     {(project.canvas?.keyPartners || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
                                 </ul>
                             </div>
                             
@@ -659,13 +659,13 @@ const PlanStudio: React.FC<{
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Key Activities</h4>
                                     <ul className="space-y-2">
-                                        {project.canvas.keyActivities.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                        {(project.canvas?.keyActivities || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
                                     </ul>
                                 </div>
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Value Propositions</h4>
                                     <ul className="space-y-2">
-                                        {project.canvas.valueProps.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed font-bold">• {p}</li>)}
+                                        {(project.canvas?.valueProps || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed font-bold">• {p}</li>)}
                                     </ul>
                                 </div>
                             </div>
@@ -674,13 +674,13 @@ const PlanStudio: React.FC<{
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Relations</h4>
                                     <ul className="space-y-2">
-                                        {project.canvas.customerRelations.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                        {(project.canvas?.customerRelations || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
                                     </ul>
                                 </div>
                                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                     <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Channels</h4>
                                     <ul className="space-y-2">
-                                        {project.canvas.channels.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                        {(project.canvas?.channels || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
                                     </ul>
                                 </div>
                             </div>
@@ -688,20 +688,20 @@ const PlanStudio: React.FC<{
                             <div className="md:row-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Segments</h4>
                                 <ul className="space-y-2">
-                                    {project.canvas.segments.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
+                                    {(project.canvas?.segments || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic">• {p}</li>)}
                                 </ul>
                             </div>
 
                             <div className="md:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Cost Structure</h4>
                                 <ul className="space-y-2">
-                                    {project.canvas.costStructure.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                    {(project.canvas?.costStructure || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
                                 </ul>
                             </div>
                             <div className="md:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
                                 <h4 className="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest">Revenue Streams</h4>
                                 <ul className="space-y-2">
-                                    {project.canvas.revenueStreams.map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
+                                    {(project.canvas?.revenueStreams || []).map((p, i) => <li key={i} className="text-[11px] text-white/50 italic leading-relaxed">• {p}</li>)}
                                 </ul>
                             </div>
                         </div>
@@ -709,7 +709,7 @@ const PlanStudio: React.FC<{
 
                     {/* Competitor Battle Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {project.battleCards.map((card, idx) => (
+                        {(project.battleCards || []).map((card, idx) => (
                             <div key={idx} className="glass-card rounded-[2.5rem] p-8 border border-white/5 overflow-hidden group">
                                 <div className="flex items-center justify-between mb-8">
                                     <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter">{card.competitor}</h4>
@@ -765,7 +765,7 @@ const PlanStudio: React.FC<{
                                         <div className="space-y-6">
                                             <h4 className="text-xl font-black text-white uppercase italic tracking-widest">{step.phase}</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {step.tasks.map((task, ti) => (
+                                                {(step.tasks || []).map((task, ti) => (
                                                     <div key={ti} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center gap-4 group/task hover:bg-white/5 transition-all">
                                                         <div className="w-5 h-5 rounded border border-white/10 flex items-center justify-center bg-white/5 text-transparent group-hover/task:text-[var(--color-accent)] group-hover/task:border-[var(--color-accent)]/50 transition-all">
                                                             <Sparkles className="w-3 h-3" />
@@ -812,7 +812,7 @@ const PlanStudio: React.FC<{
 
             {project.activeTab === 'posts' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {project.ideas.map((idea, idx) => (
+                    {(project.ideas || []).map((idea, idx) => (
                         <div key={idea.id} className="glass-card rounded-[2rem] overflow-hidden flex flex-col border border-white/5 group hover:border-[var(--color-accent)]/30 transition-all shadow-2xl animate-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: `${idx * 100}ms` }}>
                             <div className="aspect-[3/4] bg-black/40 relative overflow-hidden flex items-center justify-center">
                                 {idea.isLoadingImage ? (
@@ -942,7 +942,7 @@ const PlanStudio: React.FC<{
                                         {String(i + 1).padStart(2, '0')}
                                     </div>
                                     <div className="flex -space-x-2">
-                                        {p.productImages.slice(0, 3).map((img, imgIdx) => (
+                                        {(p.productImages || []).slice(0, 3).map((img, imgIdx) => (
                                             <img 
                                                 key={imgIdx}
                                                 src={`data:${img.mimeType};base64,${img.base64}`}

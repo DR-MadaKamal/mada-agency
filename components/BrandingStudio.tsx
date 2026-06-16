@@ -103,6 +103,46 @@ const getPromptForCategory = (category: BrandingResultCategory, aspectRatio: Asp
     }
 }
 
+function hexToHsl(hex: string): [number, number, number] {
+  let r = 0, g = 0, b = 0;
+  const h = hex.replace('#', '');
+  if (h.length === 3) {
+    r = parseInt(h[0] + h[0], 16) / 255;
+    g = parseInt(h[1] + h[1], 16) / 255;
+    b = parseInt(h[2] + h[2], 16) / 255;
+  } else if (h.length >= 6) {
+    r = parseInt(h.substring(0, 2), 16) / 255;
+    g = parseInt(h.substring(2, 4), 16) / 255;
+    b = parseInt(h.substring(4, 6), 16) / 255;
+  }
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h2 = 0, s = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h2 = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (mx === g) h2 = ((b - r) / d + 2) / 6;
+    else h2 = ((r - g) / d + 4) / 6;
+  }
+  return [Math.round(h2 * 360), Math.round(s * 100), Math.round(l * 100)];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const toHex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 const BrandingStudio: React.FC<{
   project: BrandingStudioProject;
   setProject: React.Dispatch<React.SetStateAction<BrandingStudioProject>>;
@@ -827,12 +867,16 @@ const BrandingStudio: React.FC<{
                                                                     <input value={color} onChange={e => setProject(s => ({ ...s, colors: s.colors.map((c, j) => j === i ? e.target.value : c) }))} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] font-mono text-white outline-none" placeholder="#hex" />
                                                                 ) : (
                                                                     <div className="flex flex-col gap-1.5">
-                                                                        {['Hue', 'Sat', 'Light'].map((label, hi) => (
-                                                                            <div key={label} className="flex items-center gap-2">
-                                                                                <span className="text-[6px] font-black text-white/40 w-6">{label}</span>
-                                                                                <input type="range" min={hi === 0 ? 0 : 0} max={hi === 0 ? 360 : 100} value={hi === 0 ? 0 : hi === 1 ? 100 : 50} onChange={e => {}} className="flex-1 accent-[var(--color-accent)] h-0.5" />
-                                                                            </div>
-                                                                        ))}
+                                                                        {['Hue', 'Sat', 'Light'].map((label, hi) => {
+                                                                            const hsl = hexToHsl(color);
+                                                                            const val = hi === 0 ? hsl[0] : hi === 1 ? hsl[1] : hsl[2];
+                                                                            return (
+                                                                                <div key={label} className="flex items-center gap-2">
+                                                                                    <span className="text-[6px] font-black text-white/40 w-6">{label}</span>
+                                                                                    <input type="range" min={0} max={hi === 0 ? 360 : 100} value={val} onChange={e => { setProject(s => ({ ...s, colors: s.colors.map((c, j) => j === i ? hslToHex(hi === 0 ? +e.target.value : hsl[0], hi === 1 ? +e.target.value : hsl[1], hi === 2 ? +e.target.value : hsl[2]) : c) })); }} className="flex-1 accent-[var(--color-accent)] h-0.5" />
+                                                                                </div>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 )}
                                                                 <button onClick={() => { setProject(s => ({ ...s, colors: s.colors.filter((_, j) => j !== i) })); setEditingColorIdx(null); }} className="mt-auto text-[7px] font-black text-red-400 uppercase tracking-widest">Remove</button>

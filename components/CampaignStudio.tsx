@@ -185,7 +185,7 @@ const CampaignStudio: React.FC<{
             const refinerPrompt = `Perform a Neural Consistency sweep for this campaign focusing on: ${scenarios.join(', ')}. Optimize lighting, cinematic depth, and brand consistency across all scenes. Hyper-realistic refinement.`;
             
             // Refine all items in parallel for efficiency
-            const refinementPromises = project.results.map(async (res, idx) => {
+            const refinementPromises = (project.results || []).map(async (res, idx) => {
                 if (res.image) {
                     return handleEditResult(idx, refinerPrompt);
                 }
@@ -231,7 +231,7 @@ const CampaignStudio: React.FC<{
         }
     };
 
-    const safeGridResults: BrandingResult[] = results.map(r => ({
+    const safeGridResults: BrandingResult[] = (results || []).map(r => ({
         category: r.scenario as any,
         image: r.image || null,
         isLoading: !!r.isLoading,
