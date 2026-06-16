@@ -1215,6 +1215,81 @@ const BrandingStudio: React.FC<{
                                 </div>
                             </div>
                         </div>
+
+                        {project.logos.length > 0 && (
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Image className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Brand Asset Generator</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Favicon, social profile, app icon & watermark from logo</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const src = project.logos[0];
+                                            if (!src) return;
+                                            const assetDefs: { name: string; size: number; label: string }[] = [
+                                                { name: 'Favicon', size: 32, label: 'favicon-32x32.png' },
+                                                { name: 'Social Profile', size: 400, label: 'social-profile.png' },
+                                                { name: 'App Icon', size: 512, label: 'app-icon-512x512.png' },
+                                                { name: 'Watermark', size: 300, label: 'watermark.png' },
+                                            ];
+                                            assetDefs.forEach(def => {
+                                                const c = document.createElement('canvas');
+                                                c.width = def.size * 2; c.height = def.size * 2;
+                                                const ctx = c.getContext('2d');
+                                                if (!ctx) return;
+                                                ctx.scale(2, 2);
+                                                if (def.name === 'Watermark') {
+                                                    ctx.globalAlpha = 0.3;
+                                                    ctx.fillStyle = '#fff';
+                                                    ctx.beginPath();
+                                                    ctx.arc(def.size / 2, def.size / 2, def.size / 2.5, 0, Math.PI * 2);
+                                                    ctx.fill();
+                                                    const img = new Image();
+                                                    img.crossOrigin = 'anonymous';
+                                                    img.onload = () => {
+                                                        const s = Math.min((def.size * 0.5) / img.width, (def.size * 0.5) / img.height);
+                                                        ctx.drawImage(img, (def.size - img.width * s) / 2, (def.size - img.height * s) / 2, img.width * s, img.height * s);
+                                                        const brandName = project.name || 'BRAND';
+                                                        ctx.globalAlpha = 0.6;
+                                                        ctx.fillStyle = '#000';
+                                                        ctx.font = `bold ${def.size * 0.08}px sans-serif`;
+                                                        ctx.textAlign = 'center';
+                                                        ctx.fillText(brandName, def.size / 2, def.size - def.size * 0.1);
+                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null }] }));
+                                                    };
+                                                    img.src = src;
+                                                } else {
+                                                    ctx.fillStyle = '#111';
+                                                    ctx.beginPath();
+                                                    ctx.roundRect(0, 0, def.size, def.size, def.size * 0.1);
+                                                    ctx.fill();
+                                                    const img = new Image();
+                                                    img.crossOrigin = 'anonymous';
+                                                    img.onload = () => {
+                                                        const s = Math.min((def.size * 0.7) / img.width, (def.size * 0.7) / img.height);
+                                                        ctx.drawImage(img, (def.size - img.width * s) / 2, (def.size - img.height * s) / 2, img.width * s, img.height * s);
+                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null }] }));
+                                                    };
+                                                    img.src = src;
+                                                }
+                                            });
+                                        }}
+                                        className="px-6 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2"
+                                    >
+                                        <Download className="w-3 h-3" />
+                                        Generate All Assets
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/30 max-w-2xl">Generates 4 brand-ready assets from your primary logo: favicon (32×32), social profile picture (400×400), app icon (512×512), and a watermark overlay.</p>
+                            </div>
+                        </div>
+                        )}
+
                     </motion.div>
                 )}
 
