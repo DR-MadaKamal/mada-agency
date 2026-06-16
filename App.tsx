@@ -210,6 +210,13 @@ const createNewCreatorProject = (projectCount: number, ownerId: string): Creator
   editPrompt: '',
   isEditing: false,
   creativeMode: 'classic',
+  aspectRatio: '1:1',
+  batchCount: 1,
+  negativePrompt: '',
+  savedPrompts: [],
+  styleStrength: 50,
+  lastGenerationTime: null,
+  showComparison: false,
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
 });
 

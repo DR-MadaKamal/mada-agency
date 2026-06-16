@@ -13,7 +13,7 @@ import HistoryPanel from './HistoryPanel';
 import ResultDisplay from './ResultDisplay';
 import AISelector from './AISelector';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera, Plus } from 'lucide-react';
+import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera, Plus, Download, Image as ImageIcon, Clock, SlidersHorizontal, Minus, Maximize2, RotateCcw, Trash2, Bookmark, History, RefreshCw } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { ShareableLink } from './ShareableLink';
 import { CommentsOverlay } from './CommentsOverlay';
@@ -517,6 +517,28 @@ Setting: Place the subject in a sophisticated and professional new environment.`
                     </div>
                 </div>
 
+                <div className="flex flex-wrap gap-3 items-center bg-white/[0.02] border border-white/5 p-4 rounded-3xl">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Aspect</span>
+                        <select value={project.aspectRatio} onChange={e => setProject(s => ({ ...s, aspectRatio: e.target.value }))} className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none">
+                            {['1:1','16:9','9:16','4:3','3:4'].map(r => <option key={r} value={r} className="bg-gray-900">{r}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Batch</span>
+                        <input type="number" min={1} max={4} value={project.batchCount} onChange={e => setProject(s => ({ ...s, batchCount: Math.max(1, Math.min(4, +e.target.value)) }))} className="w-10 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none text-center" />
+                    </div>
+                    <div className="flex items-center gap-2 flex-1 min-w-[120px]">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest shrink-0">Style Strength</span>
+                        <input type="range" min={0} max={100} value={project.styleStrength} onChange={e => setProject(s => ({ ...s, styleStrength: +e.target.value }))} className="w-full accent-[var(--color-accent)]" />
+                        <span className="text-[9px] font-mono text-white/60 w-6 text-right">{project.styleStrength}%</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-white/30" />
+                        <span className="text-[8px] font-black text-white/20 font-mono">{project.lastGenerationTime ? `${project.lastGenerationTime}ms` : '---'}</span>
+                    </div>
+                </div>
+
                 <AnimatePresence mode="wait">
                     {project.creativeMode === 'pro' && (
                         <motion.div 
@@ -601,6 +623,38 @@ Setting: Place the subject in a sophisticated and professional new environment.`
                     />
                 </div>
 
+                <div className="flex flex-wrap items-start gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-3xl">
+                    <div className="flex-1 min-w-[200px]">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Negative Prompt</span>
+                            {project.negativePrompt && <button onClick={() => setProject(s => ({ ...s, negativePrompt: '' }))} className="text-[7px] text-red-400/60 hover:text-red-400"><Trash2 className="w-2.5 h-2.5" /></button>}
+                        </div>
+                        <input value={project.negativePrompt} onChange={e => setProject(s => ({ ...s, negativePrompt: e.target.value }))} placeholder="e.g. blurry, low quality, text, watermark" className="w-full bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-white/70 outline-none focus:border-white/20 placeholder:text-white/20" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <button onClick={() => {
+                            const name = prompt('Template name:');
+                            if (name && project.prompt) setProject(s => ({ ...s, savedPrompts: [...s.savedPrompts, { name, prompt: s.prompt }] }));
+                        }} disabled={!project.prompt} className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all disabled:opacity-30 flex items-center gap-1">
+                            <Bookmark className="w-2.5 h-2.5" /> Save Prompt
+                        </button>
+                    </div>
+                    {project.savedPrompts.length > 0 && (
+                        <div className="w-full flex flex-wrap gap-1">
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest self-center">Saved:</span>
+                            {project.savedPrompts.map((sp, i) => (
+                                <button key={i} onClick={() => setProject(s => ({ ...s, prompt: sp.prompt }))} className="px-2 py-1 bg-white/5 rounded-lg text-[7px] font-bold text-white/40 hover:text-white transition-all truncate max-w-[120px]">{sp.name}</button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="w-full flex flex-wrap gap-1 min-h-[18px]">
+                        <History className="w-2.5 h-2.5 self-center text-white/20" />
+                        {[...new Set(project.history.slice(-5).map(h => h.prompt))].reverse().map((p, i) => (
+                            <button key={i} onClick={() => setProject(s => ({ ...s, prompt: p }))} className="px-2 py-0.5 bg-white/5 rounded text-[7px] font-bold text-white/30 hover:text-white/60 transition-all truncate max-w-[100px]">{p.slice(0, 30)}</button>
+                        ))}
+                    </div>
+                </div>
+
                 <button
                     onClick={handleGenerate}
                     disabled={project.isLoading || !project.prompt || !!project.uploadingTarget}
@@ -647,6 +701,42 @@ Setting: Place the subject in a sophisticated and professional new environment.`
                         />
                     </div>
                     {project.isLoading && <AILoadingOverlay message="Generating image..." onCancel={handleCancelGeneration} />}
+                    {project.generatedImage && !project.isLoading && (
+                        <div className="flex gap-2 mt-4 justify-center">
+                            <button onClick={() => {
+                                const a = document.createElement('a');
+                                a.href = `data:${project.generatedImage!.mimeType};base64,${project.generatedImage!.base64}`;
+                                a.download = `creation-${Date.now()}.${project.generatedImage!.mimeType.split('/')[1] || 'png'}`;
+                                a.click();
+                            }} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5">
+                                <Download className="w-3 h-3" /> Download
+                            </button>
+                            {project.history.length >= 2 && (
+                                <button onClick={() => setProject(s => ({ ...s, showComparison: !s.showComparison }))} className={`px-4 py-2 border rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${project.showComparison ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
+                                    <Maximize2 className="w-3 h-3" /> Compare
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {project.showComparison && project.history.length >= 2 && (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            {project.history.slice(-2).map((h, i) => (
+                                <div key={i} className="rounded-xl overflow-hidden bg-white/5 border border-white/5">
+                                    <img src={`data:${h.image.mimeType};base64,${h.image.base64}`} alt="" className="w-full aspect-square object-cover" />
+                                    <p className="text-[7px] font-black text-white/30 uppercase tracking-widest text-center py-1">{i === 0 ? 'Previous' : 'Current'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {project.generatedImage && !project.isLoading && (
+                        <div className="mt-4 flex items-center gap-3 bg-white/[0.02] border border-white/5 rounded-2xl p-3">
+                            <ImageIcon className="w-4 h-4 text-white/20" />
+                            <div className="flex-1 text-[9px] font-mono text-white/40 space-y-0.5">
+                                <p>Type: {project.generatedImage.mimeType}</p>
+                                <p>Size: {Math.round(project.generatedImage.base64.length * 0.75 / 1024)} KB</p>
+                            </div>
+                        </div>
+                    )}
                  </div>
                 <HistoryPanel history={project.history} onSelect={(img) => updateActiveProjectState(p => { p.generatedImage = img; })} />
             </div>

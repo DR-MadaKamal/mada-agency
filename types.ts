@@ -74,6 +74,13 @@ export interface CreatorStudioProject extends ProjectBase {
   editPrompt: string;
   isEditing: boolean;
   creativeMode: CreativeMode;
+  aspectRatio: string;
+  batchCount: number;
+  negativePrompt: string;
+  savedPrompts: { name: string; prompt: string }[];
+  styleStrength: number;
+  lastGenerationTime: number | null;
+  showComparison: boolean;
 }
 
 
