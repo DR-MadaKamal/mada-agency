@@ -381,6 +381,26 @@ export interface CampaignStudioState {
     mode: 'auto' | 'custom';
     customIdeas: string[];
     isRefining?: boolean;
+
+    // Feature 1: Custom mood color
+    customMoodColor: string;
+
+    // Feature 2: Variant Explorer
+    variantSourceIndex: number;
+    variantCount: number;
+    variantResults: CampaignResult[];
+
+    // Feature 5: Batch Refine
+    selectedResultIndices: number[];
+
+    // Feature 8: Color Palette Extraction
+    colorPalettes: Record<number, string[]>;
+
+    // Feature 9: A/B Sets
+    abSets: { id: string; label: string; resultIndices: number[] }[];
+
+    // Feature 10: Campaign Timeline
+    timelineEntries: { resultIndex: number; day: string; platform: string }[];
 }
 
 export interface CampaignStudioProject extends ProjectBase, CampaignStudioState {}

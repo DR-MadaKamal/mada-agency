@@ -341,6 +341,14 @@ const createNewCampaignProject = (projectCount: number, ownerId: string): Campai
     customIdeas: ['', '', '', '', '', ''],
     isRefining: false,
     aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
+    customMoodColor: '#ff6b6b',
+    variantSourceIndex: 0,
+    variantCount: 4,
+    variantResults: [],
+    selectedResultIndices: [],
+    colorPalettes: {},
+    abSets: [],
+    timelineEntries: [],
 });
 
 const createNewPlanProject = (projectCount: number, ownerId: string): PlanStudioProject => ({

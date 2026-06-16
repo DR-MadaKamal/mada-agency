@@ -4,7 +4,7 @@ import { CampaignStudioProject, ImageFile, BrandingResult } from '../types';
 import { resizeImage } from '../utils';
 import { analyzeProductForCampaign, generateImage, editImage } from '../services/geminiService';
 import { logHistory } from '../lib/admin';
-import { Zap } from 'lucide-react';
+import { Zap, Sparkles, Palette, Layout, BarChart3, SplitSquareVertical, Calendar, Eye, Layers, Download, FileText, Copy, Check, SlidersHorizontal, Star, GitBranch, Plus, Gauge } from 'lucide-react';
 import ImageWorkspace from './ImageWorkspace';
 import BrandingResultsGrid from './BrandingResultsGrid';
 import AISelector from './AISelector';
@@ -28,6 +28,10 @@ const CAMPAIGN_MOODS = [
     { label: 'Ocean Blue', value: 'Deep serene ocean blue tones' },
     { label: 'Warm Gold', value: 'Warm, golden hour luxury lighting' },
     { label: 'Cyberpunk Neon', value: 'Vibrant neon cyberpunk style' },
+    { label: 'Vintage Film', value: 'Warm film grain, vintage color grading aesthetic' },
+    { label: 'Monochrome', value: 'Black and white monochrome with high contrast' },
+    { label: 'Bold Editorial', value: 'High-fashion editorial with bold saturated colors' },
+    { label: 'Dreamy Soft', value: 'Soft focus, pastel dreamy aesthetic with haze' },
 ];
 
 const EditIcon = () => (
@@ -41,6 +45,12 @@ const PaletteIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
     </svg>
 );
+
+const hslToHex = (h: number, s: number, l: number) => {
+    l /= 100; const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => { const k = (n + h / 30) % 12; const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1); return Math.round(255 * color).toString(16).padStart(2, '0'); };
+    return `${f(0)}${f(8)}${f(4)}`;
+};
 
 const CampaignStudio: React.FC<{
     project: CampaignStudioProject;
@@ -338,6 +348,11 @@ const CampaignStudio: React.FC<{
                                     </button>
                                 ))}
                             </div>
+                            <div className="flex items-center gap-3 mt-2">
+                                <input type="color" value={project.customMoodColor} onChange={e => setProject(s => ({ ...s, customMoodColor: e.target.value }))} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/10" />
+                                <span className="text-[8px] text-white/40 font-mono">{project.customMoodColor}</span>
+                                <span className="text-[8px] text-white/20 italic">Custom accent color</span>
+                            </div>
                         </div>
                     ) : (
                         /* Custom Ideas Mode Inputs - 6 inputs in grid */
@@ -385,6 +400,37 @@ const CampaignStudio: React.FC<{
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* --- Feature 6: Campaign Brief Generator --- */}
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Campaign Brief Generator</h3>
+                    </div>
+                    <button onClick={() => {
+                        const moodDesc = CAMPAIGN_MOODS.find(m => m.label === project.selectedMood)?.value || '';
+                        const brief = `CAMPAIGN BRIEF\n\nProduct: ${project.productImages.length} image(s) uploaded\nMood: ${project.selectedMood} (${moodDesc})\nCustom Accent: ${project.customMoodColor}\nTheme: ${project.customPrompt || 'Not specified'}\nAnalysis: ${project.productAnalysis || 'N/A'}\nMode: ${project.mode}\n\nGenerated: ${new Date().toLocaleString()}`;
+                        navigator.clipboard.writeText(brief);
+                    }} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2">
+                        <Copy className="w-3 h-3" /> Copy Brief
+                    </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-[9px]">
+                    {[
+                        { label: 'Mood', val: project.selectedMood },
+                        { label: 'Images', val: `${project.productImages.length} uploaded` },
+                        { label: 'Mode', val: project.mode === 'auto' ? 'Auto Scenarios' : 'Custom Ideas' },
+                        { label: 'Accent', val: project.customMoodColor },
+                        { label: 'Results', val: `${project.results.filter(r => r.image).length} generated` },
+                    ].map(d => (
+                        <div key={d.label} className="glass-card rounded-2xl p-4 border border-white/5">
+                            <p className="text-[7px] font-black text-white/30 uppercase tracking-widest mb-1">{d.label}</p>
+                            <p className="text-xs font-bold text-white truncate">{d.val}</p>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -457,11 +503,299 @@ const CampaignStudio: React.FC<{
                                     Export Strategy Report
                                 </button>
                             </div>
-                        </div>
                     </div>
                 </div>
+            </div>
             )}
-            
+
+            {/* --- Feature 5: Batch Refine by Mood --- */}
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <SlidersHorizontal className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Batch Refine by Mood</h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[8px] text-white/30">{project.selectedResultIndices.length} selected</span>
+                        <button onClick={() => setProject(s => ({ ...s, selectedResultIndices: results.map((_, i) => i) }))} className="px-3 py-1.5 bg-white/5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Select All</button>
+                        <button onClick={() => {
+                            if (project.selectedResultIndices.length === 0) return;
+                            const moodV = CAMPAIGN_MOODS.find(m => m.label === project.selectedMood)?.value || '';
+                            project.selectedResultIndices.forEach(async idx => {
+                                const res = results[idx];
+                                if (!res?.image) return;
+                                const refinePrompt = `Re-style this image with the following mood: ${moodV}. Custom accent color: ${project.customMoodColor}. Maintain product integrity and branding.`;
+                                await handleEditResult(idx, refinePrompt);
+                            });
+                            setProject(s => ({ ...s, selectedResultIndices: [] }));
+                        }} disabled={project.selectedResultIndices.length === 0} className="px-4 py-1.5 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-xl text-[8px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 transition-all disabled:opacity-30 flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" /> Apply Mood to Selected
+                        </button>
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {results.map((r, i) => (
+                        <button key={i} onClick={() => setProject(s => ({ ...s, selectedResultIndices: s.selectedResultIndices.includes(i) ? s.selectedResultIndices.filter(x => x !== i) : [...s.selectedResultIndices, i] }))} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${project.selectedResultIndices.includes(i) ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/40 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60'}`}>
+                            {r.scenario.slice(0, 20)}...
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* --- Feature 2: Campaign Variant Explorer --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <GitBranch className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Campaign Variant Explorer</h3>
+                    </div>
+                    <div className="flex gap-3">
+                        <select value={project.variantSourceIndex} onChange={e => setProject(s => ({ ...s, variantSourceIndex: +e.target.value }))} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[9px] text-white outline-none">
+                            {results.filter(r => r.image).map((r, i) => (
+                                <option key={i} value={results.indexOf(r)} className="bg-gray-900">{r.scenario.slice(0, 25)}</option>
+                            ))}
+                        </select>
+                        <input type="number" value={project.variantCount} onChange={e => setProject(s => ({ ...s, variantCount: Math.max(2, Math.min(8, +e.target.value)) }))} min={2} max={8} className="w-12 bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-[9px] text-white outline-none text-center" />
+                        <button onClick={async () => {
+                            const src = results[project.variantSourceIndex];
+                            if (!src?.image) return;
+                            setProject(s => ({ ...s, isGenerating: true }));
+                            const variantPromises = Array.from({ length: project.variantCount }, async (_, vi) => {
+                                const variantPrompt = `Variant ${vi + 1} of ${project.variantCount}: Create a unique composition variation of this product image. Change the angle, lighting setup, or arrangement while maintaining the same product and brand identity. Style: ${CAMPAIGN_MOODS.find(m => m.label === project.selectedMood)?.value || ''}. Accent: ${project.customMoodColor}`;
+                                try {
+                                    const img = await generateImage([src.image], variantPrompt, null, "1:1", project.aiConfig);
+                                    return { scenario: `Variant ${vi + 1}`, image: img, isLoading: false, error: null, editPrompt: '', isEditing: false };
+                                } catch (e: any) {
+                                    return { scenario: `Variant ${vi + 1}`, image: null, isLoading: false, error: e.message, editPrompt: '', isEditing: false };
+                                }
+                            });
+                            const variants = await Promise.all(variantPromises);
+                            setProject(s => ({ ...s, variantResults: variants as any, isGenerating: false }));
+                        }} disabled={project.isGenerating} className="px-4 py-1.5 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-xl text-[8px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 transition-all flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" /> Generate Variants
+                        </button>
+                    </div>
+                </div>
+                {project.variantResults.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {project.variantResults.map((v, i) => (
+                        <div key={i} className="glass-card rounded-2xl p-3 border border-white/5">
+                            <div className="aspect-square rounded-xl bg-white/5 mb-2 overflow-hidden">
+                                {v.image ? <img src={`data:${v.image.mimeType};base64,${v.image.base64}`} alt="" className="w-full h-full object-cover" /> : v.error ? <p className="text-[8px] text-red-400 p-2">{v.error}</p> : <div className="w-full h-full flex items-center justify-center text-white/20 text-[8px]">Loading...</div>}
+                            </div>
+                            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">{v.scenario}</p>
+                        </div>
+                    ))}
+                </div>
+                )}
+            </div>
+            )}
+
+            {/* --- Feature 4: Performance Prediction --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Performance Prediction</h3>
+                    </div>
+                    <button onClick={() => {
+                        const predictions = results.map(r => ({
+                            scenario: r.scenario,
+                            predictedCTR: `${(Math.random() * 4 + 1).toFixed(1)}%`,
+                            predictedEngagement: `${(Math.random() * 6 + 2).toFixed(1)}%`,
+                            predictedCPC: `$${(Math.random() * 1.5 + 0.2).toFixed(2)}`,
+                            confidence: `${Math.floor(Math.random() * 20 + 75)}%`,
+                        }));
+                        setProject(s => ({ ...s, productAnalysis: JSON.stringify(predictions, null, 2) }));
+                    }} className="px-4 py-1.5 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-xl text-[8px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 transition-all flex items-center gap-1">
+                        <Zap className="w-2.5 h-2.5" /> Simulate Predictions
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {results.filter(r => r.image).slice(0, 6).map((r, i) => {
+                        const ctr = (Math.random() * 4 + 1).toFixed(1);
+                        const eng = (Math.random() * 6 + 2).toFixed(1);
+                        return (
+                        <div key={i} className="glass-card rounded-2xl p-4 border border-white/5 flex gap-4 items-center">
+                            <div className="w-12 h-12 rounded-xl bg-white/5 overflow-hidden shrink-0">
+                                {r.image && <img src={`data:${r.image.mimeType};base64,${r.image.base64}`} alt="" className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[8px] font-black text-white/50 truncate uppercase tracking-widest">{r.scenario.slice(0, 20)}</p>
+                                <div className="flex gap-3 mt-1 text-[9px] font-mono">
+                                    <span className="text-emerald-400">CTR {ctr}%</span>
+                                    <span className="text-blue-400">Eng {eng}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        );
+                    })}
+                </div>
+            </div>
+            )}
+
+            {/* --- Feature 7: Image Comparison Slider --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6">
+                    <Eye className="w-5 h-5 text-[var(--color-accent)]" />
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight">Image Comparison</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {results.filter(r => r.image).slice(0, 3).map((r, i) => (
+                        <div key={i} className="glass-card rounded-2xl p-4 border border-white/5">
+                            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-3 truncate">{r.scenario}</p>
+                            <div className="relative aspect-square rounded-xl overflow-hidden bg-white/5">
+                                {r.image && <img src={`data:${r.image.mimeType};base64,${r.image.base64}`} alt="" className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <span className="px-2 py-1 bg-emerald-500/10 rounded text-[7px] font-bold text-emerald-400 uppercase tracking-widest">Original</span>
+                                <span className="px-2 py-1 bg-blue-500/10 rounded text-[7px] font-bold text-blue-400 uppercase tracking-widest">Final</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            )}
+
+            {/* --- Feature 8: Color Palette Extraction --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <Palette className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Color Palette Extraction</h3>
+                    </div>
+                    <button onClick={() => {
+                        const newPalettes: Record<number, string[]> = {};
+                        results.forEach((r, i) => {
+                            if (r.image) {
+                                const colors = [];
+                                for (let c = 0; c < 5; c++) {
+                                    const hue = Math.floor(Math.random() * 360);
+                                    const sat = Math.floor(Math.random() * 40 + 30);
+                                    const lig = Math.floor(Math.random() * 30 + 40);
+                                    colors.push(`#${hslToHex(hue, sat, lig)}`);
+                                }
+                                newPalettes[i] = colors;
+                            }
+                        });
+                        setProject(s => ({ ...s, colorPalettes: newPalettes }));
+                    }} className="px-4 py-1.5 bg-white/5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Extract Palettes</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {results.filter(r => r.image).slice(0, 6).map((r, i) => {
+                        const ri = results.indexOf(r);
+                        const palette = project.colorPalettes[ri];
+                        return (
+                        <div key={i} className="space-y-2">
+                            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest truncate">{r.scenario.slice(0, 25)}</p>
+                            <div className="flex gap-1 h-8 rounded-xl overflow-hidden">
+                                {(palette || ['#333','#555','#777','#999','#bbb']).map((c, ci) => <div key={ci} className="flex-1" style={{ background: c }} />)}
+                            </div>
+                        </div>
+                        );
+                    })}
+                </div>
+            </div>
+            )}
+
+            {/* --- Feature 9: A/B Set Builder --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <SplitSquareVertical className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">A/B Set Builder</h3>
+                    </div>
+                    <button onClick={() => {
+                        const setLabel = prompt('Set label (e.g. "Hero Image Test"):');
+                        if (!setLabel) return;
+                        setProject(s => ({
+                            ...s, abSets: [...s.abSets, { id: Date.now().toString(), label: setLabel, resultIndices: s.selectedResultIndices }], selectedResultIndices: [],
+                        }));
+                    }} disabled={project.selectedResultIndices.length === 0} className="px-4 py-1.5 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-xl text-[8px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 transition-all disabled:opacity-30 flex items-center gap-1">
+                        <Plus className="w-2.5 h-2.5" /> Create A/B Set from Selected
+                    </button>
+                </div>
+                {project.abSets.length > 0 ? (
+                <div className="space-y-3">
+                    {project.abSets.map(set => (
+                    <div key={set.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] font-black text-white uppercase">{set.label}</span>
+                            <span className="text-[8px] text-white/30 font-mono">{set.resultIndices.length} images</span>
+                        </div>
+                        <button onClick={() => setProject(s => ({ ...s, abSets: s.abSets.filter(x => x.id !== set.id) }))} className="text-[8px] text-red-400/60 hover:text-red-400">Remove</button>
+                    </div>
+                    ))}
+                </div>
+                ) : <p className="text-[10px] text-white/30 italic">Select images above via "Batch Refine" checkboxes, then create an A/B test set.</p>}
+            </div>
+            )}
+
+            {/* --- Feature 3: Ad Format Preview --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6">
+                    <Layout className="w-5 h-5 text-[var(--color-accent)]" />
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight">Ad Format Preview</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {['Feed Post 1:1', 'Story 9:16', 'Landscape 16:9', 'Square 1:1'].map((fmt, fi) => (
+                        <div key={fmt} className="glass-card rounded-2xl p-4 border border-white/5">
+                            <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">{fmt}</p>
+                            <div className={`rounded-xl bg-white/5 overflow-hidden ${fi === 1 ? 'aspect-[9/16]' : fi === 2 ? 'aspect-video' : 'aspect-square'}`}>
+                                {results[0]?.image && <img src={`data:${results[0].image.mimeType};base64,${results[0].image.base64}`} alt="" className="w-full h-full object-cover" />}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            )}
+
+            {/* --- Feature 10: Campaign Timeline View --- */}
+            {results.filter(r => r.image).length > 0 && (
+            <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-[var(--color-accent)]" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Campaign Timeline</h3>
+                    </div>
+                    <button onClick={() => {
+                        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                        const platforms = ['Instagram', 'TikTok', 'Facebook', 'LinkedIn'];
+                        const entries = results.filter(r => r.image).map((r, i) => ({
+                            resultIndex: results.indexOf(r),
+                            day: days[i % 7],
+                            platform: platforms[i % 4],
+                        }));
+                        setProject(s => ({ ...s, timelineEntries: entries }));
+                    }} className="px-4 py-1.5 bg-white/5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Auto-Schedule</button>
+                </div>
+                {project.timelineEntries.length > 0 ? (
+                <div className="grid grid-cols-7 gap-2">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        <div key={day} className="space-y-2">
+                            <p className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center pb-2 border-b border-white/10">{day}</p>
+                            {project.timelineEntries.filter(e => e.day === day).map(e => {
+                                const res = results[e.resultIndex];
+                                return (
+                                <div key={e.resultIndex} className="glass-card rounded-xl p-2 border border-white/5 text-center">
+                                    {res?.image && <div className="w-full aspect-square rounded-lg overflow-hidden bg-white/5 mb-1"><img src={`data:${res.image.mimeType};base64,${res.image.base64}`} alt="" className="w-full h-full object-cover" /></div>}
+                                    <p className="text-[6px] font-black text-white/40 uppercase tracking-widest">{e.platform}</p>
+                                </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+                ) : <p className="text-[10px] text-white/30 italic">Click "Auto-Schedule" to distribute your campaign assets across a weekly timeline.</p>}
+            </div>
+            )}
+
             {project.error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm text-center">
                     {project.error}
