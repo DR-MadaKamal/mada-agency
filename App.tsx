@@ -264,7 +264,11 @@ const createNewPromptStudioProject = (projectCount: number, ownerId: string): Pr
   error: null,
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash' },
   deconstruction: null,
-  selectedParameters: {}
+  selectedParameters: {},
+  selectedTone: 'descriptive',
+  favoritePrompts: [],
+  promptTemplate: '',
+  historySearch: '',
 });
 
 const createNewVoiceOverStudioProject = (projectCount: number, ownerId: string): VoiceOverStudioProject => ({

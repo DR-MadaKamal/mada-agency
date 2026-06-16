@@ -277,6 +277,10 @@ export interface PromptStudioState {
     lighting?: string;
     camera?: string;
   };
+  selectedTone: string;
+  favoritePrompts: string[];
+  promptTemplate: string;
+  historySearch: string;
 }
 
 export interface PromptStudioProject extends ProjectBase, PromptStudioState {}

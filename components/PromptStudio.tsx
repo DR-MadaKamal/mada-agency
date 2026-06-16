@@ -10,7 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Copy, Check, Sparkles, Image as ImageIcon, Cpu, Target,
     Camera, Zap, Settings2, History, Trash2, Send, Wand2,
-    Layers, Aperture, Video, Focus, Box
+    Layers, Aperture, Video, Focus, Box, Download, Heart,
+    FileText, Search, Bookmark, Type
 } from 'lucide-react';
 
 const PARAMETERS = {
@@ -126,6 +127,18 @@ const PromptStudio: React.FC<{
                 <div className="lg:col-span-8 space-y-8">
                     {/* Image DNA Analysis */}
                     <div className="glass-card rounded-[3rem] p-8 border border-white/5 relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-6 flex-wrap">
+                            <span className="px-3 py-1.5 bg-white/5 rounded-xl text-[7px] font-black text-white/30 uppercase tracking-widest">
+                                <Type className="w-2.5 h-2.5 inline mr-1" />
+                                {project.instructions.length} chars
+                            </span>
+                            <div className="flex gap-1">
+                                {['descriptive','technical','formal'].map(t => (
+                                    <button key={t} onClick={() => setProject(s => ({ ...s, selectedTone: t }))} className={`px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${project.selectedTone === t ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/40'}`}>{t}</button>
+                                ))}
+                            </div>
+                            <button onClick={() => setProject(s => ({ ...s, instructions: '', generatedPrompt: null, deconstruction: null, selectedParameters: {} }))} className="px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border border-white/10 text-white/40 hover:text-red-400 transition-all flex items-center gap-1"><Trash2 className="w-2.5 h-2.5" /> Clear</button>
+                        </div>
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="w-full md:w-80">
                                 <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -187,9 +200,19 @@ const PromptStudio: React.FC<{
 
                     {/* Technical Parameter Grid */}
                     <div className="glass-card rounded-[3rem] p-8 border border-white/5">
-                        <div className="flex items-center gap-3 mb-8">
+                        <div className="flex items-center gap-3 mb-8 flex-wrap">
                             <Settings2 className="w-5 h-5 text-[var(--color-accent)]" />
                             <h3 className="text-sm font-black text-white uppercase tracking-widest">Technical Overrides</h3>
+                            <div className="flex-1" />
+                            <div className="flex gap-1">
+                                {[['Product Shot','A professional product photograph on a clean white background, well-lit'],['Portrait','A professional portrait with soft natural lighting, shallow depth of field'],['Landscape','A sweeping landscape photograph at golden hour, dramatic sky']].map(([name, desc]) => (
+                                    <button key={name} onClick={() => {
+                                        setProject(s => ({ ...s, instructions: desc, promptTemplate: name }));
+                                    }} className={`px-2 py-1.5 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${project.promptTemplate === name ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)]/30 text-[var(--color-accent)]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
+                                        <Bookmark className="w-2 h-2 inline mr-1" />{name}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {Object.entries(PARAMETERS).map(([category, options]) => (
@@ -261,16 +284,51 @@ const PromptStudio: React.FC<{
                         >
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xs font-black text-white uppercase tracking-widest">Engineered Prompt</h3>
-                                <button 
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(project.generatedPrompt || '');
-                                        setCopied(true);
-                                        setTimeout(() => setCopied(false), 2000);
-                                    }}
-                                    className="p-3 bg-white/5 rounded-2xl hover:bg-[var(--color-accent)] transition-colors group"
-                                >
-                                    {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white group-hover:scale-110" />}
-                                </button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(project.generatedPrompt || '');
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                        className="p-3 bg-white/5 rounded-2xl hover:bg-[var(--color-accent)] transition-colors group"
+                                    >
+                                        {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white group-hover:scale-110" />}
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            const md = `# Prompt\n\n${project.generatedPrompt || ''}\n\n*Generated at ${new Date().toLocaleString()}*\n`;
+                                            navigator.clipboard.writeText(md);
+                                        }}
+                                        className="p-3 bg-white/5 rounded-2xl hover:bg-[var(--color-accent)] transition-colors group" title="Copy as Markdown"
+                                    >
+                                        <FileText className="w-4 h-4 text-white group-hover:scale-110" />
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            const a = document.createElement('a');
+                                            const blob = new Blob([project.generatedPrompt || ''], { type: 'text/plain' });
+                                            a.href = URL.createObjectURL(blob);
+                                            a.download = `prompt-${Date.now()}.txt`;
+                                            a.click();
+                                        }}
+                                        className="p-3 bg-white/5 rounded-2xl hover:bg-[var(--color-accent)] transition-colors group" title="Download as TXT"
+                                    >
+                                        <Download className="w-4 h-4 text-white group-hover:scale-110" />
+                                    </button>
+                                    <button 
+                                        onClick={() => setProject(s => ({
+                                            ...s,
+                                            favoritePrompts: s.favoritePrompts.includes(project.generatedPrompt || '') 
+                                                ? s.favoritePrompts.filter(p => p !== s.generatedPrompt) 
+                                                : [...s.favoritePrompts, project.generatedPrompt || '']
+                                        }))}
+                                        className={`p-3 rounded-2xl transition-colors group ${project.favoritePrompts.includes(project.generatedPrompt || '') ? 'bg-red-500/20 text-red-400' : 'bg-white/5 hover:bg-[var(--color-accent)]'}`}
+                                        title="Save to Favorites"
+                                    >
+                                        <Heart className={`w-4 h-4 ${project.favoritePrompts.includes(project.generatedPrompt || '') ? 'fill-current' : ''} group-hover:scale-110`} />
+                                    </button>
+                                </div>
                             </div>
                             <div className="bg-black/40 rounded-2xl p-6 font-mono text-[11px] text-white/80 leading-relaxed max-h-64 overflow-y-auto suggestions-scrollbar border border-white/5">
                                 {project.generatedPrompt}
@@ -302,17 +360,39 @@ const PromptStudio: React.FC<{
 
             {/* History Section - Sleeker Design */}
             <div className="mt-20">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                     <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
                         <History className="w-6 h-6 text-white/20" /> Engineer Archives
                     </h2>
-                    <button 
-                        onClick={() => setProject(s => ({ ...s, history: [] }))}
-                        className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors flex items-center gap-2"
-                    >
-                        <Trash2 className="w-3 h-3" /> Purge Archives
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                            <input value={project.historySearch} onChange={e => setProject(s => ({ ...s, historySearch: e.target.value }))} placeholder="Search archives..." className="w-48 bg-white/5 border border-white/10 rounded-xl px-8 py-2 text-[9px] text-white outline-none placeholder:text-white/20" />
+                        </div>
+                        <button 
+                            onClick={() => setProject(s => ({ ...s, history: [] }))}
+                            className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors flex items-center gap-2"
+                        >
+                            <Trash2 className="w-3 h-3" /> Purge Archives
+                        </button>
+                    </div>
                 </div>
+                
+                {project.favoritePrompts.length > 0 && (
+                    <div className="mb-6 glass-card rounded-[2rem] p-6 border border-white/5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Heart className="w-4 h-4 text-red-400" />
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Favorites ({project.favoritePrompts.length})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {project.favoritePrompts.map((fp, i) => (
+                                <button key={i} onClick={() => setProject(s => ({ ...s, generatedPrompt: fp, instructions: fp }))} className="px-3 py-1.5 bg-white/5 rounded-xl text-[7px] font-bold text-white/50 hover:text-white transition-all truncate max-w-[150px]">
+                                    {fp.slice(0, 40)}...
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 
                 {project.history.length === 0 ? (
                     <div className="glass-card rounded-[3rem] p-20 text-center border border-white/5">
@@ -321,7 +401,7 @@ const PromptStudio: React.FC<{
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {project.history.map((item, index) => (
+                        {project.history.filter(item => !project.historySearch || item.generatedPrompt.toLowerCase().includes(project.historySearch.toLowerCase())).map((item, index) => (
                             <motion.div 
                                 key={index}
                                 initial={{ opacity: 0, y: 20 }}
