@@ -1019,8 +1019,78 @@ const BrandingStudio: React.FC<{
                                         </div>
                                     </div>
                                 </div>
-                             </div>
+                            </div>
                         </div>
+
+                        {project.logos.length > 0 && (
+                        <div className="glass-card rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
+                                <Layers className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Logo Variant Generator</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.5em]">Auto-generate 4 logo variants from your primary mark</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const src = project.logos[0];
+                                            if (!src) return;
+                                            const variants: { name: string; dataUrl: string }[] = [];
+                                            const sizes: [number, number][] = [[300, 120], [120, 300], [120, 120], [240, 160]];
+                                            const labels = ['Horizontal', 'Vertical', 'Icon Only', 'Stacked'];
+                                            sizes.forEach(([w, h], i) => {
+                                                const c = document.createElement('canvas');
+                                                c.width = w * 2; c.height = h * 2;
+                                                const ctx = c.getContext('2d');
+                                                if (!ctx) return;
+                                                ctx.scale(2, 2);
+                                                ctx.fillStyle = '#111';
+                                                ctx.beginPath();
+                                                ctx.roundRect(0, 0, w, h, 16);
+                                                ctx.fill();
+                                                const img = new Image();
+                                                img.crossOrigin = 'anonymous';
+                                                img.onload = () => {
+                                                    const iw = img.width, ih = img.height;
+                                                    const scale = Math.min((w * 0.6) / iw, (h * 0.6) / ih);
+                                                    const dx = (w - iw * scale) / 2, dy = (h - ih * scale) / 2;
+                                                    ctx.drawImage(img, dx, dy, iw * scale, ih * scale);
+                                                    const brandName = project.name || 'BRAND';
+                                                    ctx.fillStyle = '#fff';
+                                                    ctx.font = `bold ${labels[i] === 'Vertical' ? 10 : 12}px sans-serif`;
+                                                    ctx.textAlign = 'center';
+                                                    if (labels[i] === 'Stacked') {
+                                                        ctx.fillText(brandName, w / 2, h - 20);
+                                                    } else if (labels[i] === 'Vertical') {
+                                                        ctx.save();
+                                                        ctx.translate(w - 10, h / 2);
+                                                        ctx.rotate(-Math.PI / 2);
+                                                        ctx.fillText(brandName, 0, 0);
+                                                        ctx.restore();
+                                                    } else if (labels[i] === 'Horizontal') {
+                                                        ctx.fillText(brandName, w / 2 + iw * scale / 2 + 10 + ctx.measureText(brandName).width / 2, h / 2 + 4);
+                                                    }
+                                                    variants.push({ name: labels[i], dataUrl: c.toDataURL('image/png') });
+                                                    if (variants.length === 4) {
+                                                        setProject(s => ({ ...s, results: [...s.results, ...variants.map(v => ({ id: `logo-variant-${Date.now()}-${v.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: v.dataUrl, title: v.name, likes: 0, isEditing: false, isLoading: false, error: null }))] }));
+                                                    }
+                                                };
+                                                img.src = src;
+                                            });
+                                        }}
+                                        className="px-6 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2"
+                                    >
+                                        <Layers className="w-3 h-3" />
+                                        Generate Variants
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/30 max-w-2xl">Generates 4 logo variants from your primary logo: horizontal lockup, vertical stack, icon-only mark, and stacked composition. Each is rendered on a dark background card.</p>
+                            </div>
+                        </div>
+                        )}
+
                     </motion.div>
                 )}
 
