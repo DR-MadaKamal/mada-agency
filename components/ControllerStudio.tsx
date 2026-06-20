@@ -222,6 +222,11 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
             {/* --- MIDDLE COLUMN: PREVIEW --- */}
             <div className="lg:col-span-5 flex flex-col gap-4 order-2">
                 <div className="glass-card p-4 rounded-2xl h-full min-h-[500px] flex flex-col">
+                    <div className="flex justify-between text-[9px] text-white/30 px-1 mb-1">
+                        {project.sourceImages[0] && (() => { const img = new window.Image(); img.src = `data:${project.sourceImages[0].mimeType};base64,${project.sourceImages[0].base64}`; return <span>{img.naturalWidth || ''} × {img.naturalHeight || ''} {project.sourceImages[0].mimeType?.split('/')[1] || ''}</span>; })()}
+                        {project.generatedImage && <span className="text-emerald-400/50">Generated ready</span>}
+                        <span>{project.history.length} history</span>
+                    </div>
                     <div className="flex-grow bg-black/30 rounded-xl border border-[rgba(var(--color-text-base-rgb),0.1)] relative overflow-hidden flex items-center justify-center group select-none min-h-[350px]">
                         {project.isGenerating && (
                              <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/50 backdrop-blur-sm">
@@ -269,7 +274,7 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
                             {project.isGenerating ? 'Generating...' : 'Generate'}
                         </button>
 
-                        {project.generatedImage ? (
+                            {project.generatedImage ? (
                              <>
                                 <button
                                     onMouseDown={() => setIsComparing(true)}
@@ -282,11 +287,26 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
                                     Hold to Compare
                                 </button>
                                 <button 
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.download = `Mada-controller-original-${Date.now()}.png`;
+                                        link.href = `data:${project.sourceImages[0].mimeType};base64,${project.sourceImages[0].base64}`;
+                                        link.click();
+                                    }}
+                                    className="bg-gray-600/80 hover:bg-gray-600 text-white border border-gray-500/30 font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-md"
+                                >
+                                    <DownloadIcon />
+                                    Original
+                                </button>
+                                <button 
                                     onClick={handleExport}
                                     className="bg-green-600/80 hover:bg-green-600 text-white border border-green-500/30 font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-md"
                                 >
                                     <DownloadIcon />
                                     Export Image
+                                </button>
+                                <button onClick={() => navigator.clipboard.writeText(buildPromptFromSliders(project.sliders))} className="col-span-2 text-[10px] bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded-xl py-2 transition-all" title="Copy Prompt">
+                                    Copy Prompt
                                 </button>
                              </>
                         ) : (
@@ -304,19 +324,27 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
             {/* --- RIGHT COLUMN: CONTROLS --- */}
             <div className="lg:col-span-4 flex flex-col gap-4 order-3">
                 <div className="glass-card rounded-2xl p-1 flex mb-2">
-                     {(['Face', 'Head', 'Body', 'Retouch'] as ControlCategory[]).map(cat => (
-                         <button
-                            key={cat}
-                            onClick={() => setProject(s => ({ ...s, activeCategory: cat }))}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${project.activeCategory === cat ? 'bg-[var(--color-accent)] text-white shadow-md' : 'text-[var(--color-text-secondary)] hover:bg-[rgba(var(--color-text-base-rgb),0.05)] hover:text-[var(--color-text-base)]'}`}
-                         >
-                             {cat === 'Face' && <FaceIcon />}
-                             {cat === 'Head' && <HeadIcon />}
-                             {cat === 'Body' && <BodyIcon />}
-                             {cat === 'Retouch' && <RetouchIcon />}
-                             {cat}
-                         </button>
+                 {(['Face', 'Head', 'Body', 'Retouch'] as ControlCategory[]).map(cat => (
+                          <button
+                             key={cat}
+                             onClick={() => setProject(s => ({ ...s, activeCategory: cat }))}
+                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${project.activeCategory === cat ? 'bg-[var(--color-accent)] text-white shadow-md' : 'text-[var(--color-text-secondary)] hover:bg-[rgba(var(--color-text-base-rgb),0.05)] hover:text-[var(--color-text-base)]'}`}
+                          >
+                              {cat === 'Face' && <FaceIcon />}
+                              {cat === 'Head' && <HeadIcon />}
+                              {cat === 'Body' && <BodyIcon />}
+                              {cat === 'Retouch' && <RetouchIcon />}
+                              {cat}
+                          </button>
                      ))}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                    {['Happy', 'Sad', 'Surprised', 'Angry'].map(p => (
+                        <button key={p} onClick={() => applyPreset(p)} title={`${p}: Face expression preset`} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">{p}</button>
+                    ))}
+                    <button onClick={() => {
+                        setProject(s => ({ ...s, sliders: s.sliders.map(sl => ({ ...sl, value: Math.round((Math.random() * (sl.max - sl.min) + sl.min) / sl.step) * sl.step })) }));
+                    }} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all" title="Randomize all sliders">Randomize</button>
                 </div>
 
                 <div className="glass-card rounded-2xl p-5 flex flex-col gap-6 h-full">
@@ -325,7 +353,10 @@ const ControllerStudio: React.FC<ControllerStudioProps> = ({ project, setProject
                             <div key={slider.id} className="flex flex-col gap-2">
                                 <div className="flex justify-between items-center">
                                     <label htmlFor={slider.id} className="text-sm font-medium text-[var(--color-text-base)]">{slider.label}</label>
-                                    <span className="text-xs font-mono bg-[rgba(var(--color-accent-rgb),0.1)] text-[var(--color-accent-light)] px-2 py-0.5 rounded">{slider.value.toFixed(2)}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs font-mono bg-[rgba(var(--color-accent-rgb),0.1)] text-[var(--color-accent-light)] px-2 py-0.5 rounded">{slider.value.toFixed(2)}</span>
+                                        {slider.value !== 0 && <button onClick={() => handleSliderChange(slider.id, 0)} className="text-[9px] text-white/30 hover:text-white p-0.5">&times;</button>}
+                                    </div>
                                 </div>
                                 <input 
                                     type="range" 

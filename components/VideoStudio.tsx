@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Video, Plus, Trash2, Sparkles, Loader2, ChevronRight } from 'lucide-react';
+import { Video, Plus, Trash2, Sparkles, Loader2, ChevronRight, Download, Copy, ArrowUp, ArrowDown, Search, Clock, Shuffle } from 'lucide-react';
 import { callAI } from '../services/geminiService';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 
@@ -23,6 +23,7 @@ const VideoStudio: React.FC = () => {
   const [brief, setBrief] = useState('');
   const [template, setTemplate] = useState('professional');
   const [isLoading, setIsLoading] = useState(false);
+  const [shotSearch, setShotSearch] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const nextId = useRef(1);
 
@@ -150,22 +151,40 @@ Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no
 
       {/* Shot List Grid */}
       {shots.length > 0 && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-white/60 uppercase tracking-widest">
-            Shot List <span className="text-white/20">({shots.length} shots)</span>
-          </h3>
-          <button
-            onClick={addShot}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all active:scale-95"
-          >
-            <Plus className="w-3 h-3" />
-            Add Shot
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <h3 className="text-sm font-black text-white/60 uppercase tracking-widest">
+              Shot List <span className="text-white/20">({shots.length} shots)</span>
+            </h3>
+            <span className="text-[9px] font-mono text-white/30 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {(() => { const s = shots.reduce((sum, sh) => sum + sh.duration, 0); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; })()}
+            </span>
+            {shotSearch && (() => { const filtered = shots.filter(s => s.description.toLowerCase().includes(shotSearch.toLowerCase()) || s.notes.toLowerCase().includes(shotSearch.toLowerCase())); return <span className="text-[9px] text-white/20">({filtered.length} shown)</span>; })()}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20" />
+              <input value={shotSearch} onChange={e => setShotSearch(e.target.value)} placeholder="Search shots..." className="w-28 bg-white/5 border border-white/10 rounded-full px-7 py-1.5 text-[9px] text-white outline-none placeholder:text-white/20" />
+            </div>
+            <button onClick={() => {
+              const text = shots.map(s => `Scene ${String(s.sceneNumber).padStart(2, '0')}: ${s.description} [${s.shotType}, ${s.cameraMovement}, ${s.duration}s]${s.notes ? ` — ${s.notes}` : ''}`).join('\n');
+              navigator.clipboard.writeText(text);
+            }} className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"><Copy className="w-2.5 h-2.5" /> Copy</button>
+            <button onClick={() => {
+              const text = shots.map(s => `Scene ${String(s.sceneNumber).padStart(2, '0')}: ${s.description} [${s.shotType}, ${s.cameraMovement}, ${s.duration}s]${s.notes ? ` — ${s.notes}` : ''}`).join('\n');
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+              a.download = `shot-list-${Date.now()}.txt`; a.click();
+            }} className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"><Download className="w-2.5 h-2.5" /> Export</button>
+            <button onClick={() => { if (confirm('Clear all shots?')) setShots([]); }} className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[8px] font-black uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-all"><Trash2 className="w-2.5 h-2.5" /> Clear</button>
+            <button onClick={addShot} className="flex items-center gap-1 px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[8px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all active:scale-95"><Plus className="w-3 h-3" /> Add</button>
+          </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {shots.map((shot) => (
+        {shots.filter(s => !shotSearch || s.description.toLowerCase().includes(shotSearch.toLowerCase()) || s.notes.toLowerCase().includes(shotSearch.toLowerCase())).map((shot) => (
           <div
             key={shot.id}
             className="glass-card rounded-[2rem] overflow-hidden border border-white/5 group hover:border-[var(--color-accent)]/30 transition-all shadow-2xl bg-white/[0.02]"
@@ -176,12 +195,23 @@ Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no
                 <Video className="w-3 h-3 text-[var(--color-accent)]" />
                 SCENE {String(shot.sceneNumber).padStart(2, '0')}
               </div>
-              <button
-                onClick={() => deleteShot(shot.id)}
-                className="absolute top-3 right-3 p-2 bg-red-500/10 hover:bg-red-500/30 border border-red-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-all text-red-400"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => {
+                  const idx = shots.findIndex(s => s.id === shot.id);
+                  if (idx <= 0) return;
+                  const newShots = [...shots];
+                  [newShots[idx - 1], newShots[idx]] = [newShots[idx], newShots[idx - 1]];
+                  setShots(newShots.map((s, i) => ({ ...s, sceneNumber: i + 1 })));
+                }} className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white/60"><ArrowUp className="w-3 h-3" /></button>
+                <button onClick={() => {
+                  const idx = shots.findIndex(s => s.id === shot.id);
+                  if (idx >= shots.length - 1) return;
+                  const newShots = [...shots];
+                  [newShots[idx], newShots[idx + 1]] = [newShots[idx + 1], newShots[idx]];
+                  setShots(newShots.map((s, i) => ({ ...s, sceneNumber: i + 1 })));
+                }} className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white/60"><ArrowDown className="w-3 h-3" /></button>
+                <button onClick={() => deleteShot(shot.id)} className="p-1.5 bg-red-500/10 hover:bg-red-500/30 rounded-full text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
               <div className="flex flex-col items-center gap-2 opacity-40 group-hover:opacity-60 transition-opacity">
                 <ChevronRight className="w-8 h-8 text-white/40" />
                 <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{shot.duration}s</span>
@@ -230,6 +260,22 @@ Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no
                 </div>
               </div>
 
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  const newShot: Shot = { ...shot, id: String(nextId.current++), sceneNumber: shots.length + 1 };
+                  setShots(prev => [...prev, newShot]);
+                }} className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all flex items-center justify-center gap-1 border border-white/5">
+                  <Copy className="w-2.5 h-2.5" /> Duplicate
+                </button>
+                <button onClick={() => {
+                  const st = SHOT_TYPES[Math.floor(Math.random() * SHOT_TYPES.length)];
+                  const cm = CAMERA_MOVEMENTS[Math.floor(Math.random() * CAMERA_MOVEMENTS.length)];
+                  updateShot(shot.id, 'shotType', st);
+                  updateShot(shot.id, 'cameraMovement', cm);
+                }} className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all flex items-center justify-center gap-1 border border-white/5">
+                  <Shuffle className="w-2.5 h-2.5" /> Randomize
+                </button>
+              </div>
               {/* Notes */}
               <textarea
                 value={shot.notes}

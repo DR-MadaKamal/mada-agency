@@ -1,0 +1,86 @@
+import { ExternalAIService } from '../types';
+
+export const EXTERNAL_SERVICES: ExternalAIService[] = [
+  {
+    id: 'roboneo',
+    name: 'RoboNeo',
+    url: 'https://www.roboneo.com/',
+    description: 'Full AI creative suite — ad videos, anime, e-commerce, product photography, brand design, posters, portrait retouching, image editor, music gen, vocal separation. Supports 20+ models including Seedance 2.0, Kling 3.0, Sora 2, VEO 3.0, Wan 2.6, Nano Banana 2.',
+    capabilities: ['image', 'video', 'audio'],
+    icon: 'Zap',
+    color: '#6366f1',
+    models: ['Seedance 2.0', 'Kling 3.0', 'Sora 2', 'VEO 3.0', 'Wan 2.6', 'Nano Banana 2', 'Gemini 3.1', 'Flux Knotext'],
+    isFree: false,
+  },
+  {
+    id: 'labnana',
+    name: 'Labnana',
+    url: 'https://labnana.com/',
+    description: 'Image generator powered by Google Nano Banana 2. 4K output, highly detailed, anime, UHD, portrait, concept art generation.',
+    capabilities: ['image'],
+    icon: 'Image',
+    color: '#f59e0b',
+    models: ['Nano Banana 2'],
+    isFree: true,
+  },
+  {
+    id: 'visualgpt',
+    name: 'VisualGPT',
+    url: 'https://visualgpt.io/',
+    description: 'Multi-tool AI platform — image editor, video generator, photo studio, room planner, image-to-prompt, AI effects, AI models browser.',
+    capabilities: ['image', 'video'],
+    icon: 'Eye',
+    color: '#10b981',
+    models: ['GPT Image', 'GPT Video'],
+    isFree: true,
+  },
+  {
+    id: 'meigen',
+    name: 'Meigen AI',
+    url: 'https://www.meigen.ai/',
+    description: 'Free prompt gallery for GPT Image 2, Nano Banana 2, Seedance 2.0, Midjourney. Browse trending prompts, copy and generate with one click.',
+    capabilities: ['text', 'image', 'video'],
+    icon: 'Search',
+    color: '#ec4899',
+    models: ['GPT Image 2', 'Nano Banana 2', 'Seedance 2.0', 'Midjourney'],
+    isFree: true,
+  },
+  {
+    id: 'manus',
+    name: 'Manus',
+    url: 'https://manus.im/app',
+    description: 'AI agent platform for autonomous task completion and workflow automation.',
+    capabilities: ['text'],
+    icon: 'Bot',
+    color: '#8b5cf6',
+    models: ['Manus AI'],
+    isFree: true,
+  },
+  {
+    id: 'wizstar',
+    name: 'Wizstar',
+    url: 'https://wizstar.com/',
+    description: 'AI-powered creative tools platform.',
+    capabilities: ['image'],
+    icon: 'Star',
+    color: '#f43f5e',
+    models: ['Wizstar AI'],
+    isFree: true,
+  },
+  {
+    id: 'boomlify',
+    name: 'Boomlify',
+    url: 'https://boomlify.com/',
+    description: 'Temporary email service with custom domain support. Smart Inbox Preview, extended validity, no registration required.',
+    capabilities: ['text'],
+    icon: 'Mail',
+    color: '#06b6d4',
+    models: ['Temp Mail'],
+    isFree: true,
+  },
+];
+
+export function useExternalService(service: ExternalAIService, prompt?: string) {
+  navigator.clipboard.writeText(prompt || '');
+  window.open(service.url, '_blank', 'noopener,noreferrer');
+}

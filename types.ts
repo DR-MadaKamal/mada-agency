@@ -1,5 +1,17 @@
 
-export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini';
+export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini' | 'external';
+
+export interface ExternalAIService {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  capabilities: ('text' | 'image' | 'video' | 'audio')[];
+  icon: string;
+  color: string;
+  models: string[];
+  isFree: boolean;
+}
 export type AIModelType = string;
 
 export interface AIModel {

@@ -192,6 +192,8 @@ const EditStudio: React.FC<{
     const [lassoPoints, setLassoPoints] = useState<{x:number, y:number}[]>([]);
     const [showGrid, setShowGrid] = useState(false);
     const [showRulers, setShowRulers] = useState(true);
+    const [guideLocked, setGuideLocked] = useState(false);
+    const [canvasBgColor, setCanvasBgColor] = useState('#1a1a1a');
     const [brushSize, setBrushSize] = useState(20);
     const [brushColor, setBrushColor] = useState('#ff0000');
     const [brushOpacity, setBrushOpacity] = useState(1);
@@ -689,6 +691,9 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                     ))}
                 </div>
             </div>
+            <button onClick={() => setProject(s => ({ ...s, adjustments: { brightness: 0, contrast: 100, saturation: 100, exposure: 0, warmth: 0, sharpness: 0, blur: 0, grain: 0, vignette: 0, hue: 0, opacity: 100 } }))} className="w-full py-2 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-all flex items-center justify-center gap-1">
+                <X className="w-2.5 h-2.5" /> Reset All Adjustments
+            </button>
         </div>
     );
 
@@ -2814,6 +2819,10 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                         <Download className="w-3 h-3" />
                                         Export
                                     </button>
+                                    <div className="w-[1px] h-4 bg-white/10 mx-2" />
+                                    <button onClick={() => { project.baseImages.forEach((_, i) => handleSaveSlot(i)); }} className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400/80 hover:text-emerald-400 rounded text-[9px] font-black uppercase transition-all"><Save className="w-2.5 h-2.5" /> Bake All</button>
+                                    <button onClick={() => { setGuideLines([]); }} className="flex items-center gap-1 px-2 py-1 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded text-[9px] font-black uppercase transition-all"><X className="w-2.5 h-2.5" /> Clear Guides</button>
+                                    <button onClick={() => setGuideLocked(s => !s)} className={cn("flex items-center gap-1 px-2 py-1 rounded text-[9px] font-black uppercase transition-all", guideLocked ? "bg-[#3d75f2]/20 text-[#3d75f2]" : "bg-white/5 text-white/40 hover:text-white")}><Unlock className="w-2.5 h-2.5" /> {guideLocked ? 'Locked' : 'Guides'}</button>
                                 </div>
                             </div>
                         )}
@@ -2939,8 +2948,22 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             <div className="flex justify-between items-center px-1 opacity-0 group-hover/studio:opacity-100 transition-opacity">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Artboard 0{idx + 1}</span>
+                                                    {img.base64 && (() => { const w = new Image(); w.src = img.base64; return <span className="text-[8px] text-white/20 font-mono">{w.naturalWidth || img.mimeType?.split('/')[1]?.toUpperCase() || ''}</span>; })()}
                                                 </div>
                                                 <div className="flex gap-1">
+                                                    <button onClick={() => {
+                                                        const dup = { ...img, name: img.name ? `${img.name} (copy)` : undefined };
+                                                        const nextIdx = project.baseImages.length;
+                                                        setProject(s => ({
+                                                            ...s,
+                                                            baseImages: [...s.baseImages, dup],
+                                                            localTexts: { ...s.localTexts, [nextIdx]: [] },
+                                                            committedTexts: { ...s.committedTexts, [nextIdx]: [] }
+                                                        }));
+                                                        setActiveSlotIdx(nextIdx);
+                                                    }} className="p-1 text-white/10 hover:text-white/40 transition-all" title="Duplicate">
+                                                        <Copy className="w-2.5 h-2.5" />
+                                                    </button>
                                                     <button onClick={() => handleSaveSlot(idx)} className={cn("p-1 rounded transition-all", isModified ? "text-emerald-400" : "text-white/10")}>
                                                         <Save className="w-2.5 h-2.5" />
                                                     </button>
@@ -3272,19 +3295,19 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                     </div>
                                                 )}
 
-                                                {/* Guides Rendering */}
-                                    {guideLines.map((g, i) => (
-                                        <div 
-                                            key={i} 
-                                            className={cn(
-                                                "absolute z-[100] bg-cyan-400 group/guide",
-                                                g.type === 'h' ? "w-full h-[1px] left-0 cursor-row-resize" : "h-full w-[1px] top-0 cursor-col-resize"
-                                            )}
-                                            style={g.type === 'h' ? { top: `${g.pos}%` } : { left: `${g.pos}%` }}
-                                        >
-                                            <div className="hidden group-hover/guide:block absolute bg-cyan-400 text-black text-[8px] font-black px-1 rounded-sm -translate-y-1/2">GUIDE</div>
-                                        </div>
-                                    ))}
+                {/* Guides Rendering */}
+                        {!guideLocked && guideLines.map((g, i) => (
+                            <div 
+                                key={i} 
+                                className={cn(
+                                    "absolute z-[100] bg-cyan-400 group/guide",
+                                    g.type === 'h' ? "w-full h-[1px] left-0 cursor-row-resize" : "h-full w-[1px] top-0 cursor-col-resize"
+                                )}
+                                style={g.type === 'h' ? { top: `${g.pos}%` } : { left: `${g.pos}%` }}
+                            >
+                                <div className="hidden group-hover/guide:block absolute bg-cyan-400 text-black text-[8px] font-black px-1 rounded-sm -translate-y-1/2">GUIDE</div>
+                            </div>
+                        ))}
                                     {/* Smart Guides Rendering */}
                                                 {SmartGuides()}
                                                 {/* Layers Rendering - Images & Shapes */}
@@ -3490,9 +3513,18 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                     <div className="flex items-center gap-4">
                         <span className="flex items-center gap-1.5"><FileText className="w-3 h-3" /> 2048 x 1152 PX (72 PPI)</span>
                         <span className="flex items-center gap-1.5"><Monitor className="w-3 h-3" /> RGB/8*</span>
+                        <span className="flex items-center gap-1.5">
+                            <input type="color" value={canvasBgColor} onChange={e => setCanvasBgColor(e.target.value)} className="w-4 h-4 p-0 border-none bg-transparent cursor-pointer rounded" />
+                        </span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1.5 tracking-tighter uppercase font-mono">{zoomLevel}%</span>
+                        {selectionMarquee && (
+                            <span className="flex items-center gap-1 text-[#3d75f2]/60">
+                                <Crop className="w-3 h-3" />
+                                {Math.round(selectionMarquee.w)} × {Math.round(selectionMarquee.h)}
+                            </span>
+                        )}
+                        <span className="flex items-center gap-1.5 tracking-tighter uppercase font-mono cursor-pointer hover:text-white/60" onClick={() => { setZoomLevel(100); setCanvasPos({ x: 0, y: 0 }); }}>{zoomLevel}%</span>
                         <div className="w-24 h-2 bg-black/40 rounded-full overflow-hidden flex items-center px-0.5">
                             <motion.div 
                                 animate={{ width: '40%' }}

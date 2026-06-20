@@ -95,6 +95,8 @@ export default function StoryboardStudio({ project, setProject }: Props) {
     const [isThinking, setIsThinking] = useState(false);
     const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
     const [showSceneEditor, setShowSceneEditor] = useState(false);
+    const [shotFilter, setShotFilter] = useState<string>('all');
+    const [sceneSearch, setSceneSearch] = useState('');
 
     const [critique, setCritique] = useState<string | null>(null);
 
@@ -481,10 +483,27 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                         <p className="text-sm text-zinc-500 font-medium tracking-wide">Orchestrating {project.scenes.length} cinematic frames.</p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-xl border border-white/10">
-                                            <Layout className="w-3.5 h-3.5" />
-                                            Grid Mode
+                                        <input value={sceneSearch} onChange={e => setSceneSearch(e.target.value)} placeholder="Search scenes..." className="w-32 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-white outline-none placeholder:text-white/20" />
+                                        <select value={shotFilter} onChange={e => setShotFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-white outline-none">
+                                            <option value="all" className="bg-zinc-900">All Shots</option>
+                                            {SHOT_TYPES.map(st => <option key={st} value={st} className="bg-zinc-900">{st}</option>)}
+                                        </select>
+                                        <button onClick={async () => {
+                                            const unrendered = project.scenes.filter(s => !s.image && !s.isLoading);
+                                            for (const scene of unrendered) {
+                                                await handleGenerateImage(scene.id);
+                                            }
+                                        }} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                            Render All
                                         </button>
+                                        <button onClick={() => { if (confirm('Clear all scenes?')) setProject(s => ({ ...s, scenes: [] })); }} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/60 hover:text-red-400 transition-colors bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            Clear
+                                        </button>
+                                        <span className="text-[10px] font-mono text-white/30 flex items-center gap-1">
+                                            {(function() { const totalSec = project.scenes.reduce((sum, s) => sum + parseFloat(s.duration || '0'), 0); return `${Math.floor(totalSec / 60)}:${String(Math.floor(totalSec % 60)).padStart(2, '0')}`; })()}
+                                        </span>
                                         <button 
                                             onClick={() => setProject(s => ({ ...s, isPlaying: true, currentPlayIndex: 0 }))}
                                             className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
@@ -496,7 +515,7 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
-                                    {project.scenes.map((scene, idx) => (
+                                    {project.scenes.filter(s => (shotFilter === 'all' || s.shotType === shotFilter) && (!sceneSearch || s.description.toLowerCase().includes(sceneSearch.toLowerCase()) || s.dialogue.toLowerCase().includes(sceneSearch.toLowerCase()))).map((scene, idx) => (
                                         <motion.div 
                                             key={scene.id}
                                             initial={{ opacity: 0, y: 20 }}
@@ -568,7 +587,9 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                                 <p className="text-[11px] text-zinc-500 font-medium tracking-wide line-clamp-2 italic leading-relaxed">
                                                     {scene.dialogue || "No dialogue specified."}
                                                 </p>
+                                                {scene.notes && <p className="text-[9px] text-zinc-600 font-medium line-clamp-1">{scene.notes}</p>}
                                             </div>
+                                            <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`Scene ${scene.sequence}: ${scene.shotType} - ${scene.description}${scene.dialogue ? `\nDialogue: ${scene.dialogue}` : ''}`); }} className="absolute bottom-3 right-3 p-1.5 bg-black/60 backdrop-blur border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-white/30 hover:text-white"><Copy className="w-3 h-3" /></button>
                                         </motion.div>
                                     ))}
                                     <button 
@@ -731,6 +752,15 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                         >
                                             <FileDigit className="w-4 h-4" />
                                             Export Production Script
+                                        </button>
+                                        <button onClick={() => {
+                                            const header = 'ID,ShotType,CameraMovement,Description,Dialogue,Lighting,Location,Duration\n';
+                                            const rows = project.scenes.map(s => `#${s.sequence},"${s.shotType}","${s.cameraMovement}","${s.description.replace(/"/g, '""')}","${s.dialogue.replace(/"/g, '""')}","${s.lighting}","${s.location}","${s.duration}"`).join('\n');
+                                            const a = document.createElement('a');
+                                            a.href = URL.createObjectURL(new Blob([header + rows], { type: 'text/csv' }));
+                                            a.download = `${project.projectTitle || 'storyboard'}-shot-list.csv`; a.click();
+                                        }} className="px-4 py-3 bg-white/5 border border-white/10 text-white/40 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:text-white transition-all">
+                                            <Download className="w-3.5 h-3.5" /> CSV
                                         </button>
                                     </div>
                                 </div>
@@ -955,6 +985,14 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                 </div>
 
                                 <div className="space-y-4 pt-4 border-t border-white/5">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => {
+                                            const newScene: StoryboardScene = { ...selectedScene, id: Math.random().toString(36).substr(2, 9), sequence: project.scenes.length + 1, image: null, isLoading: false, error: null };
+                                            setProject(s => ({ ...s, scenes: [...s.scenes, newScene] }));
+                                        }} className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all flex items-center justify-center gap-1 border border-white/5">
+                                            <Copy className="w-2.5 h-2.5" /> Duplicate
+                                        </button>
+                                    </div>
                                     <h5 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">
                                         <Sparkles className="w-3 h-3" />
                                         Director's Verdict
@@ -978,10 +1016,14 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                         <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Duration</span>
                                         <p className="text-[11px] font-black text-white/60">{selectedScene.duration}</p>
                                     </div>
-                                    <div className="space-y-1">
+                                     <div className="space-y-1">
                                         <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Lighting</span>
                                         <p className="text-[11px] font-black text-white/60">{selectedScene.lighting}</p>
                                     </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Notes</label>
+                                    <textarea value={selectedScene.notes} onChange={e => updateScene(selectedScene.id, { notes: e.target.value })} rows={2} className="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-[10px] text-white/50 outline-none resize-none" placeholder="Production notes..." />
                                 </div>
                              </div>
                         </div>
