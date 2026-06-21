@@ -48,6 +48,7 @@ export interface AIModel {
 export interface AIConfig {
     provider: AIProvider;
     modelId: string;
+    externalServiceConfig?: ExternalServiceConfig;
 }
 
 export type LightingStyle = 'Natural Light' | 'Studio Light' | 'Golden Hour' | 'Blue Hour' | 'Cinematic' | 'Dramatic';

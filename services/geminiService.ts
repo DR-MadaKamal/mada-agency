@@ -44,7 +44,13 @@ export async function callAI(prompt: string, config: AIConfig, systemInstruction
             prompt,
             systemInstruction,
             signal,
-        });
+        }, config.externalServiceConfig ? {
+            endpoint: config.externalServiceConfig.url,
+            apiKeys: [],
+            authType: 'header',
+            authHeaderName: 'Authorization',
+            name: config.externalServiceConfig.name,
+        } : undefined);
 
         await logApiInteraction(`${provider}:${modelId}`, 200, Date.now() - startTime);
         return response.message || '';
@@ -81,6 +87,23 @@ export async function callAIWithImages(
 
             await logApiInteraction(`Gemini:${modelId}`, 200, Date.now() - startTime);
             return response.text || '';
+        }
+
+        if ((provider === 'custom' || provider === 'external') && config.externalServiceConfig) {
+            const { IntegrationService } = await import('./integrationService');
+            const resp = await IntegrationService.smartCall('custom', {
+                prompt,
+                systemInstruction,
+                signal,
+            }, {
+                endpoint: config.externalServiceConfig.url,
+                apiKeys: [],
+                authType: 'header',
+                authHeaderName: 'Authorization',
+                name: config.externalServiceConfig.name,
+            });
+            await logApiInteraction(`Custom:${modelId}`, 200, Date.now() - startTime);
+            return resp.message || '';
         }
 
         // For simplicity, we fallback to standard callAI for providers that might not support easy base64 vision via this simple multi-modal structure yet,
@@ -156,6 +179,42 @@ export async function generateImage(
   }
 
   try {
+    const provider = config?.provider;
+    if ((provider === 'custom' || provider === 'external') && config?.externalServiceConfig) {
+      const { IntegrationService } = await import('./integrationService');
+      const resp = await IntegrationService.smartCall('custom', {
+        prompt,
+        systemInstruction: 'Generate an image based on this description.',
+        signal,
+      }, {
+        endpoint: config.externalServiceConfig.url,
+        apiKeys: [],
+        authType: 'header',
+        authHeaderName: 'Authorization',
+        name: config.externalServiceConfig.name,
+        requestTemplate: JSON.stringify({
+          prompt: '{{prompt}}',
+          model: '{{model}}',
+        }),
+        responsePath: 'data.url',
+      });
+      const text = resp.message || '';
+      // If response contains a URL, fetch and return as ImageFile
+      if (text.startsWith('http')) {
+        const imgRes = await fetch(text);
+        const blob = await imgRes.blob();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+        await logApiInteraction(`Custom:${model}`, 200, Date.now() - startTime);
+        return { base64, mimeType: blob.type || 'image/png', name: 'generated-image.png' };
+      }
+      await logApiInteraction(`Custom:${model}`, 200, Date.now() - startTime);
+      return { base64: text, mimeType: 'image/png', name: 'generated-image.png' };
+    }
+
     const response = await googleAICall(model, { parts: parts }, {
       imageConfig: { aspectRatio: aspectRatio as any }
     }, signal);
@@ -165,8 +224,8 @@ export async function generateImage(
     return result;
 
   } catch (error) {
-    console.error('Error calling Gemini API for generation:', error);
-    await logApiInteraction(`Gemini:${model}`, 500, Date.now() - startTime, error instanceof Error ? error.message : String(error));
+    console.error('Error calling API for generation:', error);
+    await logApiInteraction(`${config?.provider || 'Gemini'}:${model}`, 500, Date.now() - startTime, error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

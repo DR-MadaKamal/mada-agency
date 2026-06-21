@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService, ExternalServiceConfig } from '../types';
+import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService, ExternalServiceConfig, Integration } from '../types';
 import { db, collection, query, where, onSnapshot, orderBy } from '../lib/firebase';
 import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock, Image, Eye, Search, Bot, Star, Mail, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -86,10 +86,33 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
     };
 
     const handleUseExternal = (s: ExternalAIService) => {
-      navigator.clipboard.writeText(`Use ${s.name} for generation`);
+      // If service has no API endpoint, fall back to clipboard+redirect
+      if (!s.url?.startsWith('http')) {
+        navigator.clipboard.writeText(`Use ${s.name} for generation`);
+        setCopiedId(s.id);
+        setTimeout(() => setCopiedId(null), 2000);
+        window.open(s.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      // Set the AI config to use this external service via proxy
+      onChange({
+        provider: 'custom',
+        modelId: s.id,
+        externalServiceConfig: {
+          id: s.id,
+          name: s.name,
+          url: s.url,
+          description: s.description,
+          capabilities: s.capabilities as string[],
+          icon: s.icon,
+          color: s.color,
+          models: s.models,
+          isFree: s.isFree,
+          isActive: true,
+        },
+      });
       setCopiedId(s.id);
       setTimeout(() => setCopiedId(null), 2000);
-      window.open(s.url, '_blank', 'noopener,noreferrer');
     };
 
     if (isLoading) {
