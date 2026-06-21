@@ -1074,7 +1074,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                                         </div>
                                                     </div>
                                                     <div className="mt-4">
-                                                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Request Template (JSON with {{placeholder}})</label>
+                                                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">{'Request Template (JSON with {{placeholder}})'}</label>
                                                         <textarea
                                                             value={newExternalService.requestTemplate}
                                                             onChange={e => setNewExternalService(s => ({ ...s, requestTemplate: e.target.value }))}

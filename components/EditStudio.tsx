@@ -82,6 +82,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MiniAISelector } from './MiniAISelector';
+import type { ExternalServiceConfig } from '../types';
 
 const CANVAS_SIZES = [
     { id: 'original', label: 'Original', ratio: null, icon: ImageIcon },
@@ -210,6 +212,7 @@ const EditStudio: React.FC<{
     const [exportFormat, setExportFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
     const [exportQuality, setExportQuality] = useState(90);
     const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+    const [aiOverride, setAiOverride] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
     const [isUpscaling, setIsUpscaling] = useState<string | null>(null);
     const [isAIEditOpen, setIsAIEditOpen] = useState(false);
@@ -309,7 +312,8 @@ const EditStudio: React.FC<{
         setProject(s => ({ ...s, isProcessingAI: true }));
         try {
             const { generateImage } = await import('../services/geminiService');
-            const result = await generateImage([], prompt, null);
+            const config = aiOverride || project.aiConfig;
+            const result = await generateImage([], prompt, null, "1:1", config);
             
             const nextSlotIdx = project.baseImages.length;
             setProject(s => ({
@@ -1767,7 +1771,8 @@ toast({ type: 'error', title: 'Subject selection failed', message: err instanceo
         setProject(s => ({ ...s, isProcessingAI: true }));
         try {
             const { generateImage } = await import('../services/geminiService');
-            const result = await generateImage([], prompt, null);
+            const config = aiOverride || project.aiConfig;
+            const result = await generateImage([], prompt, null, "1:1", config);
             
             setProject(s => ({
                 ...s,
@@ -2388,6 +2393,8 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         isOpen={isAIGeneratorOpen} 
                         onClose={() => setIsAIGeneratorOpen(false)} 
                         onGenerate={generateAIImage}
+                        aiOverride={aiOverride || project.aiConfig}
+                        onAiChange={setAiOverride}
                     />
                 )}
             </AnimatePresence>
@@ -3599,7 +3606,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
 // --- Modal Components ---
 
-const AIGeneratorModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void }) => {
+const AIGeneratorModal = ({ isOpen, onClose, onGenerate, aiOverride, onAiChange }: { isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void, aiOverride?: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig }, onAiChange?: (v: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null) => void }) => {
     const [prompt, setPrompt] = useState('');
     return (
         <motion.div 
@@ -3616,7 +3623,17 @@ const AIGeneratorModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean, on
                             <Palette className="w-5 h-5 text-[#3d75f2]" />
                             <h3 className="text-xl font-bold text-white tracking-tight text-right">AI Image Creator</h3>
                         </div>
-                        <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
+                        <div className="flex items-center gap-2">
+                            {onAiChange && aiOverride && (
+                                <MiniAISelector
+                                    provider={aiOverride.provider}
+                                    modelId={aiOverride.modelId}
+                                    externalServiceConfig={aiOverride.externalServiceConfig}
+                                    onChange={(p, m, esc) => onAiChange({ provider: p, modelId: m, externalServiceConfig: esc })}
+                                />
+                            )}
+                            <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
+                        </div>
                     </div>
                     
                     <textarea 

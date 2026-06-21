@@ -1,12 +1,16 @@
+import type { ExternalServiceConfig } from '../types';
+
 interface AIOptions {
-  provider?: 'google' | 'openai' | 'anthropic';
+  provider?: 'google' | 'openai' | 'anthropic' | 'custom';
   modelId?: string;
   signal?: AbortSignal;
   onProgress?: (chunk: string) => void;
   fallbackProviders?: ('google' | 'openai' | 'anthropic')[];
+  externalServiceConfig?: ExternalServiceConfig;
 }
 
 const PAGES_FUNCTION_URL = '/api/ai/proxy';
+const PAGES_CALL_URL = '/api/ai/call';
 
 function getDefaultModel(provider: string): string {
   switch (provider) {
@@ -17,15 +21,23 @@ function getDefaultModel(provider: string): string {
   }
 }
 
-async function attemptCall(prompt: string, provider: string, modelId: string | undefined, signal?: AbortSignal, onProgress?: (chunk: string) => void): Promise<string> {
-  const res = await fetch(PAGES_FUNCTION_URL, {
+async function attemptCall(prompt: string, provider: string, modelId: string | undefined, signal?: AbortSignal, onProgress?: (chunk: string) => void, externalServiceConfig?: ExternalServiceConfig): Promise<string> {
+  const url = provider === 'custom' ? PAGES_CALL_URL : PAGES_FUNCTION_URL;
+
+  const body: Record<string, any> = {
+    provider,
+    modelId: modelId || getDefaultModel(provider),
+    prompt,
+  };
+
+  if (provider === 'custom' && externalServiceConfig) {
+    body.config = externalServiceConfig;
+  }
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      provider,
-      modelId: modelId || getDefaultModel(provider),
-      prompt,
-    }),
+    body: JSON.stringify(body),
     signal,
   });
 
@@ -54,7 +66,11 @@ async function attemptCall(prompt: string, provider: string, modelId: string | u
 }
 
 export async function callAI(prompt: string, options: AIOptions = {}): Promise<string> {
-  const { provider = 'google', modelId, signal, onProgress, fallbackProviders } = options;
+  const { provider = 'google', modelId, signal, onProgress, fallbackProviders, externalServiceConfig } = options;
+
+  if (provider === 'custom') {
+    return await attemptCall(prompt, provider, modelId, signal, onProgress, externalServiceConfig);
+  }
 
   const providers: string[] = [provider, ...(fallbackProviders || [])];
   const seen = new Set<string>();

@@ -24,7 +24,6 @@ import { ShareableLink } from './ShareableLink';
 import { CommentsOverlay } from './CommentsOverlay';
 import { VersionTimeline } from './VersionTimeline';
 import { TemplatePicker } from './TemplatePicker';
-import { Plus } from 'lucide-react';
 import { ContentTools } from './ContentTools';
 import { AgentsPanel } from './AgentsPanel';
 
@@ -1258,7 +1257,7 @@ const MarketingStudio: React.FC<{
                                         try {
                                             const { generateAdCopies } = await import('../services/geminiService');
                                             const prompt = `You are an ad copy analyst. Compare these two ad variants and predict which will perform better on ${(project.platforms || ['social media']).join(', ')}. Provide: 1) Winner (A or B) 2) Confidence score (0-100%) 3) Key reason 4) Suggested hybrid version.\n\nVariant A: "${project.abTestVariantA}"\n\nVariant B: "${project.abTestVariantB}"`;
-                                            const result = await generateAdCopies({ prompt, platforms: project.platforms, tone: project.campaignTone, goal: project.campaignGoal, targetAudience: project.targetAudience || '' }, project.aiConfig);
+                                            const result = await generateAdCopies({ name: project.brandName || 'Brand', platforms: project.platforms, tone: project.campaignTone, goal: project.campaignGoal, brief: `A/B test comparing variants A and B:\nA: "${project.abTestVariantA}"\nB: "${project.abTestVariantB}"`, language: project.language || 'en' }, project.aiConfig);
                                             const text = Array.isArray(result) ? result.map(r => `${r.platform}: ${r.copy}`).join('\n\n') : String(result);
                                             setProject(s => ({ ...s, abTestResult: text, isGenerating: false }));
                                         } catch { setProject(s => ({ ...s, isGenerating: false })); }

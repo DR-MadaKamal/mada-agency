@@ -32,6 +32,7 @@ import {
     Camera,
     Info,
     CheckCircle2,
+    Copy,
     FileDigit,
     ListFilter,
     Pause,

@@ -3,7 +3,7 @@ import { createAICall } from '../lib/ai';
 import { Sparkles, Copy, Check, Loader2, FileText, Download } from 'lucide-react';
 import { useToast } from '../lib/useToast';
 import { MiniAISelector } from './MiniAISelector';
-import type { MarketingStudioProject } from '../types';
+import type { MarketingStudioProject, ExternalServiceConfig } from '../types';
 
 interface ToolDef {
   id: string;
@@ -496,11 +496,11 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
   goal: string;
   brief: string;
   language: string;
-  aiConfig: { provider: string; modelId: string };
+  aiConfig: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig };
 }) {
   const [loadingTool, setLoadingTool] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<string | null>(null);
-  const [toolProvider, setToolProvider] = useState<{ provider: string; modelId: string } | null>(null);
+  const [toolProvider, setToolProvider] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
   const { toast } = useToast();
 
   const section = project.contentSection || SECTIONS[0].id;
@@ -525,7 +525,12 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
         .replace(/\{\{brief\}\}/g, brief)
         .replace(/\{\{language\}\}/g, language === 'ar' ? 'Arabic' : 'English');
       const override = toolProvider || aiConfig;
-      const result = await call(prompt, { provider: override.provider as 'google' | 'openai' | 'anthropic', modelId: override.modelId, fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as ('google' | 'openai' | 'anthropic')[] });
+      const isCustom = override.provider === 'custom';
+      const result = await call(prompt, {
+        provider: isCustom ? 'custom' : override.provider as 'google' | 'openai' | 'anthropic',
+        modelId: override.modelId,
+        ...(isCustom ? { externalServiceConfig: override.externalServiceConfig } : { fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as ('google' | 'openai' | 'anthropic')[] }),
+      });
       setProject(p => ({ ...p, contentResults: { ...(p.contentResults || {}), [t.id]: result }, contentSubTab: t.id }));
       toast({ type: 'success', title: `${t.label} generated` });
     } catch (err: any) {
@@ -627,7 +632,8 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
                 <MiniAISelector
                   provider={toolProvider?.provider || aiConfig.provider}
                   modelId={toolProvider?.modelId || aiConfig.modelId}
-                  onChange={(p, m) => setToolProvider({ provider: p, modelId: m })}
+                  externalServiceConfig={toolProvider?.externalServiceConfig || aiConfig.externalServiceConfig}
+                  onChange={(p, m, esc) => setToolProvider({ provider: p, modelId: m, externalServiceConfig: esc })}
                 />
 
                 {results[currentTool.id] && (

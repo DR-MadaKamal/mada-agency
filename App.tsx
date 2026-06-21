@@ -14,7 +14,8 @@ import {
   MarketingStudioProject,
   ControllerStudioProject,
   AdminStudioProject,
-  PrePilotAgencySuiteProject
+  PrePilotAgencySuiteProject,
+  BatchImageStudioProject
 } from './types';
 
 import NexusAssistant from './components/NexusAssistant';
@@ -34,6 +35,7 @@ const StoryboardStudio = lazy(() => import('./components/StoryboardStudio'));
 const MarketingStudio = lazy(() => import('./components/MarketingStudio'));
 const ControllerStudio = lazy(() => import('./components/ControllerStudio'));
 const PrePilotAgencySuite = lazy(() => import('./components/PrePilotAgencySuite'));
+const BatchImageStudio = lazy(() => import('./components/BatchImageStudio'));
 const AdminStudio = lazy(() => import('./components/AdminStudio'));
 const GlobalHistoryPanel = lazy(() => import('./components/GlobalHistoryPanel'));
 const NexusVault = lazy(() => import('./components/NexusVault'));
@@ -69,6 +71,7 @@ const STUDIO_METADATA: Record<string, { label: string; icon: any }> = {
   archives: { label: 'Archives', icon: null },
   asset_library: { label: 'Vault', icon: null },
   command_center: { label: 'Command', icon: null },
+  batch_image_studio: { label: 'Batch Images', icon: null },
 };
 
 const ArrowRightIcon = () => (
@@ -680,6 +683,34 @@ const createNewControllerProject = (projectCount: number, ownerId: string): Cont
     aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
 });
 
+const createNewBatchImageProject = (projectCount: number, ownerId: string): BatchImageStudioProject => ({
+  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  name: `Batch ${projectCount + 1}`,
+  ownerId,
+  studioType: 'batch_image_studio',
+  status: 'active',
+  progress: 0,
+  priority: 'medium',
+  productImages: [],
+  productName: '',
+  productDescription: '',
+  batchConfig: {
+    backgrounds: [{ type: 'none', value: '' }],
+    cameraAngles: ['front'],
+    lightingPresets: ['studio'],
+    perspectives: ['eye_level'],
+    aspectRatio: '1:1',
+    backgroundRemoval: false,
+    count: 4,
+  },
+  results: [],
+  isGenerating: false,
+  selectedResultIds: [],
+  error: null,
+  activeTab: 'config',
+  aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
+});
+
 function App() {
   const [view, setView] = useState<AppView>('creator_studio');
   const [isBannerManagerOpen, setIsBannerManagerOpen] = useState(false);
@@ -718,6 +749,8 @@ function App() {
 
   const [controllerProjects, setControllerProjects] = useState<ControllerStudioProject[]>([]);
   const [activeControllerIndex, setActiveControllerIndex] = useState(0);
+  const [batchImageProjects, setBatchImageProjects] = useState<BatchImageStudioProject[]>([]);
+  const [activeBatchImageIndex, setActiveBatchImageIndex] = useState(0);
 
   const [editProjects, setEditProjects] = useState<EditStudioProject[]>([]);
   const [activeEditIndex, setActiveEditIndex] = useState(0);
@@ -796,6 +829,7 @@ function App() {
     setStoryboardProjects(prev => prev.length === 0 ? [createNewStoryboardProject(0, uid)] : prev);
     setMarketingProjects(prev => prev.length === 0 ? [createNewMarketingProject(0, uid)] : prev);
     setControllerProjects(prev => prev.length === 0 ? [createNewControllerProject(0, uid)] : prev);
+    setBatchImageProjects(prev => prev.length === 0 ? [createNewBatchImageProject(0, uid)] : prev);
     setEditProjects(prev => prev.length === 0 ? [createNewEditProject(0, uid)] : prev);
     setPrePilotProjects(prev => prev.length === 0 ? [createNewPrePilotProject(0, uid)] : prev);
   }, []);
@@ -826,6 +860,7 @@ function App() {
           case 'marketing_studio': updateIndex(marketingProjects, setMarketingProjects, setActiveMarketingIndex); break;
           case 'edit_studio': updateIndex(editProjects, setEditProjects, setActiveEditIndex); break;
           case 'controller_studio': updateIndex(controllerProjects, setControllerProjects, setActiveControllerIndex); break;
+          case 'batch_image_studio': updateIndex(batchImageProjects, setBatchImageProjects, setActiveBatchImageIndex); break;
           case 'prepilot_agency_suite': updateIndex(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex); break;
           case 'calendar': break;
       }
@@ -994,6 +1029,16 @@ function App() {
     });
   }, [activeControllerIndex]);
 
+  const updateBatchImageProject = useCallback((action: React.SetStateAction<BatchImageStudioProject>) => {
+    setBatchImageProjects(prev => {
+        const newProjects = [...prev];
+        const current = newProjects[activeBatchImageIndex];
+        const updated = action instanceof Function ? action(current) : action;
+        newProjects[activeBatchImageIndex] = updated;
+        return newProjects;
+    });
+  }, [activeBatchImageIndex]);
+
   const updatePrePilotProject = useCallback((action: React.SetStateAction<PrePilotAgencySuiteProject>) => {
     setPrePilotProjects(prev => {
         const newProjects = [...prev];
@@ -1085,6 +1130,13 @@ function App() {
                 return next;
             });
             break;
+        case 'batch_image_studio':
+            setBatchImageProjects(prev => {
+                const next = [...prev];
+                next[activeBatchImageIndex] = { ...next[activeBatchImageIndex], ...data };
+                return next;
+            });
+            break;
         case 'pre_pilot_studio':
             setPrePilotProjects(prev => {
                 const next = [...prev];
@@ -1096,7 +1148,7 @@ function App() {
             break;
     }
     scrollToContent();
-  }, [activeCampaignIndex, activeMarketingIndex, activePhotoshootIndex, activeVoiceOverIndex, activeEditIndex, activePlanIndex, activeCreatorIndex, activePromptStudioIndex, activeBrandingIndex, activeStoryboardIndex, activeControllerIndex, activePrePilotIndex]);
+  }, [activeCampaignIndex, activeMarketingIndex, activePhotoshootIndex, activeVoiceOverIndex, activeEditIndex, activePlanIndex, activeCreatorIndex, activePromptStudioIndex, activeBrandingIndex, activeStoryboardIndex, activeControllerIndex, activeBatchImageIndex, activePrePilotIndex]);
 
 
   const renderContent = () => {
@@ -1293,6 +1345,22 @@ function App() {
                                         <ControllerStudio
                                             project={controllerProjects[activeControllerIndex]}
                                             setProject={updateControllerProject}
+                                        />
+                                    </div>
+                                );
+                            case 'batch_image_studio':
+                                return (
+                                    <div className="flex flex-col w-full gap-4">
+                                        <TabBar
+                                            projects={batchImageProjects}
+                                            activeProjectIndex={activeBatchImageIndex}
+                                            onSelectTab={setActiveBatchImageIndex}
+                                            onAddTab={() => addTab(batchImageProjects, setBatchImageProjects, setActiveBatchImageIndex, (count) => createNewBatchImageProject(count, 'local'))}
+                                            onCloseTab={(idx) => closeTab(idx, batchImageProjects, setBatchImageProjects, activeBatchImageIndex, setActiveBatchImageIndex, (count) => createNewBatchImageProject(count, 'local'))}
+                                        />
+                                        <BatchImageStudio
+                                            project={batchImageProjects[activeBatchImageIndex]}
+                                            setProject={updateBatchImageProject}
                                         />
                                     </div>
                                 );

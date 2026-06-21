@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Video, Plus, Trash2, Sparkles, Loader2, ChevronRight, Download, Copy, ArrowUp, ArrowDown, Search, Clock, Shuffle } from 'lucide-react';
 import { callAI } from '../services/geminiService';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
+import { MiniAISelector } from './MiniAISelector';
+import type { ExternalServiceConfig } from '../types';
 
 interface Shot {
   id: string;
@@ -16,14 +18,13 @@ interface Shot {
 
 const SHOT_TYPES = ['Wide', 'Mid', 'Close-up', 'Detail'];
 const CAMERA_MOVEMENTS = ['Static', 'Pan', 'Tilt', 'Truck', 'Dolly'];
-const DEFAULT_AI_CONFIG = { provider: 'google' as const, modelId: 'gemini-2.0-flash' };
-
 const VideoStudio: React.FC = () => {
   const [shots, setShots] = useState<Shot[]>([]);
   const [brief, setBrief] = useState('');
   const [template, setTemplate] = useState('professional');
   const [isLoading, setIsLoading] = useState(false);
   const [shotSearch, setShotSearch] = useState('');
+  const [aiOverride, setAiOverride] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const nextId = useRef(1);
 
@@ -72,7 +73,8 @@ Return a JSON array of objects. Each object must have these exact fields:
 
 Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no code fences.`;
 
-      const result = await callAI(prompt, DEFAULT_AI_CONFIG, undefined, undefined, abortRef.current.signal);
+      const aiConfig = aiOverride || { provider: 'google' as const, modelId: 'gemini-2.0-flash' };
+      const result = await callAI(prompt, aiConfig as any, undefined, undefined, abortRef.current.signal);
       const jsonMatch = result.match(/\[[\s\S]*\]/);
       const parsed: Omit<Shot, 'id' | 'sceneNumber'>[] = JSON.parse(jsonMatch ? jsonMatch[0] : result);
 
@@ -106,12 +108,20 @@ Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no
   return (
     <main className="w-full flex flex-col gap-6 pt-4 pb-12 animate-in fade-in duration-700 min-h-[70vh] relative">
       {/* Header */}
-      <div className="mb-2">
-        <h2 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
-          <Video className="w-7 h-7 text-[var(--color-accent)]" />
-          Video Production
-        </h2>
-        <p className="text-sm text-white/50 mt-1">Build shot lists and generate AI-powered shot scripts.</p>
+      <div className="mb-2 flex items-start justify-between">
+        <div>
+          <h2 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
+            <Video className="w-7 h-7 text-[var(--color-accent)]" />
+            Video Production
+          </h2>
+          <p className="text-sm text-white/50 mt-1">Build shot lists and generate AI-powered shot scripts.</p>
+        </div>
+        <MiniAISelector
+          provider={aiOverride?.provider || 'google'}
+          modelId={aiOverride?.modelId || 'gemini-2.0-flash'}
+          externalServiceConfig={aiOverride?.externalServiceConfig}
+          onChange={(p, m, esc) => setAiOverride({ provider: p, modelId: m, externalServiceConfig: esc })}
+        />
       </div>
 
       {/* Brief Input */}

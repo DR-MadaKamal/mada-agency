@@ -153,7 +153,7 @@ export interface AssistantSession {
     updatedAt: Date;
 }
 
-export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar' | 'pre_pilot_studio';
+export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar' | 'pre_pilot_studio' | 'batch_image_studio';
 
 export interface PrePilotAgent {
     id: string;
@@ -473,6 +473,7 @@ export interface PlanIdea {
     caption: string;
     tov: string;
     schedule: string;
+    platform?: string;
     image: ImageFile | null;
     isLoadingImage: boolean;
     imageError: string | null;
@@ -881,3 +882,48 @@ export interface PrePilotAgencySuiteState {
 }
 
 export interface PrePilotAgencySuiteProject extends ProjectBase, PrePilotAgencySuiteState {}
+
+// --- Batch Image Studio ---
+export type BatchBackgroundType = 'none' | 'solid' | 'ai_generated' | 'upload';
+export type BatchCameraAngle = 'front' | 'side' | 'three_quarter' | 'top' | 'bottom' | 'back' | 'close_up' | 'macro';
+export type BatchLightingPreset = 'studio' | 'natural' | 'golden_hour' | 'blue_hour' | 'cinematic' | 'dramatic' | 'soft' | 'harsh' | 'neon' | 'silhouette';
+export type BatchPerspective = 'eye_level' | 'high_angle' | 'low_angle' | 'birds_eye' | 'worms_eye' | 'dutch_angle';
+
+export interface BatchConfig {
+  backgrounds: { type: BatchBackgroundType; value: string }[];
+  cameraAngles: BatchCameraAngle[];
+  lightingPresets: BatchLightingPreset[];
+  perspectives: BatchPerspective[];
+  aspectRatio: AspectRatio;
+  backgroundRemoval: boolean;
+  count: number;
+}
+
+export interface BatchResultItem {
+  id: string;
+  prompt: string;
+  image: ImageFile | null;
+  config: {
+    background?: string;
+    cameraAngle: BatchCameraAngle;
+    lighting: BatchLightingPreset;
+    perspective: BatchPerspective;
+    backgroundRemoved: boolean;
+  };
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface BatchImageStudioState {
+  productImages: ImageFile[];
+  productName: string;
+  productDescription: string;
+  batchConfig: BatchConfig;
+  results: BatchResultItem[];
+  isGenerating: boolean;
+  selectedResultIds: string[];
+  error: string | null;
+  activeTab: 'config' | 'results';
+}
+
+export interface BatchImageStudioProject extends ProjectBase, BatchImageStudioState {}
