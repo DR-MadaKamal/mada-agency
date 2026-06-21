@@ -265,8 +265,98 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
                     </motion.div>
                 )}
 
+                {/* Custom Provider Config */}
+                {config.provider === 'custom' && config.externalServiceConfig && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4 p-4 rounded-3xl bg-white/[0.02] border border-white/[0.03]"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <ExternalLink className="w-4 h-4" style={{ color: config.externalServiceConfig.color }} />
+                                <span className="text-xs font-black text-white tracking-tight uppercase">{config.externalServiceConfig.name}</span>
+                            </div>
+                            <button
+                                onClick={() => onChange({ provider: 'external', modelId: 'external' })}
+                                className="text-[8px] font-black text-white/20 hover:text-white/40 uppercase tracking-widest transition-all"
+                            >
+                                Change
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 block">API Keys (comma-separated)</label>
+                                <input
+                                    type="text"
+                                    value={(config.externalServiceConfig.apiKeys || []).join(', ')}
+                                    onChange={e => onChange({
+                                        ...config,
+                                        externalServiceConfig: {
+                                            ...config.externalServiceConfig!,
+                                            apiKeys: e.target.value.split(',').map(x => x.trim()).filter(Boolean)
+                                        }
+                                    })}
+                                    className="w-full glass-input px-3 py-2 rounded-xl text-[10px] font-mono tracking-wider"
+                                    placeholder="key1, key2, key3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 block">Auth Type</label>
+                                    <select
+                                        value={config.externalServiceConfig.authType || 'header'}
+                                        onChange={e => onChange({
+                                            ...config,
+                                            externalServiceConfig: {
+                                                ...config.externalServiceConfig!,
+                                                authType: e.target.value as any
+                                            }
+                                        })}
+                                        className="w-full glass-input px-3 py-2 rounded-xl text-[10px] font-black tracking-widest"
+                                    >
+                                        <option value="header">Header</option>
+                                        <option value="bearer">Bearer</option>
+                                        <option value="api-key">API Key</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 block">Header Name</label>
+                                    <input
+                                        type="text"
+                                        value={config.externalServiceConfig.authHeaderName || 'Authorization'}
+                                        onChange={e => onChange({
+                                            ...config,
+                                            externalServiceConfig: {
+                                                ...config.externalServiceConfig!,
+                                                authHeaderName: e.target.value
+                                            }
+                                        })}
+                                        className="w-full glass-input px-3 py-2 rounded-xl text-[10px] font-mono tracking-wider"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 block">Endpoint URL</label>
+                                <input
+                                    type="text"
+                                    value={config.externalServiceConfig.url}
+                                    onChange={e => onChange({
+                                        ...config,
+                                        externalServiceConfig: {
+                                            ...config.externalServiceConfig!,
+                                            url: e.target.value
+                                        }
+                                    })}
+                                    className="w-full glass-input px-3 py-2 rounded-xl text-[10px] font-mono tracking-wider"
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Model Tiers */}
-                {config.provider !== 'external' && (
+                {config.provider !== 'external' && config.provider !== 'custom' && (
                     <div>
                         <label className="text-[9px] uppercase tracking-[0.25em] text-white/20 mb-3 block font-black">Neural Processor</label>
                         <div className="grid grid-cols-1 gap-2">

@@ -239,7 +239,7 @@ export default function StoryboardStudio({ project, setProject }: Props) {
         }));
 
         try {
-            const image = await generateImage([], concept.prompt, null, '16:9', { provider: 'google', modelId: 'gemini-2.1-flash-image' });
+            const image = await generateImage([], concept.prompt, null, '16:9', project.aiConfig || { provider: 'google', modelId: 'gemini-2.1-flash-image' });
             setProject(s => ({
                 ...s,
                 moodboardConcepts: s.moodboardConcepts.map(c => c.title === conceptTitle ? { ...c, image, isLoading: false } : c)
@@ -304,7 +304,7 @@ export default function StoryboardStudio({ project, setProject }: Props) {
 
         try {
             const prompt = `${scene.visualPrompt}. Visual style: ${project.visualStyle}. Lighting: ${scene.lighting}. Shot: ${scene.shotType}. High quality cinematic render, extreme detail.`;
-            const image = await generateImage([], prompt, null, project.aspectRatio, { provider: 'google', modelId: 'gemini-2.1-flash-image' });
+            const image = await generateImage([], prompt, null, project.aspectRatio, project.aiConfig || { provider: 'google', modelId: 'gemini-2.1-flash-image' });
             
             setProject(s => ({
                 ...s,

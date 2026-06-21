@@ -25,6 +25,11 @@ export interface ExternalServiceConfig {
   models: string[];
   isFree: boolean;
   isActive: boolean;
+  apiKeys?: string[];
+  authType?: 'header' | 'bearer' | 'api-key';
+  authHeaderName?: string;
+  requestTemplate?: string;
+  responsePath?: string;
   createdAt?: any;
   updatedAt?: any;
 }

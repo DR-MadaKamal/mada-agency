@@ -40,16 +40,19 @@ export async function callAI(prompt: string, config: AIConfig, systemInstruction
 
     try {
         const { IntegrationService } = await import('./integrationService');
+        const sc = config.externalServiceConfig;
         const response = await IntegrationService.smartCall(provider as any, {
             prompt,
             systemInstruction,
             signal,
-        }, config.externalServiceConfig ? {
-            endpoint: config.externalServiceConfig.url,
-            apiKeys: [],
-            authType: 'header',
-            authHeaderName: 'Authorization',
-            name: config.externalServiceConfig.name,
+        }, sc ? {
+            endpoint: sc.url,
+            apiKeys: sc.apiKeys || [],
+            authType: sc.authType || 'header',
+            authHeaderName: sc.authHeaderName || 'Authorization',
+            requestTemplate: sc.requestTemplate,
+            responsePath: sc.responsePath,
+            name: sc.name,
         } : undefined);
 
         await logApiInteraction(`${provider}:${modelId}`, 200, Date.now() - startTime);
@@ -91,16 +94,19 @@ export async function callAIWithImages(
 
         if ((provider === 'custom' || provider === 'external') && config.externalServiceConfig) {
             const { IntegrationService } = await import('./integrationService');
+            const sc = config.externalServiceConfig;
             const resp = await IntegrationService.smartCall('custom', {
                 prompt,
                 systemInstruction,
                 signal,
             }, {
-                endpoint: config.externalServiceConfig.url,
-                apiKeys: [],
-                authType: 'header',
-                authHeaderName: 'Authorization',
-                name: config.externalServiceConfig.name,
+                endpoint: sc.url,
+                apiKeys: sc.apiKeys || [],
+                authType: sc.authType || 'header',
+                authHeaderName: sc.authHeaderName || 'Authorization',
+                requestTemplate: sc.requestTemplate,
+                responsePath: sc.responsePath,
+                name: sc.name,
             });
             await logApiInteraction(`Custom:${modelId}`, 200, Date.now() - startTime);
             return resp.message || '';
@@ -182,21 +188,19 @@ export async function generateImage(
     const provider = config?.provider;
     if ((provider === 'custom' || provider === 'external') && config?.externalServiceConfig) {
       const { IntegrationService } = await import('./integrationService');
+      const sc = config.externalServiceConfig;
       const resp = await IntegrationService.smartCall('custom', {
         prompt,
         systemInstruction: 'Generate an image based on this description.',
         signal,
       }, {
-        endpoint: config.externalServiceConfig.url,
-        apiKeys: [],
-        authType: 'header',
-        authHeaderName: 'Authorization',
-        name: config.externalServiceConfig.name,
-        requestTemplate: JSON.stringify({
-          prompt: '{{prompt}}',
-          model: '{{model}}',
-        }),
-        responsePath: 'data.url',
+        endpoint: sc.url,
+        apiKeys: sc.apiKeys || [],
+        authType: sc.authType || 'header',
+        authHeaderName: sc.authHeaderName || 'Authorization',
+        requestTemplate: sc.requestTemplate || JSON.stringify({ prompt: '{{prompt}}', model: '{{model}}' }),
+        responsePath: sc.responsePath || 'data.url',
+        name: sc.name,
       });
       const text = resp.message || '';
       // If response contains a URL, fetch and return as ImageFile
@@ -237,6 +241,37 @@ export async function editImage(
   signal?: AbortSignal
 ): Promise<ImageFile> {
   const model = config?.modelId || 'gemini-2.0-flash';
+  const provider = config?.provider;
+
+  // Route custom/external providers through IntegrationService
+  if ((provider === 'custom' || provider === 'external') && config?.externalServiceConfig) {
+    const { IntegrationService } = await import('./integrationService');
+    const sc = config.externalServiceConfig;
+    const resp = await IntegrationService.smartCall('custom', {
+      prompt: `Edit this image: ${prompt}`,
+      signal,
+    }, {
+      endpoint: sc.url,
+      apiKeys: sc.apiKeys || [],
+      authType: sc.authType || 'header',
+      authHeaderName: sc.authHeaderName || 'Authorization',
+      requestTemplate: sc.requestTemplate || JSON.stringify({ prompt: '{{prompt}}' }),
+      responsePath: sc.responsePath || 'data.url',
+      name: sc.name,
+    });
+    const text = resp.message || '';
+    if (text.startsWith('http')) {
+      const imgRes = await fetch(text);
+      const blob = await imgRes.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+        reader.readAsDataURL(blob);
+      });
+      return { base64, mimeType: blob.type || 'image/png', name: 'edited-image.png' };
+    }
+    return { base64: text, mimeType: 'image/png', name: 'edited-image.png' };
+  }
 
   const parts: any[] = [
     {
@@ -253,7 +288,7 @@ export async function editImage(
     return handleApiResponse(response);
 
   } catch (error) {
-    console.error('Error calling Gemini API for editing:', error);
+    console.error('Error calling API for editing:', error);
     throw error;
   }
 }

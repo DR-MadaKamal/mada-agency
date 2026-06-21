@@ -124,7 +124,8 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
     const [externalServices, setExternalServices] = useState<ExternalServiceConfig[]>([]);
     const [isAddingExternal, setIsAddingExternal] = useState(false);
     const [newExternalService, setNewExternalService] = useState({
-        name: '', url: '', description: '', capabilities: [] as string[], icon: 'ExternalLink', color: '#6366f1', models: [] as string[], isFree: true, isActive: true
+        name: '', url: '', description: '', capabilities: [] as string[], icon: 'ExternalLink', color: '#6366f1', models: [] as string[], isFree: true, isActive: true,
+        apiKeys: [] as string[], authType: 'header' as const, authHeaderName: 'Authorization', requestTemplate: '', responsePath: ''
     });
 
     const [isAddingModel, setIsAddingModel] = useState(false);
@@ -273,7 +274,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
             });
             await addDoc(collection(db, 'external_services'), data);
             setIsAddingExternal(false);
-            setNewExternalService({ name: '', url: '', description: '', capabilities: [], icon: 'ExternalLink', color: '#6366f1', models: [], isFree: true, isActive: true });
+            setNewExternalService({ name: '', url: '', description: '', capabilities: [], icon: 'ExternalLink', color: '#6366f1', models: [], isFree: true, isActive: true, apiKeys: [], authType: 'header', authHeaderName: 'Authorization', requestTemplate: '', responsePath: '' });
         } catch (err) {
             handleFirestoreError(err, OperationType.CREATE, 'external_services');
         }
@@ -1046,6 +1047,60 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                                         />
                                                         Free Service
                                                     </label>
+                                                </div>
+                                                <div className="border-t border-white/5 pt-6 mt-6">
+                                                    <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-4">API Configuration (optional)</h4>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Auth Type</label>
+                                                            <select
+                                                                value={newExternalService.authType}
+                                                                onChange={e => setNewExternalService(s => ({ ...s, authType: e.target.value as any }))}
+                                                                className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                            >
+                                                                <option value="header">Header</option>
+                                                                <option value="bearer">Bearer Token</option>
+                                                                <option value="api-key">API Key</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Auth Header Name</label>
+                                                            <input 
+                                                                type="text" value={newExternalService.authHeaderName}
+                                                                onChange={e => setNewExternalService(s => ({ ...s, authHeaderName: e.target.value }))}
+                                                                className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                                placeholder="Authorization"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Request Template (JSON with {{placeholder}})</label>
+                                                        <textarea
+                                                            value={newExternalService.requestTemplate}
+                                                            onChange={e => setNewExternalService(s => ({ ...s, requestTemplate: e.target.value }))}
+                                                            className="w-full glass-input px-4 py-3 rounded-2xl text-[10px] font-mono tracking-wider"
+                                                            placeholder='{"prompt": "{{prompt}}", "model": "{{model}}"}'
+                                                            rows={3}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Response Path (dot notation)</label>
+                                                        <input 
+                                                            type="text" value={newExternalService.responsePath}
+                                                            onChange={e => setNewExternalService(s => ({ ...s, responsePath: e.target.value }))}
+                                                            className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                            placeholder="data.text"
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">API Keys (comma-separated, for rotation)</label>
+                                                        <input 
+                                                            type="text" value={(newExternalService.apiKeys || []).join(', ')}
+                                                            onChange={e => setNewExternalService(s => ({ ...s, apiKeys: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))}
+                                                            className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                            placeholder="key1, key2, key3"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex justify-end gap-4 mt-10">
