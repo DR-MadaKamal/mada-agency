@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService } from '../types';
-import { db, collection, query, where, onSnapshot } from '../lib/firebase';
+import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService, ExternalServiceConfig } from '../types';
+import { db, collection, query, where, onSnapshot, orderBy } from '../lib/firebase';
 import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock, Image, Eye, Search, Bot, Star, Mail, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EXTERNAL_SERVICES } from '../services/aiLibrary';
@@ -27,6 +27,34 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
     const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [firestoreServices, setFirestoreServices] = useState<ExternalServiceConfig[]>([]);
+
+    useEffect(() => {
+        const unsubExt = onSnapshot(
+            query(collection(db, 'external_services'), orderBy('name', 'asc')),
+            (snap) => {
+                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExternalServiceConfig));
+                setFirestoreServices(data);
+            },
+            () => { /* silent fail */ }
+        );
+        return () => unsubExt();
+    }, []);
+
+    const externalServices: ExternalAIService[] = firestoreServices.length > 0
+        ? firestoreServices.map(s => ({
+            id: s.id,
+            name: s.name,
+            url: s.url,
+            description: s.description,
+            capabilities: s.capabilities as any,
+            icon: s.icon,
+            color: s.color,
+            models: s.models,
+            isFree: s.isFree,
+            isActive: s.isActive,
+        }))
+        : EXTERNAL_SERVICES;
 
     useEffect(() => {
         const q = query(
@@ -167,7 +195,7 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
                     >
                         <label className="text-[9px] uppercase tracking-[0.25em] text-white/20 mb-3 block font-black">3rd Party Services</label>
                         <div className="grid grid-cols-1 gap-2">
-                            {EXTERNAL_SERVICES.map((s) => {
+                            {externalServices.map((s) => {
                                 const Icon = SERVICE_ICONS[s.icon] || ExternalLink;
                                 const isCopied = copiedId === s.id;
                                 return (

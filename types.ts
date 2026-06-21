@@ -11,6 +11,22 @@ export interface ExternalAIService {
   color: string;
   models: string[];
   isFree: boolean;
+  isActive?: boolean;
+}
+
+export interface ExternalServiceConfig {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  capabilities: string[];
+  icon: string;
+  color: string;
+  models: string[];
+  isFree: boolean;
+  isActive: boolean;
+  createdAt?: any;
+  updatedAt?: any;
 }
 export type AIModelType = string;
 
@@ -209,8 +225,12 @@ export interface Integration {
     id: string;
     name: string;
     provider: 'gemini' | 'openai' | 'anthropic' | 'custom' | 'google';
-    apiKey: string;
+    apiKeys: string[];
     endpoint: string;
+    authType?: 'header' | 'bearer' | 'api-key';
+    authHeaderName?: string;
+    requestTemplate?: string;
+    responsePath?: string;
     status: 'active' | 'disabled' | 'error';
     lastUsed?: string;
     updatedAt: string;

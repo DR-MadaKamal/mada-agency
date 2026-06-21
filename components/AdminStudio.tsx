@@ -14,7 +14,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { Integration, ApiLog } from '../types';
+import { Integration, ApiLog, ExternalServiceConfig } from '../types';
 import {
     Settings,
     Plus,
@@ -44,7 +44,10 @@ import {
     Download,
     Upload,
     Brain,
-    Layout
+    Layout,
+    ExternalLink,
+    Copy,
+    Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalHistoryPanel from './GlobalHistoryPanel';
@@ -88,7 +91,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
     const [logs, setLogs] = useState<ApiLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
-    const [activeTab, setActiveTab] = useState<'integrations' | 'projects' | 'users' | 'logs' | 'stats' | 'infrastructure' | 'models' | 'settings'>('integrations');
+    const [activeTab, setActiveTab] = useState<'integrations' | 'projects' | 'users' | 'logs' | 'stats' | 'infrastructure' | 'models' | 'settings' | 'external'>('integrations');
     const [activeSettingsView, setActiveSettingsView] = useState<'governance' | 'vault' | 'history' | 'appearance' | 'general'>('governance');
     const [history, setHistory] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
@@ -118,6 +121,12 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
         version: '4.0.0-neural'
     });
 
+    const [externalServices, setExternalServices] = useState<ExternalServiceConfig[]>([]);
+    const [isAddingExternal, setIsAddingExternal] = useState(false);
+    const [newExternalService, setNewExternalService] = useState({
+        name: '', url: '', description: '', capabilities: [] as string[], icon: 'ExternalLink', color: '#6366f1', models: [] as string[], isFree: true, isActive: true
+    });
+
     const [isAddingModel, setIsAddingModel] = useState(false);
     const [editingModel, setEditingModel] = useState<any>(null);
     const [newModel, setNewModel] = useState<any>({
@@ -135,13 +144,21 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
     const [newIntegration, setNewIntegration] = useState<{
         name: string;
         provider: Integration['provider'];
-        apiKey: string;
+        apiKeys: string[];
         endpoint: string;
+        authType: Integration['authType'];
+        authHeaderName: string;
+        requestTemplate: string;
+        responsePath: string;
     }>({
         name: '',
         provider: 'gemini',
-        apiKey: '',
-        endpoint: ''
+        apiKeys: [''],
+        endpoint: '',
+        authType: 'header',
+        authHeaderName: 'x-api-key',
+        requestTemplate: '{"contents":[{"role":"user","parts":[{"text":"{{prompt}}"}]}]}',
+        responsePath: 'candidates[0].content.parts[0].text'
     });
 
     // Process logs for charts
@@ -192,6 +209,11 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
             setModels(data);
         }, (err) => handleFirestoreError(err, OperationType.LIST, 'models'));
 
+        const unsubE = onSnapshot(query(collection(db, 'external_services'), orderBy('name', 'asc')), (snap) => {
+            const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExternalServiceConfig));
+            setExternalServices(data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'external_services'));
+
         return () => {
             unsubI();
             unsubL();
@@ -199,6 +221,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
             unsubH();
             unsubU();
             unsubM();
+            unsubE();
         };
     }, []);
 
@@ -216,14 +239,16 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
 
     const handleAddIntegration = async () => {
         try {
+            const filteredKeys = newIntegration.apiKeys.filter(k => k.trim());
             const data = sanitizeData({
                 ...newIntegration,
+                apiKeys: filteredKeys.length > 0 ? filteredKeys : [''],
                 status: 'active',
                 updatedAt: serverTimestamp()
             });
             await addDoc(collection(db, 'integrations'), data);
             setIsAdding(false);
-            setNewIntegration({ name: '', provider: 'gemini', apiKey: '', endpoint: '' });
+            setNewIntegration({ name: '', provider: 'gemini', apiKeys: [''], endpoint: '', authType: 'header', authHeaderName: 'x-api-key', requestTemplate: '{"contents":[{"role":"user","parts":[{"text":"{{prompt}}"}]}]}', responsePath: 'candidates[0].content.parts[0].text' });
         } catch (err) {
             handleFirestoreError(err, OperationType.CREATE, 'integrations');
         }
@@ -237,6 +262,37 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
             });
         } catch (err) {
             handleFirestoreError(err, OperationType.UPDATE, `integrations/${id}`);
+        }
+    };
+
+    const handleAddExternalService = async () => {
+        try {
+            const data = sanitizeData({
+                ...newExternalService,
+                updatedAt: serverTimestamp()
+            });
+            await addDoc(collection(db, 'external_services'), data);
+            setIsAddingExternal(false);
+            setNewExternalService({ name: '', url: '', description: '', capabilities: [], icon: 'ExternalLink', color: '#6366f1', models: [], isFree: true, isActive: true });
+        } catch (err) {
+            handleFirestoreError(err, OperationType.CREATE, 'external_services');
+        }
+    };
+
+    const handleDeleteExternalService = async (id: string) => {
+        if (!confirm('Delete this external service?')) return;
+        try {
+            await deleteDoc(doc(db, 'external_services', id));
+        } catch (err) {
+            handleFirestoreError(err, OperationType.DELETE, `external_services/${id}`);
+        }
+    };
+
+    const toggleExternalServiceStatus = async (id: string, current: boolean) => {
+        try {
+            await updateDoc(doc(db, 'external_services', id), { isActive: !current, updatedAt: serverTimestamp() });
+        } catch (err) {
+            handleFirestoreError(err, OperationType.UPDATE, `external_services/${id}`);
         }
     };
 
@@ -367,6 +423,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                         <TabItem active={activeTab === 'projects'} onClick={() => setActiveTab('projects')} icon={Briefcase} label="Nexus" />
                         <TabItem active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Brains" />
                         <TabItem active={activeTab === 'models'} onClick={() => setActiveTab('models')} icon={Cpu} label="AI Models" />
+                        <TabItem active={activeTab === 'external'} onClick={() => setActiveTab('external')} icon={ExternalLink} label="External" />
                         <TabItem active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} icon={Terminal} label="Logs" />
                         <TabItem active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={Activity} label="Telemetry" />
                         <TabItem active={activeTab === 'infrastructure'} onClick={() => setActiveTab('infrastructure')} icon={Server} label="Infra" />
@@ -857,6 +914,160 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                 </div>
                             </div>
                         </div>
+                    ) : activeTab === 'external' ? (
+                        <div className="h-full overflow-y-auto suggestions-scrollbar">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-sm font-black text-white uppercase tracking-[0.3em]">External Services</h3>
+                                <button 
+                                    onClick={() => setIsAddingExternal(true)}
+                                    className="px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white rounded-2xl flex items-center gap-3 transition-all shadow-lg hover:scale-105 active:scale-95"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Add Service</span>
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {externalServices.map(s => (
+                                    <div key={s.id} className="glass-card p-6 rounded-[32px] border border-white/5 bg-black/40 flex items-start justify-between gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <ExternalLink className="w-4 h-4 shrink-0" style={{ color: s.color }} />
+                                                <span className="text-xs font-black text-white tracking-tight uppercase truncate">{s.name}</span>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${s.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`} />
+                                            </div>
+                                            <p className="text-[9px] text-white/30 leading-tight line-clamp-1 mb-2">{s.description}</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {(s.capabilities || []).map(c => (
+                                                    <span key={c} className="text-[7px] font-black text-white/20 bg-white/5 px-1.5 py-0.5 rounded uppercase">{c}</span>
+                                                ))}
+                                            </div>
+                                            {s.models?.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {s.models.slice(0, 4).map(m => (
+                                                        <span key={m} className="text-[7px] font-mono text-white/10 bg-white/5 px-1 py-0.5 rounded">{m}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="mt-2">
+                                                <span className="text-[7px] font-mono text-white/10 truncate block">{s.url}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                onClick={() => handleDeleteExternalService(s.id)}
+                                                className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 border border-white/10 text-white/20 hover:text-red-400 transition-all"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {externalServices.length === 0 && (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/5 rounded-[40px] text-white/10">
+                                        <ExternalLink className="w-16 h-16 mb-4 opacity-10" />
+                                        <span className="text-sm font-black uppercase tracking-[0.3em]">No external services registered</span>
+                                    </div>
+                                )}
+                            </div>
+                            {/* Add External Service Modal */}
+                            <AnimatePresence>
+                                {isAddingExternal && (
+                                    <motion.div 
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4"
+                                        onClick={() => setIsAddingExternal(false)}
+                                    >
+                                        <motion.div 
+                                            initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                                            className="glass-card w-full max-w-lg rounded-[40px] border border-white/10 bg-black/90 p-10 shadow-2xl"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-8">Register External Service</h3>
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Service Name</label>
+                                                    <input 
+                                                        type="text" value={newExternalService.name}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, name: e.target.value }))}
+                                                        className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest"
+                                                        placeholder="e.g. Labnana AI"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">URL</label>
+                                                    <input 
+                                                        type="text" value={newExternalService.url}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, url: e.target.value }))}
+                                                        className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                        placeholder="https://api.labnana.com"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Description</label>
+                                                    <input 
+                                                        type="text" value={newExternalService.description}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, description: e.target.value }))}
+                                                        className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                        placeholder="AI image generation service"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Capabilities (comma-separated)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={newExternalService.capabilities.join(', ')}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, capabilities: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))}
+                                                        className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                        placeholder="text, image, video"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Models (comma-separated)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={newExternalService.models.join(', ')}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, models: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))}
+                                                        className="w-full glass-input px-4 py-3 rounded-2xl text-xs font-black tracking-widest"
+                                                        placeholder="flux-pro, sdxl"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">Color</label>
+                                                    <input 
+                                                        type="color" value={newExternalService.color}
+                                                        onChange={e => setNewExternalService(s => ({ ...s, color: e.target.value }))}
+                                                        className="w-10 h-10 rounded-xl cursor-pointer"
+                                                    />
+                                                    <label className="flex items-center gap-2 text-[9px] font-black text-white/30 uppercase tracking-widest cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" checked={newExternalService.isFree}
+                                                            onChange={e => setNewExternalService(s => ({ ...s, isFree: e.target.checked }))}
+                                                            className="rounded"
+                                                        />
+                                                        Free Service
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end gap-4 mt-10">
+                                                <button 
+                                                    onClick={() => setIsAddingExternal(false)}
+                                                    className="px-6 py-3 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button 
+                                                    onClick={handleAddExternalService}
+                                                    disabled={!newExternalService.name || !newExternalService.url}
+                                                    className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                                                >
+                                                    Register
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     ) : (
                         <div className="h-full overflow-y-auto pr-2 suggestions-scrollbar space-y-8 pb-12">
                             {activeSettingsView === 'governance' ? (
@@ -1270,7 +1481,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                 </div>
                             </div>
                             
-                            <div className="space-y-6">
+                            <div className="space-y-5">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Node Identifier</label>
                                     <input 
@@ -1297,18 +1508,99 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Secure Secret (Sk- / AI-)</label>
-                                    <div className="relative">
-                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                                        <input 
-                                            type="password" 
-                                            value={newIntegration.apiKey} 
-                                            onChange={e => setNewIntegration({...newIntegration, apiKey: e.target.value})}
-                                            className="w-full glass-input p-4 pl-12 rounded-3xl text-sm font-mono tracking-widest" 
-                                            placeholder="••••••••••••••••" 
-                                        />
-                                    </div>
+                                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">API Keys (one per line — rotates between them)</label>
+                                    {newIntegration.apiKeys.map((key, i) => (
+                                        <div key={i} className="flex gap-2 items-center">
+                                            <div className="relative flex-1">
+                                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                                <input 
+                                                    type="password" 
+                                                    value={key}
+                                                    onChange={e => {
+                                                        const keys = [...newIntegration.apiKeys];
+                                                        keys[i] = e.target.value;
+                                                        setNewIntegration({...newIntegration, apiKeys: keys});
+                                                    }}
+                                                    className="w-full glass-input p-4 pl-12 rounded-3xl text-sm font-mono tracking-widest" 
+                                                    placeholder={`API Key ${i + 1}`} 
+                                                />
+                                            </div>
+                                            {newIntegration.apiKeys.length > 1 && (
+                                                <button onClick={() => {
+                                                    const keys = newIntegration.apiKeys.filter((_, j) => j !== i);
+                                                    setNewIntegration({...newIntegration, apiKeys: keys});
+                                                }} className="p-2 text-white/20 hover:text-red-400 transition-colors">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button 
+                                        onClick={() => setNewIntegration({...newIntegration, apiKeys: [...newIntegration.apiKeys, '']})}
+                                        className="text-[9px] font-black text-[var(--color-accent)] uppercase tracking-widest hover:opacity-80 transition-opacity"
+                                    >
+                                        + Add Another Key
+                                    </button>
                                 </div>
+
+                                {newIntegration.provider === 'custom' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">API Endpoint URL</label>
+                                            <input 
+                                                type="text" 
+                                                value={newIntegration.endpoint} 
+                                                onChange={e => setNewIntegration({...newIntegration, endpoint: e.target.value})}
+                                                className="w-full glass-input p-4 rounded-3xl text-sm font-mono tracking-widest" 
+                                                placeholder="https://api.example.com/v1/generate" 
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Auth Type</label>
+                                                <select 
+                                                    value={newIntegration.authType} 
+                                                    onChange={e => setNewIntegration({...newIntegration, authType: e.target.value as any})}
+                                                    className="w-full glass-input p-4 rounded-3xl text-xs font-bold appearance-none bg-black/40 cursor-pointer"
+                                                >
+                                                    <option value="header">Header (API Key)</option>
+                                                    <option value="bearer">Bearer Token</option>
+                                                    <option value="api-key">URL Query Key</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Auth Header Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={newIntegration.authHeaderName} 
+                                                    onChange={e => setNewIntegration({...newIntegration, authHeaderName: e.target.value})}
+                                                    className="w-full glass-input p-4 rounded-3xl text-xs font-mono" 
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Request Body Template</label>
+                                            <textarea 
+                                                value={newIntegration.requestTemplate} 
+                                                onChange={e => setNewIntegration({...newIntegration, requestTemplate: e.target.value})}
+                                                className="w-full glass-input p-4 rounded-3xl text-xs font-mono h-24 resize-none" 
+                                                placeholder='{"contents":[{"role":"user","parts":[{"text":"{{prompt}}"}]}]}'
+                                            />
+                                            <p className="text-[7px] text-white/20 px-2">Use <span className="font-mono text-[var(--color-accent)]">{'{{prompt}}'}</span> as placeholder for the prompt text</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">Response Path</label>
+                                            <input 
+                                                type="text" 
+                                                value={newIntegration.responsePath} 
+                                                onChange={e => setNewIntegration({...newIntegration, responsePath: e.target.value})}
+                                                className="w-full glass-input p-4 rounded-3xl text-xs font-mono tracking-widest" 
+                                                placeholder="candidates[0].content.parts[0].text" 
+                                            />
+                                            <p className="text-[7px] text-white/20 px-2">JSON path to extract text from response</p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="flex gap-4 mt-12">

@@ -25,9 +25,17 @@ export class IntegrationService {
     /**
      * Calls an AI service through our secure server proxy
      */
-    static async callAi(integrationId: string, params: AiCallParams) {
+    static async callAi(integrationId: string, params: AiCallParams, config?: any) {
         const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : '';
         
+        const body: any = {
+            integrationId,
+            payload: params
+        };
+        if (config) {
+            body.config = config;
+        }
+
         const response = await fetch('/api/ai/call', {
             method: 'POST',
             headers: {
@@ -35,10 +43,7 @@ export class IntegrationService {
                 'Authorization': `Bearer ${idToken}`,
                 'x-user-id': auth.currentUser?.uid || 'anonymous'
             },
-            body: JSON.stringify({
-                integrationId,
-                payload: params
-            })
+            body: JSON.stringify(body)
         });
 
         if (!response.ok) {
@@ -53,8 +58,13 @@ export class IntegrationService {
      * Intelligent fallback: Tries user-configured integrations first,
      * then falls back to internal environment variables if configured.
      */
-    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic', params: AiCallParams) {
-        const integration = await this.getActiveIntegration(provider);
+    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic' | 'custom', params: AiCallParams, customConfig?: any) {
+        if (provider === 'custom' && customConfig) {
+            console.log(`Using custom integration: ${customConfig.name || 'unnamed'}`);
+            return this.callAi('custom_' + Date.now(), params, customConfig);
+        }
+
+        const integration = await this.getActiveIntegration(provider as any);
         
         if (integration) {
             const intData = integration as any;
