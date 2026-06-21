@@ -105,9 +105,15 @@ Core Directives:
     return prompt;
   }
 
+  private pickKey(keys: string): string {
+    const list = keys.split(',').map(k => k.trim()).filter(Boolean);
+    return list[Math.floor(Math.random() * list.length)] || keys;
+  }
+
   private async callGemini(prompt: string, history: ChatMessage[]): Promise<string> {
-    const apiKey = this.env.GEMINI_API_KEY;
-    if (!apiKey) return "GEMINI_API_KEY not configured. Set it in Cloudflare secrets.";
+    const rawKey = this.env.GEMINI_API_KEY;
+    if (!rawKey) return "GEMINI_API_KEY not configured. Set it in Cloudflare secrets.";
+    const apiKey = this.pickKey(rawKey);
 
     const contents: any[] = [];
     for (const h of history.slice(-20)) {

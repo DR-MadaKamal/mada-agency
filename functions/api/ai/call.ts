@@ -1,3 +1,8 @@
+function pickKey(keys: string): string {
+  const list = keys.split(',').map(k => k.trim()).filter(Boolean);
+  return list[Math.floor(Math.random() * list.length)] || keys;
+}
+
 interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
@@ -113,7 +118,8 @@ export const onRequest: any = async (context: any) => {
     if (integrationId.startsWith('system_')) {
       provider = integrationId.replace('system_', '');
       const envKey = `${provider.toUpperCase()}_API_KEY`;
-      apiKey = (env as any)[envKey] || '';
+      const rawKey = (env as any)[envKey] || '';
+      apiKey = rawKey.includes(',') ? pickKey(rawKey) : rawKey;
       modelId = payload.model || getDefaultModel(provider);
     } else {
       return new Response(JSON.stringify({ error: 'Custom integrations not supported in proxy' }), {

@@ -1,3 +1,8 @@
+function pickKey(keys: string): string {
+  const list = keys.split(',').map(k => k.trim()).filter(Boolean);
+  return list[Math.floor(Math.random() * list.length)] || keys;
+}
+
 interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
@@ -66,12 +71,13 @@ export const onRequest: any = async (context: any) => {
     const { provider, modelId } = parsed;
     const normalizedProvider = provider === 'google' ? 'gemini' : provider;
     const envKey = `${normalizedProvider.toUpperCase()}_API_KEY`;
-    const apiKey = (env as any)[envKey] as string | undefined;
-    if (!apiKey) {
+    const rawKey = (env as any)[envKey] as string | undefined;
+    if (!rawKey) {
       return new Response(JSON.stringify({ error: `API Key for ${normalizedProvider} not found` }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
+    const apiKey = pickKey(rawKey);
 
     const url = PROVIDER_URLS[normalizedProvider]?.(modelId);
     if (!url) {
