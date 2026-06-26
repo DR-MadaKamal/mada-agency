@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
 import { useToast } from '../lib/useToast';
 import { CreatorStudioProject, ImageFile, CreativeMode } from '../types';
@@ -12,7 +12,7 @@ import PromptEditor from './PromptEditor';
 import HistoryPanel from './HistoryPanel';
 import ResultDisplay from './ResultDisplay';
 import AISelector from './AISelector';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Layers, Beaker, Wand2, Palette, Zap, Box, Wind, Camera, Plus, Download, Image as ImageIcon, Clock, SlidersHorizontal, Minus, Maximize2, RotateCcw, Trash2, Bookmark, History, RefreshCw } from 'lucide-react';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { ShareableLink } from './ShareableLink';
@@ -50,6 +50,8 @@ const CreatorStudio: React.FC<CreatorStudioProps> = ({
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
   const { toast } = useToast();
+
+  const recentPrompts = useMemo(() => [...new Set(project.history.slice(-5).map(h => h.prompt))].reverse(), [project.history]);
 
   const pushVersion = useCallback((label?: string) => {
     setProject(s => {
@@ -112,7 +114,7 @@ const CreatorStudio: React.FC<CreatorStudioProps> = ({
           p.error = null;
         });
         try {
-          const description = await analyzeStyleImage(project.styleImages);
+          const description = await analyzeStyleImage(project.styleImages, project.aiConfig);
           updateActiveProjectState(p => { p.styleDescription = description; });
         } catch (err) {
           console.error(err);
@@ -218,7 +220,7 @@ Setting: Place the subject in a sophisticated and professional new environment.`
         updateActiveProjectState(p => { p.isTranslating = true; p.error = null; });
 
         try {
-            const translated = await translateText(promptToTranslate);
+            const translated = await translateText(promptToTranslate, project.aiConfig);
             if (translationRequestCounter.current === currentRequestId) {
                 updateActiveProjectState(p => { if (p.prompt === promptToTranslate) p.translatedPrompt = translated; });
             }
@@ -649,7 +651,7 @@ Setting: Place the subject in a sophisticated and professional new environment.`
                     )}
                     <div className="w-full flex flex-wrap gap-1 min-h-[18px]">
                         <History className="w-2.5 h-2.5 self-center text-white/20" />
-                        {[...new Set(project.history.slice(-5).map(h => h.prompt))].reverse().map((p, i) => (
+                        {recentPrompts.map((p, i) => (
                             <button key={i} onClick={() => setProject(s => ({ ...s, prompt: p }))} className="px-2 py-0.5 bg-white/5 rounded text-[7px] font-bold text-white/30 hover:text-white/60 transition-all truncate max-w-[100px]">{p.slice(0, 30)}</button>
                         ))}
                     </div>

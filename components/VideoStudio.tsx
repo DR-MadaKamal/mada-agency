@@ -3,7 +3,7 @@ import { Video, Plus, Trash2, Sparkles, Loader2, ChevronRight, Download, Copy, A
 import { callAI } from '../services/geminiService';
 import { AILoadingOverlay } from '../lib/AILoadingOverlay';
 import { MiniAISelector } from './MiniAISelector';
-import type { ExternalServiceConfig } from '../types';
+import type { AIConfig } from '../types';
 
 interface Shot {
   id: string;
@@ -24,7 +24,7 @@ const VideoStudio: React.FC = () => {
   const [template, setTemplate] = useState('professional');
   const [isLoading, setIsLoading] = useState(false);
   const [shotSearch, setShotSearch] = useState('');
-  const [aiOverride, setAiOverride] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
+  const [aiOverride, setAiOverride] = useState<AIConfig | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const nextId = useRef(1);
 
@@ -117,10 +117,8 @@ Generate between 6 and 12 shots. Return ONLY the raw JSON array. No markdown, no
           <p className="text-sm text-white/50 mt-1">Build shot lists and generate AI-powered shot scripts.</p>
         </div>
         <MiniAISelector
-          provider={aiOverride?.provider || 'google'}
-          modelId={aiOverride?.modelId || 'gemini-2.0-flash'}
-          externalServiceConfig={aiOverride?.externalServiceConfig}
-          onChange={(p, m, esc) => setAiOverride({ provider: p, modelId: m, externalServiceConfig: esc })}
+          config={aiOverride || { provider: 'google', modelId: 'gemini-2.0-flash' }}
+          onChange={(cfg) => setAiOverride(cfg)}
         />
       </div>
 

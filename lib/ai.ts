@@ -1,13 +1,15 @@
 import type { ExternalServiceConfig } from '../types';
 
 interface AIOptions {
-  provider?: 'google' | 'openai' | 'anthropic' | 'custom';
+  provider?: AIOptionsProvider;
   modelId?: string;
   signal?: AbortSignal;
   onProgress?: (chunk: string) => void;
   fallbackProviders?: ('google' | 'openai' | 'anthropic')[];
   externalServiceConfig?: ExternalServiceConfig;
 }
+
+type AIOptionsProvider = 'google' | 'gemini' | 'openai' | 'anthropic' | 'custom' | 'external';
 
 const PAGES_FUNCTION_URL = '/api/ai/proxy';
 const PAGES_CALL_URL = '/api/ai/call';
@@ -67,12 +69,13 @@ async function attemptCall(prompt: string, provider: string, modelId: string | u
 
 export async function callAI(prompt: string, options: AIOptions = {}): Promise<string> {
   const { provider = 'google', modelId, signal, onProgress, fallbackProviders, externalServiceConfig } = options;
+  const normalizedProvider = provider === 'gemini' ? 'google' : provider;
 
-  if (provider === 'custom') {
-    return await attemptCall(prompt, provider, modelId, signal, onProgress, externalServiceConfig);
+  if (normalizedProvider === 'custom' || normalizedProvider === 'external') {
+    return await attemptCall(prompt, normalizedProvider === 'external' ? 'custom' : normalizedProvider, modelId, signal, onProgress, externalServiceConfig);
   }
 
-  const providers: string[] = [provider, ...(fallbackProviders || [])];
+  const providers: string[] = [normalizedProvider, ...(fallbackProviders || [])];
   const seen = new Set<string>();
   const uniqueProviders = providers.filter(p => {
     const key = p.toLowerCase();

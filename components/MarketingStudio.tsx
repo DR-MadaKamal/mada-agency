@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
 import { useToast } from '../lib/useToast';
 import { MarketingStudioProject } from '../types';
@@ -56,6 +56,24 @@ const MarketingStudio: React.FC<{
     const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const { toast } = useToast();
 
+    const kanbanGroups = useMemo(() => {
+      const groups: Record<string, typeof project.kanbanItems> = {};
+      for (const status of ['draft', 'review', 'scheduled', 'published'] as const) {
+        groups[status] = project.kanbanItems.filter(k => k.status === status);
+      }
+      return groups;
+    }, [project.kanbanItems]);
+
+    const activeTab = (project.activeTab || 'strategy') as string;
+
+    const influencerLines = useMemo(() => (project.influencerStrategy || '').split('\n'), [project.influencerStrategy]);
+    const activeReport = useMemo(() => (activeTab === 'strategy' ? project.result :
+      activeTab === 'research' ? project.marketResearch :
+      activeTab === 'competitive' ? project.competitiveStudy :
+      activeTab === 'swot' ? project.swotAnalysis : 
+      activeTab === 'plan' ? project.marketingPlan : '') || '', [activeTab, project.result, project.marketResearch, project.competitiveStudy, project.swotAnalysis, project.marketingPlan]);
+    const reportLines = useMemo(() => activeReport.split('\n'), [activeReport]);
+
     const pushVersion = useCallback((label?: string) => {
       const entry = { id: Date.now().toString(), timestamp: Date.now(), label: label || `v${versions.length + 1}`, snapshot: JSON.parse(JSON.stringify(project)) };
       setVersions(prev => [...prev.slice(-49), entry]);
@@ -93,8 +111,6 @@ const MarketingStudio: React.FC<{
     };
     const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
     const cancelledRef = useRef(false);
-
-    const activeTab = project.activeTab || 'strategy';
 
     const setTab = (tab: 'strategy' | 'digital' | 'traditional' | 'research' | 'competitive' | 'swot' | 'plan' | 'content' | 'agents') => {
         setProject(s => ({ ...s, activeTab: tab }));
@@ -1197,7 +1213,7 @@ const MarketingStudio: React.FC<{
                                     {(['draft', 'review', 'scheduled', 'published'] as const).map(status => (
                                     <div key={status} className="space-y-2">
                                         <p className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center pb-2 border-b border-white/10">{status}</p>
-                                        {project.kanbanItems.filter(k => k.status === status).map(k => (
+                                        {kanbanGroups[status].map(k => (
                                         <div key={k.id} className="glass-card rounded-xl p-3 border border-white/5 space-y-1 cursor-pointer group" onClick={() => {
                                             const statuses = ['draft', 'review', 'scheduled', 'published'] as const;
                                             const idx = statuses.indexOf(k.status);
@@ -1236,7 +1252,7 @@ const MarketingStudio: React.FC<{
                                     ))}
                                 </div>
                                 <button onClick={() => {
-                                    const total = Object.values(project.budgetAllocations).reduce((a, b) => a + b, 0);
+                                    const total = (Object.values(project.budgetAllocations) as number[]).reduce((a, b) => a + b, 0);
                                     const remaining = 100 - total;
                                     setProject(s => ({ ...s, roiBudget: Math.max(0, total), roiReach: Math.max(0, total * 10000) }));
                                 }} className="px-4 py-2 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-xl text-[8px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 transition-all">Normalize to 100%</button>
@@ -1476,7 +1492,7 @@ const MarketingStudio: React.FC<{
                                     <Target className="w-5 h-5 text-emerald-400" /> Influencer Synergy Mapping
                                 </h3>
                                 <div className="prose prose-invert max-w-none text-white/70 font-medium leading-[1.8] suggestions-scrollbar overflow-y-auto max-h-[350px] relative z-10">
-                                    {project.influencerStrategy.split('\n').map((line, i) => (
+                                    {influencerLines.map((line, i) => (
                                         <p key={i} className="mb-4">{line}</p>
                                     ))}
                                 </div>
@@ -1608,11 +1624,7 @@ const MarketingStudio: React.FC<{
                             className={`prose prose-invert max-w-none text-white/70 font-medium leading-[1.8] suggestions-scrollbar overflow-y-auto max-h-[1500px] relative z-10 ${project.language === 'ar' ? 'text-right' : 'text-left'}`} 
                             style={{ direction: project.language === 'ar' ? 'rtl' : 'ltr' }}
                         >
-                            {((activeTab === 'strategy' ? project.result :
-                               activeTab === 'research' ? project.marketResearch :
-                               activeTab === 'competitive' ? project.competitiveStudy :
-                               activeTab === 'swot' ? project.swotAnalysis : 
-                               activeTab === 'plan' ? project.marketingPlan : '') || '').split('\n').map((line, i) => {
+                            {reportLines.map((line, i) => {
                                 if (line.startsWith('# ')) return <h1 key={i} className="text-4xl font-black text-white mt-10 mb-8 border-b border-white/10 pb-6 uppercase tracking-tighter">{line.replace('# ', '')}</h1>;
                                 if (line.startsWith('## ')) return <h2 key={i} className="text-2xl font-black text-[var(--color-accent)] mt-12 mb-6 uppercase tracking-tight flex items-center gap-3"><div className="w-8 h-[2px] bg-[var(--color-accent)]/30"></div> {line.replace('## ', '')}</h2>;
                                 if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-black text-white mt-10 mb-4 uppercase tracking-widest flex items-center gap-2.5 text-white/90 underline decoration-[var(--color-accent)]/30 underline-offset-8"> {line.replace('### ', '')}</h3>;

@@ -32,8 +32,8 @@ function tagForVariant(variant: TextVariant): React.ElementType {
 }
 
 export const Text: React.FC<TextProps> = ({ variant = 'body', children, className, as, muted, accent, mono }) => {
-  const Comp = as || tagForVariant(variant);
-  const v = variantStyles[variant];
+  const Comp = as || tagForVariant(variant as TextVariant);
+  const v = variantStyles[variant as TextVariant];
   return (
     <Comp
       className={cn(

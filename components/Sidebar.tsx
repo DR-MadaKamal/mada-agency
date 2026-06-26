@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Image, Layout, Camera, Edit3, PenTool, Volume2, BarChart3,
@@ -6,11 +6,12 @@ import {
   Archive, ShieldCheck, ChevronLeft, ChevronRight, Search,
   Sun, Moon, Monitor, SquareDashed, Command,
   Clock, Star, Plus, PanelLeftClose, PanelLeft,
-  CalendarDays,
+  CalendarDays, Grid3x3, ImageDown, AlertTriangle,
 } from 'lucide-react';
 import { AppView } from '../types';
 import { cn } from '../lib/utils';
 import { LOGO_IMAGE_URL } from '../constants';
+import { ErrorService } from '../lib/errorService';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -18,6 +19,7 @@ interface SidebarProps {
   activeView: AppView;
   onNavigate: (view: AppView) => void;
   onOpenSearch: () => void;
+  onOpenErrorDashboard: () => void;
   theme: string;
   onThemeChange: (t: string) => void;
   isAdmin: boolean;
@@ -40,7 +42,10 @@ const STUDIOS: StudioEntry[] = [
   { id: 'edit_studio', label: 'Edit', icon: Edit3, category: 'studio' },
   { id: 'plan_studio', label: 'Plan', icon: Layout, category: 'studio' },
   { id: 'controller_studio', label: 'Controller', icon: Cpu, category: 'studio' },
+  { id: 'batch_image_studio', label: 'Batch', icon: Grid3x3, category: 'studio' },
+  { id: 'bg_remover_studio', label: 'BG Remover', icon: ImageDown, category: 'studio' },
   { id: 'voice_over_studio', label: 'Voice', icon: Volume2, category: 'studio' },
+  { id: 'prompt_studio', label: 'Prompt', icon: MessageSquare, category: 'studio' },
   { id: 'prepilot_agency_suite', label: 'PrePilot', icon: Briefcase, category: 'suite' },
   { id: 'command_center', label: 'Command', icon: ShieldCheck, category: 'system' },
   { id: 'asset_library', label: 'Vault', icon: Archive, category: 'system' },
@@ -56,8 +61,12 @@ const FAVORITES: AppView[] = ['creator_studio', 'branding_studio', 'marketing_st
 
 const RECENT: AppView[] = ['creator_studio', 'prepilot_agency_suite', 'command_center'];
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, activeView, onNavigate, onOpenSearch, theme, onThemeChange, isAdmin }) => {
+const Sidebar: React.FC<SidebarProps> = React.memo((({ collapsed, onToggleCollapse, activeView, onNavigate, onOpenSearch, onOpenErrorDashboard, theme, onThemeChange, isAdmin }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const errorCount = useSyncExternalStore(
+    cb => ErrorService.subscribe(cb),
+    () => ErrorService.getMetrics().unresolvedCount,
+  );
 
   const renderStudioItem = (studio: StudioEntry) => {
     const isActive = activeView === studio.id;
@@ -177,6 +186,36 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, activeVi
 
       {/* Bottom */}
       <div className="border-t border-white/5 p-2 space-y-1">
+        {/* Error Dashboard */}
+        <button
+          onClick={onOpenErrorDashboard}
+          className={cn(
+            'flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative',
+            collapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+            errorCount > 0
+              ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+              : 'text-white/30 hover:text-white/60 hover:bg-white/5',
+          )}
+          title={collapsed ? `Errors (${errorCount})` : undefined}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Errors</span>
+              {errorCount > 0 && (
+                <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full text-[8px] font-bold min-w-[18px] text-center">
+                  {errorCount > 99 ? '99+' : errorCount}
+                </span>
+              )}
+            </>
+          )}
+          {collapsed && errorCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] font-bold text-white flex items-center justify-center">
+              {errorCount > 9 ? '!' : errorCount}
+            </span>
+          )}
+        </button>
+
         {/* Theme */}
         <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between px-2 py-1')}>
           {!collapsed && <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">Theme</span>}
@@ -272,6 +311,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, activeVi
       </aside>
     </>
   );
-};
+}));
 
 export default Sidebar;

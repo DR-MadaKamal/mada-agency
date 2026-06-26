@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SyncService } from './sync';
 
 const STORAGE_PREFIX = 'mada_projects_';

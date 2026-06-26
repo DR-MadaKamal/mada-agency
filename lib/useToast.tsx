@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle2, AlertTriangle, Info, XCircle } from 'lucide-react';
 
@@ -48,8 +48,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dismiss]);
 
+  const ctx = useMemo(() => ({ toast, dismiss }), [toast, dismiss]);
   return (
-    <ToastContext.Provider value={{ toast, dismiss }}>
+    <ToastContext.Provider value={ctx}>
       {children}
       <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
         <AnimatePresence mode="popLayout">

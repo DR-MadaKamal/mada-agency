@@ -1,6 +1,7 @@
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useGlobalShortcuts } from '../lib/useGlobalShortcuts';
+import { useProjectHistory } from '../lib/useProjectHistory';
 import { ImageFile, BrandingStudioProject, BrandingResultCategory, AspectRatio } from '../types';
 import { resizeImage } from '../utils';
 import { 
@@ -19,7 +20,7 @@ import { logHistory } from '../lib/admin';
 import ImageWorkspace from './ImageWorkspace';
 import BrandingResultsGrid from './BrandingResultsGrid';
 import AISelector from './AISelector';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ASPECT_RATIOS } from '../constants';
 import { 
     Download, 
@@ -265,41 +266,14 @@ const BrandingStudio: React.FC<{
         setComments(prev => [...prev, { id: Date.now().toString(), author: 'local-user', content, timestamp: Date.now() }]);
     };
     const handleDeleteComment = (id: string) => setComments(prev => prev.filter(c => c.id !== id));
-    const [versions, setVersions] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
-    const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
-    const [redoStack, setRedoStack] = useState<{id: string; timestamp: number; label: string; snapshot: any}[]>([]);
     const [copied, setCopied] = useState(false);
 
-    const pushVersion = useCallback((label?: string) => {
-      const entry = { id: Date.now().toString(), timestamp: Date.now(), label: label || `v${versions.length + 1}`, snapshot: JSON.parse(JSON.stringify(project)) };
-      setVersions(prev => [...prev.slice(-49), entry]);
-      setCurrentVersionId(entry.id);
-      setRedoStack([]);
-    }, [versions.length, project]);
-
-    const handleUndo = useCallback(() => {
-      if (versions.length < 2) return;
-      const current = versions[versions.length - 1];
-      const previous = versions[versions.length - 2];
-      setRedoStack(prev => [...prev, current]);
-      setProject(() => previous.snapshot);
-      setCurrentVersionId(previous.id);
-      setVersions(prev => prev.slice(0, -1));
-    }, [versions, setProject]);
-
-    const handleRedo = useCallback(() => {
-      if (redoStack.length === 0) return;
-      const next = redoStack[redoStack.length - 1];
-      setRedoStack(prev => prev.slice(0, -1));
-      setProject(() => next.snapshot);
-      setCurrentVersionId(next.id);
-      setVersions(prev => [...prev, next]);
-    }, [redoStack, setProject]);
+    const history = useProjectHistory(project, setProject, { label: 'Brand Init' });
 
     useGlobalShortcuts([
-      { key: 'z', meta: true, handler: handleUndo },
-      { key: 'z', meta: true, shift: true, handler: handleRedo },
-      { key: 's', meta: true, handler: () => pushVersion('Manual save') },
+      { key: 'z', meta: true, handler: history.undo },
+      { key: 'z', meta: true, shift: true, handler: history.redo },
+      { key: 's', meta: true, handler: () => history.pushSnapshot('Manual save') },
     ]);
 
     const handleCopyManual = () => {
@@ -386,11 +360,11 @@ const BrandingStudio: React.FC<{
         if (project.logos.length === 0) return;
         setProject(s => ({...s, isAnalyzing: true, isGenerating: true, error: null, colors: [], results: [], brandManual: null, missionStatement: null, visionStatement: null, coreValues: null, brandPersona: null, brandStory: null, competitorAnalysis: null}));
         try {
-            const analysis = await analyzeLogoForBranding(project.logos);
+            const analysis = await analyzeLogoForBranding(project.logos, project.aiConfig);
             setProject(s => ({...s, colors: analysis.colors, isAnalyzing: false}));
             
             const primaryColor = analysis.colors[0] || '';
-            const initialResults = MOCKUP_CATEGORIES.map(category => ({ category, image: null, isLoading: true, error: null, editPrompt: '', isEditing: false }));
+            const initialResults = MOCKUP_CATEGORIES.map((category, i) => ({ id: `result-${Date.now()}-${i}`, category, aspectRatio: '1:1', image: null, title: category, likes: 0, isLoading: true, error: null, editPrompt: '', isEditing: false }));
             setProject(s => ({...s, results: initialResults}));
             
             // Generate manual, vision, story, analysis and assets in parallel
@@ -547,7 +521,15 @@ const BrandingStudio: React.FC<{
                 <div className="flex items-center gap-3">
                     <ShareableLink projectId={project.id} projectName={project.name} />
                     <CommentsOverlay targetId={project.id} comments={comments} onAddComment={handleAddComment} onDeleteComment={handleDeleteComment} />
-                    <VersionTimeline versions={versions} currentVersionId={currentVersionId} onRestore={(v) => { setProject(() => v.snapshot); setCurrentVersionId(v.id); }} onUndo={handleUndo} onRedo={handleRedo} canUndo={versions.length > 1} canRedo={redoStack.length > 0} />
+                    <VersionTimeline 
+                      versions={history.allSnapshots.map(s => ({ id: s.id, timestamp: s.timestamp, label: s.label, snapshot: s.data }))}
+                      currentVersionId={history.allSnapshots.length > 0 ? history.allSnapshots[history.allSnapshots.length - 1].id : null}
+                      onRestore={(v) => { const idx = history.allSnapshots.findIndex(s => s.id === v.id); if (idx >= 0) history.jumpTo(idx); }}
+                      onUndo={history.undo}
+                      onRedo={history.redo}
+                      canUndo={history.canUndo}
+                      canRedo={history.canRedo}
+                    />
                     <button
                         onClick={() => setShowTemplatePicker(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
@@ -1115,8 +1097,9 @@ const BrandingStudio: React.FC<{
                                     </div>
                                     <button
                                         onClick={() => {
-                                            const src = project.logos[0];
-                                            if (!src) return;
+                                            const logoSrc = project.logos[0];
+                                            if (!logoSrc) return;
+                                            const src = `data:${logoSrc.mimeType};base64,${logoSrc.base64}`;
                                             const variants: { name: string; dataUrl: string }[] = [];
                                             const sizes: [number, number][] = [[300, 120], [120, 300], [120, 120], [240, 160]];
                                             const labels = ['Horizontal', 'Vertical', 'Icon Only', 'Stacked'];
@@ -1130,13 +1113,13 @@ const BrandingStudio: React.FC<{
                                                 ctx.beginPath();
                                                 ctx.roundRect(0, 0, w, h, 16);
                                                 ctx.fill();
-                                                const img = new Image();
-                                                img.crossOrigin = 'anonymous';
-                                                img.onload = () => {
-                                                    const iw = img.width, ih = img.height;
-                                                    const scale = Math.min((w * 0.6) / iw, (h * 0.6) / ih);
-                                                    const dx = (w - iw * scale) / 2, dy = (h - ih * scale) / 2;
-                                                    ctx.drawImage(img, dx, dy, iw * scale, ih * scale);
+const img = new window.Image();
+img.crossOrigin = 'anonymous';
+img.onload = () => {
+    const iw = img.width, ih = img.height;
+    const scale = Math.min((w * 0.6) / iw, (h * 0.6) / ih);
+    const dx = (w - iw * scale) / 2, dy = (h - ih * scale) / 2;
+    ctx.drawImage(img, dx, dy, iw * scale, ih * scale);
                                                     const brandName = project.name || 'BRAND';
                                                     ctx.fillStyle = '#fff';
                                                     ctx.font = `bold ${labels[i] === 'Vertical' ? 10 : 12}px sans-serif`;
@@ -1154,7 +1137,7 @@ const BrandingStudio: React.FC<{
                                                     }
                                                     variants.push({ name: labels[i], dataUrl: c.toDataURL('image/png') });
                                                     if (variants.length === 4) {
-                                                        setProject(s => ({ ...s, results: [...s.results, ...variants.map(v => ({ id: `logo-variant-${Date.now()}-${v.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: v.dataUrl, title: v.name, likes: 0, isEditing: false, isLoading: false, error: null }))] }));
+                                                        setProject(s => ({ ...s, results: [...s.results, ...variants.map(v => ({ id: `logo-variant-${Date.now()}-${v.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: v.dataUrl, title: v.name, likes: 0, isEditing: false, isLoading: false, error: null, editPrompt: '' }))] }));
                                                     }
                                                 };
                                                 img.src = src;
@@ -1272,8 +1255,9 @@ const BrandingStudio: React.FC<{
                                     </div>
                                     <button
                                         onClick={() => {
-                                            const src = project.logos[0];
-                                            if (!src) return;
+                                            const logoSrc = project.logos[0];
+                                            if (!logoSrc) return;
+                                            const src = `data:${logoSrc.mimeType};base64,${logoSrc.base64}`;
                                             const assetDefs: { name: string; size: number; label: string }[] = [
                                                 { name: 'Favicon', size: 32, label: 'favicon-32x32.png' },
                                                 { name: 'Social Profile', size: 400, label: 'social-profile.png' },
@@ -1292,33 +1276,33 @@ const BrandingStudio: React.FC<{
                                                     ctx.beginPath();
                                                     ctx.arc(def.size / 2, def.size / 2, def.size / 2.5, 0, Math.PI * 2);
                                                     ctx.fill();
-                                                    const img = new Image();
-                                                    img.crossOrigin = 'anonymous';
-                                                    img.onload = () => {
-                                                        const s = Math.min((def.size * 0.5) / img.width, (def.size * 0.5) / img.height);
-                                                        ctx.drawImage(img, (def.size - img.width * s) / 2, (def.size - img.height * s) / 2, img.width * s, img.height * s);
+                                                    const wmImg = new window.Image();
+                                                    wmImg.crossOrigin = 'anonymous';
+                                                    wmImg.onload = () => {
+                                                        const s = Math.min((def.size * 0.5) / wmImg.width, (def.size * 0.5) / wmImg.height);
+                                                        ctx.drawImage(wmImg, (def.size - wmImg.width * s) / 2, (def.size - wmImg.height * s) / 2, wmImg.width * s, wmImg.height * s);
                                                         const brandName = project.name || 'BRAND';
                                                         ctx.globalAlpha = 0.6;
                                                         ctx.fillStyle = '#000';
                                                         ctx.font = `bold ${def.size * 0.08}px sans-serif`;
                                                         ctx.textAlign = 'center';
                                                         ctx.fillText(brandName, def.size / 2, def.size - def.size * 0.1);
-                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null }] }));
-                                                    };
-                                                    img.src = src;
-                                                } else {
+                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null, editPrompt: '' }] }));
+                                                     };
+                                                     wmImg.src = src;
+                                                 } else {
                                                     ctx.fillStyle = '#111';
                                                     ctx.beginPath();
                                                     ctx.roundRect(0, 0, def.size, def.size, def.size * 0.1);
                                                     ctx.fill();
-                                                    const img = new Image();
-                                                    img.crossOrigin = 'anonymous';
-                                                    img.onload = () => {
-                                                        const s = Math.min((def.size * 0.7) / img.width, (def.size * 0.7) / img.height);
-                                                        ctx.drawImage(img, (def.size - img.width * s) / 2, (def.size - img.height * s) / 2, img.width * s, img.height * s);
-                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null }] }));
+                                                    const assetImg = new window.Image();
+                                                    assetImg.crossOrigin = 'anonymous';
+                                                    assetImg.onload = () => {
+                                                        const s = Math.min((def.size * 0.7) / assetImg.width, (def.size * 0.7) / assetImg.height);
+                                                        ctx.drawImage(assetImg, (def.size - assetImg.width * s) / 2, (def.size - assetImg.height * s) / 2, assetImg.width * s, assetImg.height * s);
+                                                        setProject(s => ({ ...s, results: [...s.results, { id: `asset-${Date.now()}-${def.name}`, category: 'Logo' as const, aspectRatio: '1:1' as const, image: c.toDataURL('image/png'), title: def.label, likes: 0, isEditing: false, isLoading: false, error: null, editPrompt: '' }] }));
                                                     };
-                                                    img.src = src;
+                                                    assetImg.src = src;
                                                 }
                                             });
                                         }}
@@ -1407,7 +1391,7 @@ const BrandingStudio: React.FC<{
                                     </div>
                                     <button
                                         onClick={() => {
-                                            const snapshot = { id: Date.now().toString(), name: project.name || 'Untitled Brand', colors: [...project.colors], typography: { primary: project.typography?.primary || 'Inter', secondary: project.typography?.secondary || 'Inter' }, brandVoice: project.brandVoice || '', targetAudience: project.targetAudience || '', brandPersonality: project.brandPersonality || '', savedAt: new Date().toLocaleDateString() };
+                                            const snapshot = { id: Date.now().toString(), name: project.name || 'Untitled Brand', colors: [...project.colors], typography: { primary: project.typography?.primary || 'Inter', secondary: project.typography?.secondary || 'Inter' }, brandVoice: project.brandVoice || '', targetAudience: project.targetAudience || '', brandPersonality: project.brandPersonality || [], savedAt: new Date().toLocaleDateString() };
                                             setProject(s => ({ ...s, brandSnapshots: [...s.brandSnapshots, snapshot] }));
                                         }}
                                         className="px-6 py-3 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 active:scale-95 transition-all flex items-center gap-2 shrink-0"
@@ -1419,7 +1403,7 @@ const BrandingStudio: React.FC<{
                                 {project.brandSnapshots.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {project.brandSnapshots.map(snap => (
-                                        <div key={snap.id} className="glass-card rounded-3xl p-6 border border-white/5 hover:border-[var(--color-accent)]/30 transition-all cursor-pointer group" onClick={() => setProject(s => ({ ...s, name: snap.name, colors: snap.colors, typography: snap.typography as any, brandVoice: snap.brandVoice, targetAudience: snap.targetAudience, brandPersonality: snap.brandPersonality }))}>
+                                        <div key={snap.id} className="glass-card rounded-3xl p-6 border border-white/5 hover:border-[var(--color-accent)]/30 transition-all cursor-pointer group" onClick={() => setProject(s => ({ ...s, name: snap.name, colors: snap.colors, typography: snap.typography as any, brandVoice: snap.brandVoice, targetAudience: snap.targetAudience, brandPersonality: Array.isArray(snap.brandPersonality) ? snap.brandPersonality : [] }))}>
                                             <div className="flex items-start justify-between mb-4">
                                                 <span className="text-[10px] font-black text-white/40 uppercase">{snap.name}</span>
                                                 <button onClick={e => { e.stopPropagation(); setProject(s => ({ ...s, brandSnapshots: s.brandSnapshots.filter(sn => sn.id !== snap.id) })); }} className="text-[8px] text-red-400/60 hover:text-red-400 font-black uppercase">X</button>

@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { PlanStudioProject, ImageFile, PlanIdea } from '../types';
 import { resizeImage } from '../utils';
 import { generateCampaignPlan, generateImage, analyzeProductForCampaign, generatePlanStrategy } from '../services/geminiService';
@@ -86,6 +86,16 @@ const PlanStudio: React.FC<{
     const [battleCardEdits, setBattleCardEdits] = useState<Record<number, { competitor: string; strengths: string; weaknesses: string; killShot: string }>>({});
     const [compareView, setCompareView] = useState(false);
 
+    const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+    const scheduledIdeas = useMemo(() => {
+      const groups: Record<string, typeof project.ideas> = {};
+      for (const day of DAYS_OF_WEEK) {
+        groups[day] = project.ideas.filter(idea => idea.schedule && idea.schedule.toLowerCase().includes(day.toLowerCase()));
+      }
+      groups.unscheduled = project.ideas.filter(idea => !idea.schedule || !DAYS_OF_WEEK.some(d => idea.schedule.toLowerCase().includes(d.toLowerCase())));
+      return groups;
+    }, [project.ideas]);
+
     // Update dialect in project when internal selects change
     useEffect(() => {
         const langLabel = BASE_LANGUAGES.find(l => l.id === selectedLang)?.label || 'Arabic';
@@ -108,7 +118,7 @@ const PlanStudio: React.FC<{
             const runAnalysis = async () => {
                 setProject(s => ({ ...s, isAnalyzingCategory: true }));
                 try {
-                    const analysis = await analyzeProductForCampaign(project.productImages);
+                    const analysis = await analyzeProductForCampaign(project.productImages, project.aiConfig);
                     setProject(s => ({ ...s, categoryAnalysis: analysis, isAnalyzingCategory: false }));
                     logHistory({
                         type: 'text',
@@ -1358,11 +1368,11 @@ const PlanStudio: React.FC<{
                         </button>
                     </div>
                     <div className="grid grid-cols-7 gap-px bg-white/5 rounded-[32px] overflow-hidden border border-white/5">
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        {DAYS_OF_WEEK.map(day => (
                             <div key={day} className="bg-black/20 p-3 min-h-[150px]">
                                 <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">{day}</div>
                                 <div className="space-y-1">
-                                    {project.ideas.filter(idea => idea.schedule && idea.schedule.toLowerCase().includes(day.toLowerCase())).map(idea => (
+                                    {scheduledIdeas[day].map(idea => (
                                         <div key={idea.id} className="px-2 py-1 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 rounded text-[8px] font-bold text-white/70 leading-tight">
                                             {idea.tov}
                                         </div>
@@ -1373,7 +1383,7 @@ const PlanStudio: React.FC<{
                         <div className="col-span-7 bg-black/20 p-3">
                             <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Unscheduled</div>
                             <div className="flex flex-wrap gap-1">
-                                {project.ideas.filter(idea => !idea.schedule || !['mon','tue','wed','thu','fri','sat','sun'].some(d => idea.schedule.toLowerCase().includes(d))).map(idea => (
+                                {scheduledIdeas.unscheduled.map(idea => (
                                     <span key={idea.id} className="px-2 py-1 bg-white/5 rounded text-[8px] font-bold text-white/40">{idea.tov}</span>
                                 ))}
                             </div>

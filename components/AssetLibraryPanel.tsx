@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { GlobalHistoryItem, AppView } from '../types';
 import { fetchGlobalHistory } from '../lib/admin';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     LayoutGrid, List, Search, Filter, Download,
     Trash2, ExternalLink, RefreshCw, Layers,

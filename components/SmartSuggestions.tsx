@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, Zap, Shield, AlertTriangle, CheckCircle, X } from 'lucide-react';
 
 interface Suggestion {
@@ -10,9 +10,14 @@ interface Suggestion {
     desc: string;
     impact: 'high' | 'medium' | 'low';
     actionLabel: string;
+    actionId: string;
 }
 
-const SmartSuggestions: React.FC = () => {
+interface SmartSuggestionsProps {
+    onAction?: (actionId: string, suggestion: Suggestion) => void;
+}
+
+const SmartSuggestions: React.FC<SmartSuggestionsProps> = ({ onAction }) => {
     const [suggestions, setSuggestions] = useState<Suggestion[]>([
         {
             id: '1',
@@ -20,7 +25,8 @@ const SmartSuggestions: React.FC = () => {
             title: 'Neural Pipeline Latency',
             desc: 'Detecting 15% higher latency in Gemini nodes. Recommend switching to Edge-routing.',
             impact: 'high',
-            actionLabel: 'Optimize Routing'
+            actionLabel: 'Optimize Routing',
+            actionId: 'optimize_routing'
         },
         {
             id: '2',
@@ -28,7 +34,8 @@ const SmartSuggestions: React.FC = () => {
             title: 'Orphaned User Nodes',
             desc: '5 accounts have been inactive for 60+ days. Recommend archival for nexus security.',
             impact: 'medium',
-            actionLabel: 'Review Users'
+            actionLabel: 'Review Users',
+            actionId: 'review_users'
         },
         {
             id: '3',
@@ -36,7 +43,8 @@ const SmartSuggestions: React.FC = () => {
             title: 'Asset Fragmentation',
             desc: 'Vault fragmentation detected at 12%. Rebuilding index will improve search speed by 40%.',
             impact: 'low',
-            actionLabel: 'Rebuild Index'
+            actionLabel: 'Rebuild Index',
+            actionId: 'rebuild_index'
         }
     ]);
 
@@ -96,7 +104,10 @@ const SmartSuggestions: React.FC = () => {
                                 "{s.desc}"
                             </p>
 
-                            <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest flex items-center justify-center gap-3 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all shadow-xl">
+                            <button
+                                onClick={() => onAction?.(s.actionId, s)}
+                                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest flex items-center justify-center gap-3 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all shadow-xl"
+                            >
                                 {s.actionLabel}
                                 <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                             </button>

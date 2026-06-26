@@ -41,7 +41,8 @@ export async function callAI(prompt: string, config: AIConfig, systemInstruction
     try {
         const { IntegrationService } = await import('./integrationService');
         const sc = config.externalServiceConfig;
-        const response = await IntegrationService.smartCall(provider as any, {
+        const normalizedProvider = provider === 'external' ? 'custom' : provider;
+        const response = await IntegrationService.smartCall(normalizedProvider as any, {
             prompt,
             systemInstruction,
             signal,
@@ -330,8 +331,8 @@ export async function analyzeImageForPrompt(
   }
 }
 
-export async function analyzeStyleImage(images: ImageFile[], signal?: AbortSignal): Promise<string> {
-  const model = 'gemini-2.0-flash';
+export async function analyzeStyleImage(images: ImageFile[], config?: AIConfig, signal?: AbortSignal): Promise<string> {
+  const model = config?.modelId || 'gemini-2.0-flash';
   const parts: any[] = images.map(img => ({
     inlineData: {
       data: img.base64,
@@ -349,8 +350,8 @@ export async function analyzeStyleImage(images: ImageFile[], signal?: AbortSigna
   }
 }
 
-export async function analyzeLogoForBranding(images: ImageFile[], signal?: AbortSignal): Promise<{ colors: string[] }> {
-  const model = 'gemini-2.0-flash';
+export async function analyzeLogoForBranding(images: ImageFile[], config?: AIConfig, signal?: AbortSignal): Promise<{ colors: string[] }> {
+  const model = config?.modelId || 'gemini-2.0-flash';
   const parts: any[] = images.map(img => ({
     inlineData: {
       data: img.base64,
@@ -393,8 +394,8 @@ export async function generatePromptFromText(instructions: string, config?: AICo
   }
 }
 
-export async function translateText(text: string, signal?: AbortSignal): Promise<string> {
-  const model = 'gemini-2.0-flash';
+export async function translateText(text: string, config?: AIConfig, signal?: AbortSignal): Promise<string> {
+  const model = config?.modelId || 'gemini-2.0-flash';
   const prompt = `Translate the following text to English, preserving any technical or descriptive nuances: "${text}"`;
   try {
     const response = await googleAICall(model, { parts: [{ text: prompt }] }, undefined, signal);
@@ -489,8 +490,8 @@ export async function generateCampaignPlan(
     }
 }
 
-export async function analyzeProductForCampaign(productImages: ImageFile[], signal?: AbortSignal): Promise<string> {
-    const model = 'gemini-2.0-flash';
+export async function analyzeProductForCampaign(productImages: ImageFile[], config?: AIConfig, signal?: AbortSignal): Promise<string> {
+    const model = config?.modelId || 'gemini-2.0-flash';
     const parts: any[] = [];
     productImages.forEach(img => parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
 
@@ -1173,6 +1174,8 @@ export async function generateShotScript(scenes: any[], aiConfig: AIConfig): Pro
 
 export async function generateDirectorCritique(scene: any, previousScene: any | null, aiConfig: AIConfig, signal?: AbortSignal): Promise<string> {
     const model = aiConfig?.modelId || 'gemini-2.0-flash';
+
+    // Route through callAI to respect provider selection
     const instruction = `Act as a Senior Film Director. Critique the following shot selection:
     Current Shot: ${scene.shotType} with ${scene.cameraMovement} movement.
     Description: ${scene.description}
@@ -1181,8 +1184,8 @@ export async function generateDirectorCritique(scene: any, previousScene: any | 
     Provide a sharp, 2-3 sentence technical critique of this cinematic choice. Mention pacing, focus, or visual impact. Return raw text.`;
 
     try {
-        const response = await googleAICall(model, { parts: [{ text: instruction }] }, undefined, signal);
-        return response.text || "Director's feedback unavailable.";
+        const response = await callAI(instruction, aiConfig, undefined, undefined, signal);
+        return response || "Director's feedback unavailable.";
     } catch (err) {
         return "Director's feedback unavailable.";
     }

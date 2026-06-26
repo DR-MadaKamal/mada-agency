@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
     StoryboardStudioProject, 
     StoryboardScene, 
@@ -37,7 +37,7 @@ import {
     ListFilter,
     Pause,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 
@@ -102,6 +102,10 @@ export default function StoryboardStudio({ project, setProject }: Props) {
     const [critique, setCritique] = useState<string | null>(null);
 
     const activeTab = project.activeTab || 'script';
+
+    const filteredScenes = useMemo(() =>
+        project.scenes.filter(s => (shotFilter === 'all' || s.shotType === shotFilter) && (!sceneSearch || s.description.toLowerCase().includes(sceneSearch.toLowerCase()) || s.dialogue.toLowerCase().includes(sceneSearch.toLowerCase()))),
+    [project.scenes, shotFilter, sceneSearch]);
 
     useEffect(() => {
         if (selectedSceneId) {
@@ -516,7 +520,7 @@ export default function StoryboardStudio({ project, setProject }: Props) {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
-                                    {project.scenes.filter(s => (shotFilter === 'all' || s.shotType === shotFilter) && (!sceneSearch || s.description.toLowerCase().includes(sceneSearch.toLowerCase()) || s.dialogue.toLowerCase().includes(sceneSearch.toLowerCase()))).map((scene, idx) => (
+                                    {filteredScenes.map((scene, idx) => (
                                         <motion.div 
                                             key={scene.id}
                                             initial={{ opacity: 0, y: 20 }}

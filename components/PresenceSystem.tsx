@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db, auth, collection, doc, setDoc, onSnapshot, serverTimestamp, query, where, deleteDoc } from '../lib/firebase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 const PresenceSystem: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);

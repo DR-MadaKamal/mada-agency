@@ -47,7 +47,7 @@ const COMMANDS: SearchEntry[] = [
   { id: 'cmd_undo', type: 'command', title: 'Undo', subtitle: 'Ctrl+Z to undo last action', icon: History, view: 'creator_studio' },
 ];
 
-const OmniSearch: React.FC<OmniSearchProps> = ({ isOpen, onClose, onNavigate }) => {
+const OmniSearch: React.FC<OmniSearchProps> = React.memo((({ isOpen, onClose, onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -231,6 +231,5 @@ const OmniSearch: React.FC<OmniSearchProps> = ({ isOpen, onClose, onNavigate }) 
       )}
     </AnimatePresence>
   );
-};
-
+}));
 export default OmniSearch;

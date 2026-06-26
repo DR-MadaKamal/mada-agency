@@ -32,17 +32,19 @@ const NexusControlCenter: React.FC = () => {
   const [agentOnline, setAgentOnline] = useState(false);
 
   useEffect(() => {
-    strategicOrchestrator().healthCheck().then(setAgentOnline).catch(() => setAgentOnline(false));
+    let mounted = true;
+    strategicOrchestrator().healthCheck().then(r => { if (mounted) setAgentOnline(r); }).catch(() => { if (mounted) setAgentOnline(false); });
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
+    let mounted = true;
 
-    // Real-time counter for assets filtered by user
     const assetsRef = query(collection(db, 'vault_assets'), where('userId', '==', user.uid));
     getCountFromServer(assetsRef).then(snapshot => {
-      setStats(prev => ({ ...prev, totalAssets: snapshot.data().count }));
+      if (mounted) setStats(prev => ({ ...prev, totalAssets: snapshot.data().count }));
     }).catch(err => console.error("Aggregation failed:", err));
 
     const historyRef = collection(db, 'history');
@@ -54,7 +56,7 @@ const NexusControlCenter: React.FC = () => {
       setStats(prev => ({ ...prev, totalProjects: snapshot.size + 142 })); // base count + real ones
     });
 
-    return () => unsubscribe();
+    return () => { mounted = false; unsubscribe(); };
   }, []);
 
   return (

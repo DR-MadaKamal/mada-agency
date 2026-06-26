@@ -3,7 +3,7 @@ import { createAICall } from '../lib/ai';
 import { Sparkles, Copy, Check, Loader2, FileText, Download } from 'lucide-react';
 import { useToast } from '../lib/useToast';
 import { MiniAISelector } from './MiniAISelector';
-import type { MarketingStudioProject, ExternalServiceConfig } from '../types';
+import type { MarketingStudioProject, AIConfig } from '../types';
 
 interface ToolDef {
   id: string;
@@ -496,11 +496,11 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
   goal: string;
   brief: string;
   language: string;
-  aiConfig: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig };
+  aiConfig: AIConfig;
 }) {
   const [loadingTool, setLoadingTool] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<string | null>(null);
-  const [toolProvider, setToolProvider] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
+  const [toolProvider, setToolProvider] = useState<AIConfig | null>(null);
   const { toast } = useToast();
 
   const section = project.contentSection || SECTIONS[0].id;
@@ -630,10 +630,8 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
                 </button>
 
                 <MiniAISelector
-                  provider={toolProvider?.provider || aiConfig.provider}
-                  modelId={toolProvider?.modelId || aiConfig.modelId}
-                  externalServiceConfig={toolProvider?.externalServiceConfig || aiConfig.externalServiceConfig}
-                  onChange={(p, m, esc) => setToolProvider({ provider: p, modelId: m, externalServiceConfig: esc })}
+                  config={toolProvider || aiConfig}
+                  onChange={(cfg) => setToolProvider(cfg)}
                 />
 
                 {results[currentTool.id] && (

@@ -25,7 +25,7 @@ const BatchImageStudio: React.FC<BatchImageStudioProps> = ({ project, setProject
   };
 
   const handleUploadProductImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []) as File[];
     const maxNew = 5 - project.productImages.length;
     const toProcess = files.slice(0, maxNew);
     const loaded: ImageFile[] = [];
@@ -185,10 +185,8 @@ const BatchImageStudio: React.FC<BatchImageStudioProps> = ({ project, setProject
         </div>
         <div className="flex items-center gap-3">
           <MiniAISelector
-            provider={project.aiConfig?.provider || 'google'}
-            modelId={project.aiConfig?.modelId || 'gemini-2.1-flash-image'}
-            externalServiceConfig={project.aiConfig?.externalServiceConfig}
-            onChange={(p, m, esc) => setProject(s => ({ ...s, aiConfig: { provider: p as any, modelId: m, externalServiceConfig: esc } }))}
+            config={project.aiConfig || { provider: 'google', modelId: 'gemini-2.1-flash-image' }}
+            onChange={(cfg) => setProject(s => ({ ...s, aiConfig: cfg }))}
           />
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10">
             <div className={`w-1.5 h-1.5 rounded-full ${project.isGenerating ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />

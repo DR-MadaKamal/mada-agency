@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CreatorStudioProject, PhotoshootDirectorProject, PromptStudioProject, VoiceOverStudioProject, BrandingStudioProject, CampaignStudioProject, PlanStudioProject, EditStudioProject, StoryboardStudioProject, MarketingStudioProject, ControllerStudioProject, PrePilotAgencySuiteProject } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { CreatorStudioProject, PhotoshootDirectorProject, PromptStudioProject, VoiceOverStudioProject, BrandingStudioProject, CampaignStudioProject, PlanStudioProject, EditStudioProject, StoryboardStudioProject, MarketingStudioProject, ControllerStudioProject, PrePilotAgencySuiteProject, BatchImageStudioProject, BGStudioProject } from '../types';
 import { Plus, X } from 'lucide-react';
 
 type ProjectUnion = 
@@ -16,7 +16,9 @@ type ProjectUnion =
   | StoryboardStudioProject 
   | MarketingStudioProject
   | ControllerStudioProject
-  | PrePilotAgencySuiteProject;
+  | PrePilotAgencySuiteProject
+  | BatchImageStudioProject
+  | BGStudioProject;
 
 interface TabBarProps {
   projects: ProjectUnion[];
@@ -26,7 +28,7 @@ interface TabBarProps {
   onCloseTab: (index: number) => void;
 }
 
-const TabBar: React.FC<TabBarProps> = ({ projects, activeProjectIndex, onSelectTab, onAddTab, onCloseTab }) => {
+const TabBar: React.FC<TabBarProps> = React.memo((({ projects, activeProjectIndex, onSelectTab, onAddTab, onCloseTab }) => {
   return (
     <div className="w-full max-w-7xl flex items-center border-b border-[rgba(var(--color-text-base-rgb,229,231,206),0.1)] mb-6">
       <div className="flex items-end -mb-px overflow-x-auto suggestions-scrollbar scroll-smooth">
@@ -81,6 +83,6 @@ const TabBar: React.FC<TabBarProps> = ({ projects, activeProjectIndex, onSelectT
       </div>
     </div>
   );
-};
+}));
 
 export default TabBar;

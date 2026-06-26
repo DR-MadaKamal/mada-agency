@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { CampaignStudioProject, ImageFile, BrandingResult } from '../types';
 import { resizeImage } from '../utils';
 import { analyzeProductForCampaign, generateImage, editImage } from '../services/geminiService';
@@ -60,6 +60,7 @@ const CampaignStudio: React.FC<{
     if (!project) return null;
     const productImages = project.productImages || [];
     const results = project.results || [];
+    const filteredResults = useMemo(() => results.filter(r => r.image), [results]);
     const mode = project.mode || 'auto';
 
     const handleFileUpload = async (files: File[]) => {
@@ -76,7 +77,7 @@ const CampaignStudio: React.FC<{
             }));
             const combined = [...productImages, ...uploaded];
             setProject(s => ({ ...s, productImages: combined, isUploading: false, isAnalyzing: true }));
-            const analysis = await analyzeProductForCampaign(combined);
+            const analysis = await analyzeProductForCampaign(combined, project.aiConfig);
             setProject(s => ({ ...s, productAnalysis: analysis, isAnalyzing: false }));
             await logHistory({
                 type: 'text',
@@ -120,7 +121,7 @@ const CampaignStudio: React.FC<{
         setProject(s => ({ ...s, isGenerating: true, error: null, results: [] }));
         
         try {
-            let analysis = project.productAnalysis || await analyzeProductForCampaign(productImages);
+            let analysis = project.productAnalysis || await analyzeProductForCampaign(productImages, project.aiConfig);
             
             const scenarios = mode === 'auto' 
                 ? CAMPAIGN_SCENARIOS 
@@ -181,7 +182,7 @@ const CampaignStudio: React.FC<{
     }, [productImages, project.productAnalysis, project.selectedMood, project.customPrompt, project.customIdeas, mode, project.aiConfig, setProject]);
 
     const handleSelfRefine = async () => {
-        const itemsToRefine = project.results.filter(r => r.image);
+        const itemsToRefine = filteredResults;
         if (itemsToRefine.length === 0) {
             setProject(s => ({ ...s, error: 'No images available to refine. Please generate some content first.' }));
             setTimeout(() => setProject(s => ({ ...s, error: null })), 5000);
@@ -241,9 +242,13 @@ const CampaignStudio: React.FC<{
         }
     };
 
-    const safeGridResults: BrandingResult[] = (results || []).map(r => ({
+    const safeGridResults: BrandingResult[] = (results || []).map((r, i) => ({
+        id: `campaign-${Date.now()}-${i}`,
         category: r.scenario as any,
+        aspectRatio: '16:9',
         image: r.image || null,
+        title: r.scenario,
+        likes: 0,
         isLoading: !!r.isLoading,
         isEditing: !!r.isEditing,
         error: r.error || null,
@@ -424,7 +429,7 @@ const CampaignStudio: React.FC<{
                         { label: 'Images', val: `${project.productImages.length} uploaded` },
                         { label: 'Mode', val: project.mode === 'auto' ? 'Auto Scenarios' : 'Custom Ideas' },
                         { label: 'Accent', val: project.customMoodColor },
-                        { label: 'Results', val: `${project.results.filter(r => r.image).length} generated` },
+                        { label: 'Results', val: `${filteredResults.length} generated` },
                     ].map(d => (
                         <div key={d.label} className="glass-card rounded-2xl p-4 border border-white/5">
                             <p className="text-[7px] font-black text-white/30 uppercase tracking-widest mb-1">{d.label}</p>
@@ -543,7 +548,7 @@ const CampaignStudio: React.FC<{
             </div>
 
             {/* --- Feature 2: Campaign Variant Explorer --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -552,7 +557,7 @@ const CampaignStudio: React.FC<{
                     </div>
                     <div className="flex gap-3">
                         <select value={project.variantSourceIndex} onChange={e => setProject(s => ({ ...s, variantSourceIndex: +e.target.value }))} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[9px] text-white outline-none">
-                            {results.filter(r => r.image).map((r, i) => (
+                            {filteredResults.map((r, i) => (
                                 <option key={i} value={results.indexOf(r)} className="bg-gray-900">{r.scenario.slice(0, 25)}</option>
                             ))}
                         </select>
@@ -593,7 +598,7 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 4: Performance Prediction --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -614,7 +619,7 @@ const CampaignStudio: React.FC<{
                     </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {results.filter(r => r.image).slice(0, 6).map((r, i) => {
+                    {filteredResults.slice(0, 6).map((r, i) => {
                         const ctr = (Math.random() * 4 + 1).toFixed(1);
                         const eng = (Math.random() * 6 + 2).toFixed(1);
                         return (
@@ -637,14 +642,14 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 7: Image Comparison Slider --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-3 mb-6">
                     <Eye className="w-5 h-5 text-[var(--color-accent)]" />
                     <h3 className="text-lg font-black text-white uppercase tracking-tight">Image Comparison</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {results.filter(r => r.image).slice(0, 3).map((r, i) => (
+                    {filteredResults.slice(0, 3).map((r, i) => (
                         <div key={i} className="glass-card rounded-2xl p-4 border border-white/5">
                             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-3 truncate">{r.scenario}</p>
                             <div className="relative aspect-square rounded-xl overflow-hidden bg-white/5">
@@ -661,7 +666,7 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 8: Color Palette Extraction --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -686,7 +691,7 @@ const CampaignStudio: React.FC<{
                     }} className="px-4 py-1.5 bg-white/5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Extract Palettes</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {results.filter(r => r.image).slice(0, 6).map((r, i) => {
+                    {filteredResults.slice(0, 6).map((r, i) => {
                         const ri = results.indexOf(r);
                         const palette = project.colorPalettes[ri];
                         return (
@@ -703,7 +708,7 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 9: A/B Set Builder --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -737,7 +742,7 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 3: Ad Format Preview --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-3 mb-6">
                     <Layout className="w-5 h-5 text-[var(--color-accent)]" />
@@ -757,7 +762,7 @@ const CampaignStudio: React.FC<{
             )}
 
             {/* --- Feature 10: Campaign Timeline View --- */}
-            {results.filter(r => r.image).length > 0 && (
+            {filteredResults.length > 0 && (
             <div className="glass-card rounded-[2rem] p-6 md:p-8 border border-white/5 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -767,7 +772,7 @@ const CampaignStudio: React.FC<{
                     <button onClick={() => {
                         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                         const platforms = ['Instagram', 'TikTok', 'Facebook', 'LinkedIn'];
-                        const entries = results.filter(r => r.image).map((r, i) => ({
+                        const entries = filteredResults.map((r, i) => ({
                             resultIndex: results.indexOf(r),
                             day: days[i % 7],
                             platform: platforms[i % 4],

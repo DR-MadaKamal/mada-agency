@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { resizeImage } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     X,
     Image as ImageIcon,
@@ -14,10 +13,20 @@ import {
     Zap,
     Users,
     LineChart as ChartIcon,
+    Scissors as ScissorsIcon,
+    Mic as MicIcon,
+    Play as PlayIcon,
+    Grid3x3,
+    ImageDown,
+    Layout,
+    Briefcase,
+    Archive,
+    Clock,
+    CalendarDays,
     Terminal,
 } from 'lucide-react';
 import { Integration, ApiLog } from '../types';
-import { db, auth, handleFirestoreError, OperationType, collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, limit } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, limit } from '../lib/firebase';
 
 interface GlobalSettingsProps {
     isOpen: boolean;
@@ -31,7 +40,7 @@ interface GlobalSettingsProps {
     onUpdateSystemConfig?: (updates: any) => Promise<void>;
 }
 
-const GlobalSettings: React.FC<GlobalSettingsProps> = ({ 
+const GlobalSettings: React.FC<GlobalSettingsProps> = React.memo((({ 
     isOpen, 
     onClose, 
     isAdmin,
@@ -93,15 +102,23 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({
         { id: 'creator_studio', label: 'Creative', icon: Zap },
         { id: 'storyboard_studio', label: 'Storyboard', icon: ChartIcon },
         { id: 'branding_studio', label: 'Branding', icon: Globe },
-        { id: 'marketing_studio', label: 'Marketing', icon: Users },
         { id: 'photoshoot_director', label: 'Photoshoot', icon: ImageIcon },
-        { id: 'edit_studio', label: 'Edit', icon: ScissorsIcon },
+        { id: 'marketing_studio', label: 'Marketing', icon: Users },
         { id: 'campaign_studio', label: 'Campaign', icon: Activity },
-        { id: 'video_studio', label: 'Video', icon: PlayIcon },
-        { id: 'prompt_studio', label: 'Prompt', icon: Terminal },
-        { id: 'voice_over_studio', label: 'Voice Over', icon: MicIcon },
+        { id: 'edit_studio', label: 'Edit', icon: ScissorsIcon },
         { id: 'plan_studio', label: 'Plan', icon: Database },
         { id: 'controller_studio', label: 'Face Control', icon: Cpu },
+        { id: 'batch_image_studio', label: 'Batch', icon: Grid3x3 },
+        { id: 'bg_remover_studio', label: 'BG Remover', icon: ImageDown },
+        { id: 'storyboard_studio', label: 'Storyboard', icon: Layout },
+        { id: 'voice_over_studio', label: 'Voice Over', icon: MicIcon },
+        { id: 'video_studio', label: 'Video', icon: PlayIcon },
+        { id: 'prompt_studio', label: 'Prompt', icon: Terminal },
+        { id: 'prepilot_agency_suite', label: 'PrePilot', icon: Briefcase },
+        { id: 'command_center', label: 'Command', icon: Shield },
+        { id: 'asset_library', label: 'Vault', icon: Archive },
+        { id: 'archives', label: 'Archives', icon: Clock },
+        { id: 'calendar', label: 'Calendar', icon: CalendarDays },
     ];
 
     return (
@@ -373,7 +390,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({
             </div>
         </AnimatePresence>
     );
-};
+}));
 
 const NavButton = ({ active, onClick, icon: Icon, label, sublabel }: any) => (
     <button 
@@ -448,16 +465,4 @@ const ModuleToggle = ({ label, icon: Icon, active, onToggle }: any) => (
         </div>
     </button>
 );
-
-// Fallback Icons
-const ScissorsIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-);
-const PlayIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-);
-const MicIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-);
-
 export default GlobalSettings;

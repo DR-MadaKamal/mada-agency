@@ -12,6 +12,11 @@ export interface ExternalAIService {
   models: string[];
   isFree: boolean;
   isActive?: boolean;
+  requestTemplate?: string;
+  responsePath?: string;
+  apiKeys?: string[];
+  authType?: 'header' | 'bearer' | 'api-key';
+  authHeaderName?: string;
 }
 
 export interface ExternalServiceConfig {
@@ -55,6 +60,19 @@ export interface AIConfig {
     modelId: string;
     externalServiceConfig?: ExternalServiceConfig;
 }
+
+export const KNOWN_AI_ENDPOINTS: Record<string, { url: string; authType: 'header' | 'bearer' | 'api-key'; authHeaderName: string; models: string[] }> = {
+  openai: { url: 'https://api.openai.com/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
+  anthropic: { url: 'https://api.anthropic.com/v1/messages', authType: 'header', authHeaderName: 'x-api-key', models: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'] },
+  google: { url: 'https://generativelanguage.googleapis.com/v1beta/models', authType: 'api-key', authHeaderName: 'x-goog-api-key', models: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  together: { url: 'https://api.together.xyz/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['mistralai/Mixtral-8x22B-Instruct-v0.1', 'meta-llama/Llama-3-70b-chat-hf'] },
+  groq: { url: 'https://api.groq.com/openai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768'] },
+  deepseek: { url: 'https://api.deepseek.com/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['deepseek-chat', 'deepseek-coder'] },
+  xai: { url: 'https://api.x.ai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['grok-beta', 'grok-2'] },
+  mistral: { url: 'https://api.mistral.ai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'] },
+  cohere: { url: 'https://api.cohere.ai/v1/generate', authType: 'bearer', authHeaderName: 'Authorization', models: ['command-r', 'command-r-plus'] },
+  fireworks: { url: 'https://api.fireworks.ai/inference/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['accounts/fireworks/models/llama-v3p1-405b-instruct', 'accounts/fireworks/models/llama-v3p1-70b-instruct'] },
+};
 
 export type LightingStyle = 'Natural Light' | 'Studio Light' | 'Golden Hour' | 'Blue Hour' | 'Cinematic' | 'Dramatic';
 export type CameraPerspective = 'Front View' | 'Top View' | 'Side View' | '45° Angle' | 'Close-up' | 'Macro Shot';
@@ -153,7 +171,7 @@ export interface AssistantSession {
     updatedAt: Date;
 }
 
-export type AppView = 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar' | 'pre_pilot_studio' | 'batch_image_studio';
+export type AppView = 'home' | 'creator_studio' | 'photoshoot_director' | 'prompt_studio' | 'voice_over_studio' | 'campaign_studio' | 'video_studio' | 'plan_studio' | 'edit_studio' | 'storyboard_studio' | 'marketing_studio' | 'controller_studio' | 'branding_studio' | 'admin_studio' | 'prepilot_agency_suite' | 'archives' | 'asset_library' | 'command_center' | 'calendar' | 'pre_pilot_studio' | 'batch_image_studio' | 'bg_remover_studio';
 
 export interface PrePilotAgent {
     id: string;
@@ -356,14 +374,18 @@ export interface VoiceOverStudioState {
 export interface VoiceOverStudioProject extends ProjectBase, VoiceOverStudioState {}
 
 // --- Branding Studio ---
-export type BrandingResultCategory = 'Logo Construction Grid' | 'Typography Showcase' | 'Logo Color Variations' | 'Monochrome Version' |
+export type BrandingResultCategory = 'Logo' | 'Logo Construction Grid' | 'Typography Showcase' | 'Logo Color Variations' | 'Monochrome Version' |
     '3D Glass Logo' | 'Business Card Mockup' | '3D Glass App Icon' | 'Creative Pen Mockup' |
     'Merchandise (Tote Bag)' | 'Pencil Sketch Logo' | 'Notebook Mockup' | 'Waving Flag Mockup' |
     'Instagram Post Mockup' | 'TikTok View Mockup' | 'Letterhead Design' | 'Email Signature';
 
 export interface BrandingResult {
+  id: string;
   category: BrandingResultCategory;
-  image: ImageFile | null;
+  aspectRatio: string;
+  image: string | ImageFile | null;
+  title: string;
+  likes: number;
   isLoading: boolean;
   isEditing: boolean;
   error: string | null;
@@ -411,7 +433,7 @@ export interface BrandingStudioState {
   toneSimple: number;
 
   // Multi-Brand Workspace
-  brandSnapshots: { id: string; name: string; colors: string[]; typography: { primary: string; secondary: string }; brandVoice: string; targetAudience: string; brandPersonality: string; savedAt: string }[];
+  brandSnapshots: { id: string; name: string; colors: string[]; typography: { primary: string; secondary: string }; brandVoice: string; targetAudience: string; brandPersonality: string[] | string; savedAt: string }[];
 }
 
 export interface BrandingStudioProject extends ProjectBase, BrandingStudioState {}
@@ -789,9 +811,9 @@ export interface EditStudioState {
     isUploading: boolean;
     error: string | null;
     activeCanvasSize: 'original' | 'instagram-post' | 'instagram-story' | 'linkedin-banner';
-    undoStack: { data: any, label: string }[];
-    redoStack: { data: any, label: string }[];
     isProcessingAI: boolean;
+    undoStack: any[];
+    redoStack: any[];
 }
 
 export interface EditStudioProject extends ProjectBase, EditStudioState {}
@@ -927,3 +949,145 @@ export interface BatchImageStudioState {
 }
 
 export interface BatchImageStudioProject extends ProjectBase, BatchImageStudioState {}
+
+export type BGReplacementType = 'transparent' | 'color' | 'gradient' | 'image' | 'ai-prompt';
+export type BGMaskMode = 'foreground' | 'subject' | 'custom';
+export type BGShadowType = 'drop' | 'ground' | 'glow' | 'none';
+export type BGViewMode = 'grid' | 'gallery' | 'compare';
+export type BGProcessingStatus = 'queued' | 'processing' | 'done' | 'failed';
+
+export interface BGBrushStroke {
+  x: number; y: number; radius: number; mode: 'add' | 'remove';
+}
+
+export interface BGShadowSettings {
+  type: BGShadowType;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+  color: string;
+}
+
+export interface BGEdgeGlow {
+  enabled: boolean;
+  width: number;
+  color: string;
+  opacity: number;
+}
+
+export interface BGSmartCrop {
+  enabled: boolean;
+  padding: number;
+  maintainAspectRatio: boolean;
+}
+
+export interface BGCompositeLayer {
+  id: string;
+  resultId: string;
+  x: number;
+  y: number;
+  scale: number;
+  zIndex: number;
+  opacity: number;
+}
+
+export interface BGBackgroundPreset {
+  id: string;
+  name: string;
+  type: 'color' | 'gradient' | 'image';
+  value: string;
+  thumbnail?: string;
+}
+
+export interface BGEditHistoryEntry {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: number;
+  snapshot: string;
+}
+
+export interface BGQueueItem {
+  index: number;
+  status: BGProcessingStatus;
+  error?: string;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+export interface BGResultItem {
+  id: string;
+  image: ImageFile;
+  resultImage: ImageFile;
+  processedAt: number;
+  maskImage?: ImageFile | null;
+  tags?: string[];
+  zoomPan?: { x: number; y: number; zoom: number };
+}
+
+export const BG_PRESET_BACKGROUNDS: BGBackgroundPreset[] = [
+  { id: 'studio-white', name: 'White Studio', type: 'color', value: '#ffffff' },
+  { id: 'studio-black', name: 'Black Studio', type: 'color', value: '#000000' },
+  { id: 'studio-gray', name: 'Gray Studio', type: 'color', value: '#888888' },
+  { id: 'warm-beige', name: 'Warm Beige', type: 'color', value: '#f5e6d3' },
+  { id: 'soft-blue', name: 'Soft Blue', type: 'color', value: '#a8d8ea' },
+  { id: 'nature', name: 'Nature', type: 'gradient', value: 'linear-gradient(135deg,#2d5016,#8cb369)' },
+  { id: 'sunset', name: 'Sunset', type: 'gradient', value: 'linear-gradient(135deg,#ff6b6b,#ffd93d)' },
+  { id: 'ocean', name: 'Ocean', type: 'gradient', value: 'linear-gradient(135deg,#006994,#00b4d8)' },
+  { id: 'neon', name: 'Neon', type: 'gradient', value: 'linear-gradient(135deg,#ff00ff,#00ffff)' },
+  { id: 'noir', name: 'Noir', type: 'gradient', value: 'linear-gradient(135deg,#1a1a2e,#16213e)' },
+];
+
+export interface BGStudioState {
+  sourceImages: ImageFile[];
+  results: BGResultItem[];
+  replacementType: BGReplacementType;
+  replacementColor: string;
+  gradientStart: string;
+  gradientEnd: string;
+  gradientAngle: number;
+  replacementImage: ImageFile | null;
+  aiBackgroundPrompt: string;
+  featherRadius: number;
+  edgeThreshold: number;
+  maskMode: BGMaskMode;
+  isProcessing: boolean;
+  selectedResultIds: string[];
+  error: string | null;
+  activeTab: 'upload' | 'results';
+  zoomLevel: number;
+  showOriginal: boolean;
+
+  // 25 new features state
+  brushStrokes: BGBrushStroke[];
+  isBrushMode: boolean;
+  brushRadius: number;
+  comparePosition: number;
+  upscaleEnabled: boolean;
+  upscaleFactor: number;
+  shadowSettings: BGShadowSettings;
+  edgeGlow: BGEdgeGlow;
+  smartCrop: BGSmartCrop;
+  backgroundBlur: number;
+  bokehShape: 'circle' | 'hexagon' | 'star';
+  colorMatchBg: boolean;
+  // undo/redo managed by useProjectHistory hook
+  compositeLayers: BGCompositeLayer[];
+  selectedPresetId: string | null;
+  viewMode: BGViewMode;
+  galleryIndex: number;
+  colorHistory: string[];
+  queueItems: BGQueueItem[];
+  renamePattern: string;
+  exportFormat: 'png' | 'webp' | 'jpeg';
+  exportQuality: number;
+  imageGroupName: string;
+  autoTagging: boolean;
+  showMask: boolean;
+  undoStack: any[];
+  redoStack: any[];
+  editHistory: any[];
+}
+
+export interface BGStudioProject extends ProjectBase, BGStudioState {}

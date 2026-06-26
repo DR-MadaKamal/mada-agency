@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useCallback, Fragment } from 'react';
+import React, { useState, useRef, useEffect, useCallback, Fragment, useMemo } from 'react';
 import { useToast } from '../lib/useToast';
 import { 
     EditStudioProject, 
@@ -15,6 +15,7 @@ import {
 import { resizeImage, createThumbnail } from '../utils';
 import { editImage } from '../services/geminiService';
 import { logHistory } from '../lib/admin';
+import { useProjectHistory } from '../lib/useProjectHistory';
 import {
     Layers,
     Image as ImageIcon,
@@ -83,7 +84,7 @@ import {
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { MiniAISelector } from './MiniAISelector';
-import type { ExternalServiceConfig } from '../types';
+import type { AIConfig } from '../types';
 
 const CANVAS_SIZES = [
     { id: 'original', label: 'Original', ratio: null, icon: ImageIcon },
@@ -164,6 +165,9 @@ const BLENDING_MODES: BlendingMode[] = [
     'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'
 ];
 
+const RULER_TICKS_H = Array.from({ length: 40 });
+const RULER_TICKS_V = Array.from({ length: 20 });
+
 const EditStudio: React.FC<{
     project: EditStudioProject;
     setProject: React.Dispatch<React.SetStateAction<EditStudioProject>>;
@@ -203,6 +207,19 @@ const EditStudio: React.FC<{
     const brushSlotRef = useRef<number | null>(null);
     const mountedRef = useRef(true);
     useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+    const history = useProjectHistory(project, setProject, { label: 'EditStudio Init' });
+    const sortedLayers = useMemo(() => [...project.globalLayers].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)), [project.globalLayers]);
+    const sortedTextsBySlot = useMemo(() => {
+        const map: Record<number, typeof project.localTexts[number]> = {};
+        if (project.localTexts) {
+            for (const [key, texts] of Object.entries(project.localTexts)) {
+                if (texts) {
+                    map[Number(key)] = [...(texts as LocalText[])].sort((a: any, b: any) => (a.zIndex || 0) - (b.zIndex || 0));
+                }
+            }
+        }
+        return map;
+    }, [project.localTexts]);
     const [lastBrushPos, setLastBrushPos] = useState<{x:number;y:number}|null>(null);
     const [cloneSource, setCloneSource] = useState<{x:number;y:number}|null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'history' | 'layers' | 'branding' | 'channels' | 'adjustments' | '3d'>('properties');
@@ -212,7 +229,7 @@ const EditStudio: React.FC<{
     const [exportFormat, setExportFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
     const [exportQuality, setExportQuality] = useState(90);
     const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
-    const [aiOverride, setAiOverride] = useState<{ provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null>(null);
+    const [aiOverride, setAiOverride] = useState<AIConfig | null>(null);
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
     const [isUpscaling, setIsUpscaling] = useState<string | null>(null);
     const [isAIEditOpen, setIsAIEditOpen] = useState(false);
@@ -384,11 +401,11 @@ toast({ type: 'error', title: 'Generation failed', message: err instanceof Error
                                             <div className="h-[1px] bg-white/5 my-1" />
                                         ) : (
                                             <button 
-                                                className="w-full text-left px-4 py-1.5 hover:bg-[#3d75f2] hover:text-white transition-colors flex justify-between items-center group"
+                                                className="w-full text-left px-4 py-1.5 hover:bg-(--color-secondary-accent) hover:text-white transition-colors flex justify-between items-center group"
                                                 onClick={async () => {
                                                     if (item === 'New...') setIsNewProjectModalOpen(true);
-                                                    if (item === 'Undo') undo();
-                                                    if (item === 'Redo') redo();
+                                                    if (item === 'Undo') history.undo();
+                                                    if (item === 'Redo') history.redo();
                                                     if (item === 'Cut' && activeSlotIdx !== null) {
                                                         if (selectedTextId) {
                                                             const text = (project.localTexts[activeSlotIdx] || []).find(t => t.id === selectedTextId);
@@ -588,7 +605,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
     const AdjustmentsPanel = () => (
         <div className="flex-1 flex flex-col p-4 bg-[#2B2B2B] gap-6 overflow-y-auto">
             <div className="flex flex-col gap-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Artistic Styles (AI)</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Artistic Styles (AI)</h3>
                 <div className="grid grid-cols-3 gap-1.5">
                     {[
                         { name: 'Comic', prompt: 'bold comic book illustration with ink lines' },
@@ -611,41 +628,41 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             </div>
 
             <div className="flex flex-col gap-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Neural Filters (AI)</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Neural Filters (AI)</h3>
                 <div className="grid grid-cols-2 gap-2">
                     <button 
                         onClick={() => activeSlotIdx !== null && aiRetouch(activeSlotIdx)}
-                        className="flex items-center gap-2 px-3 py-2 bg-[#3d75f2]/10 hover:bg-[#3d75f2]/20 border border-[#3d75f2]/30 rounded text-[9px] text-white/80 font-black uppercase transition-all"
+                        className="flex items-center gap-2 px-3 py-2 bg-(--color-secondary-accent)/10 hover:bg-(--color-secondary-accent)/20 border border-(--color-secondary-accent)/30 rounded text-[9px] text-white/80 font-black uppercase transition-all"
                     >
-                        <Sparkles className="w-3 h-3 text-[#3d75f2]" />
+                        <Sparkles className="w-3 h-3 text-(--color-secondary-accent)" />
                         Professional Retouch
                     </button>
                     <button 
                         onClick={() => activeSlotIdx !== null && removeBackground(activeSlotIdx)}
                         className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
                     >
-                        <Wand2 className="w-3 h-3 text-[#3d75f2]" />
+                        <Wand2 className="w-3 h-3 text-(--color-secondary-accent)" />
                         Extract Subject
                     </button>
                     <button 
                         onClick={() => activeSlotIdx !== null && upscaleArtboard(activeSlotIdx)}
                         className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
                     >
-                        <Maximize className="w-3 h-3 text-[#3d75f2]" />
+                        <Maximize className="w-3 h-3 text-(--color-secondary-accent)" />
                         4K AI Upscale
                     </button>
                     <button 
                         onClick={() => activeSlotIdx !== null && generateVariations(activeSlotIdx)}
                         className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] text-white/80 font-black uppercase transition-all"
                     >
-                        <Layers className="w-3 h-3 text-[#3d75f2]" />
+                        <Layers className="w-3 h-3 text-(--color-secondary-accent)" />
                         AI Variations
                     </button>
                 </div>
             </div>
 
             <div className="flex flex-col gap-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Color Correction</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Color Correction</h3>
                 <div className="grid grid-cols-4 gap-2">
                     {[
                         { icon: Sun, label: 'Brightness', key: 'brightness', delta: 10 },
@@ -657,7 +674,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                         { icon: Ghost, label: 'Opacity', key: 'opacity', delta: 10 },
                         { icon: Search, label: 'Sharpness', key: 'sharpness', delta: 10 }
                     ].map(adj => (
-                        <button key={adj.label} onClick={() => setProject(s => ({ ...s, adjustments: { ...s.adjustments, [adj.key]: Math.min(200, Math.max(0, ((s.adjustments as any)[adj.key] || 100) + adj.delta)) } }))} className="aspect-square flex flex-col items-center justify-center gap-1.5 bg-black/20 hover:bg-[#3d75f2]/40 rounded-lg border border-white/5 transition-all group">
+                        <button key={adj.label} onClick={() => setProject(s => ({ ...s, adjustments: { ...s.adjustments, [adj.key]: Math.min(200, Math.max(0, ((s.adjustments as any)[adj.key] || 100) + adj.delta)) } }))} className="aspect-square flex flex-col items-center justify-center gap-1.5 bg-black/20 hover:bg-(--color-secondary-accent)/40 rounded-lg border border-white/5 transition-all group">
                             <adj.icon className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
                             <span className="text-[8px] text-white/30 group-hover:text-white/60">{adj.label}</span>
                         </button>
@@ -689,13 +706,13 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                                 type="range" min={item.min} max={item.max}
                                 value={(project.adjustments as any)[item.key] || (item.min === 0 && item.max === 200 ? 100 : 0)}
                                 onChange={(e) => setProject(s => ({ ...s, adjustments: { ...s.adjustments, [item.key]: parseInt(e.target.value) } }))}
-                                className="w-full accent-[#3d75f2] h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
+                                className="w-full accent-(--color-secondary-accent) h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
                             />
                         </div>
                     ))}
                 </div>
             </div>
-            <button onClick={() => setProject(s => ({ ...s, adjustments: { brightness: 0, contrast: 100, saturation: 100, exposure: 0, warmth: 0, sharpness: 0, blur: 0, grain: 0, vignette: 0, hue: 0, opacity: 100 } }))} className="w-full py-2 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-all flex items-center justify-center gap-1">
+            <button onClick={() => setProject(s => ({ ...s, adjustments: { brightness: 0, contrast: 100, saturation: 100, exposure: 0, warmth: 0, sharpness: 0, blur: 0, grain: 0, vignette: 0, hue: 0, opacity: 100, lut: 'none' } }))} className="w-full py-2 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-all flex items-center justify-center gap-1">
                 <X className="w-2.5 h-2.5" /> Reset All Adjustments
             </button>
         </div>
@@ -724,7 +741,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                         }}
                         className={cn(
                             "group flex items-center gap-3 p-1 rounded hover:bg-white/5 cursor-pointer border border-transparent transition-all",
-                            selectedLayerId === layer.id ? "bg-[#3d75f2]/20 border-white/10" : ""
+                            selectedLayerId === layer.id ? "bg-(--color-secondary-accent)/20 border-white/10" : ""
                         )}
                     >
                         <div 
@@ -795,7 +812,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
         <div className="h-48 bg-[#2B2B2B] border-t border-black flex flex-col shrink-0">
             <div className="h-8 bg-[#333] border-b border-black flex items-center px-4 justify-between shrink-0">
                 <div className="flex items-center gap-4">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#3d75f2]">Timeline</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Timeline</span>
                     <div className="flex items-center gap-2">
                         <button className="p-1 hover:bg-white/5 rounded"><Play className="w-3 h-3 text-white/60" /></button>
                         <button className="p-1 hover:bg-white/5 rounded text-[8px] text-white/40 font-mono">00:00:00</button>
@@ -814,13 +831,13 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                     ))}
                 </div>
                 <div className="flex-1 bg-black/20 relative overflow-x-auto overflow-y-auto">
-                    <div className="absolute top-0 bottom-0 left-1/4 w-px bg-[#3d75f2] z-10 shadow-[0_0_8px_#3d75f2]">
-                        <div className="w-2 h-2 bg-[#3d75f2] rounded-full -ml-[3.5px] mt-0" />
+                    <div className="absolute top-0 bottom-0 left-1/4 w-px bg-(--color-secondary-accent) z-10" style={{ boxShadow: '0 0 8px var(--color-secondary-accent)' }}>
+                        <div className="w-2 h-2 bg-(--color-secondary-accent) rounded-full -ml-[3.5px] mt-0" />
                     </div>
                     <div className="w-[200%] h-full flex flex-col">
                         {project.globalLayers.map(l => (
                             <div key={l.id} className="h-6 border-b border-white/5 px-4 flex items-center">
-                                <div className="h-2 w-3/4 bg-[#3d75f2]/40 rounded-full" />
+                                <div className="h-2 w-3/4 bg-(--color-secondary-accent)/40 rounded-full" />
                             </div>
                         ))}
                     </div>
@@ -837,13 +854,13 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             </div>
             <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-3 p-2 bg-[#3d75f2]/20 border-l-2 border-[#3d75f2] opacity-60 grayscale">
+                    <div className="flex items-center gap-3 p-2 bg-(--color-secondary-accent)/20 border-l-2 border-(--color-secondary-accent) opacity-60 grayscale">
                         <ImageIcon className="w-4 h-4 text-white/40" />
                         <span className="text-[10px] text-white/80">New File</span>
                     </div>
-                    {project.undoStack.map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 hover:bg-white/5 cursor-pointer group">
-                             <div className="w-1 h-3 bg-white/10 group-hover:bg-[#3d75f2] transition-colors" />
+                    {history.getHistory().map((item, i) => (
+                        <div key={i} className={cn("flex items-center gap-3 p-2 hover:bg-white/5 cursor-pointer group", item.isCurrent ? "bg-(--color-secondary-accent)/20 border-l-2 border-(--color-secondary-accent)" : "")}>
+                             <div className="w-1 h-3 bg-white/10 group-hover:bg-(--color-secondary-accent) transition-colors" />
                              <span className="text-[10px] text-white/60">{item.label}</span>
                         </div>
                     ))}
@@ -873,7 +890,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
         return (
             <div className="space-y-6">
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Character</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Character</h3>
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                              <label className="text-[9px] text-white/40 uppercase font-black block">Font Family</label>
@@ -903,7 +920,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
         return (
             <div className="space-y-6">
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Dimensions</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Dimensions</h3>
                     <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
                             <label className="text-[9px] text-white/40 uppercase font-black block">Scale (%)</label>
@@ -917,7 +934,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Blending</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Blending</h3>
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-[9px] text-white/40 uppercase font-black block">Opacity</label>
@@ -925,7 +942,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                                 type="range" min="0" max="1" step="0.01"
                                 value={layer.opacity ?? 1}
                                 onChange={e => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, opacity: parseFloat(e.target.value) } : l) }))}
-                                className="w-full accent-[#3d75f2] h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
+                                className="w-full accent-(--color-secondary-accent) h-1 bg-black/40 rounded-full appearance-none cursor-pointer"
                             />
                         </div>
                         <div className="space-y-2">
@@ -944,7 +961,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">Z-Index / Reorder</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">Z-Index / Reorder</h3>
                     <div className="flex gap-2">
                         <button 
                             onClick={() => setProject(s => ({ ...s, globalLayers: s.globalLayers.map(l => l.id === layerId ? { ...l, zIndex: (l.zIndex || 0) + 1 } : l) }))}
@@ -963,16 +980,16 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
 
                 {layer.type === 'image' && (
                     <div className="space-y-4">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-[#3d75f2]">AI Lab</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-(--color-secondary-accent)">AI Lab</h3>
                         <button 
                             onClick={() => upscaleLayer(layerId)}
                             disabled={!!isUpscaling}
-                            className="w-full py-2 bg-[#3d75f2]/10 hover:bg-[#3d75f2]/20 border border-[#3d75f2]/30 rounded text-[9px] text-white/80 font-black uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                            className="w-full py-2 bg-(--color-secondary-accent)/10 hover:bg-(--color-secondary-accent)/20 border border-(--color-secondary-accent)/30 rounded text-[9px] text-white/80 font-black uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                         >
                             {isUpscaling === layerId ? (
                                 <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                             ) : (
-                                <Sparkles className="w-3 h-3 text-[#3d75f2]" />
+                                <Sparkles className="w-3 h-3 text-(--color-secondary-accent)" />
                             )}
                             {isUpscaling === layerId ? 'Upscaling...' : 'AI Upscale & Enhance'}
                         </button>
@@ -1017,7 +1034,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
         <div className="absolute top-20 left-16 z-50 flex flex-col gap-2">
             <button 
                 onClick={() => activeSlotIdx !== null && selectSubject(activeSlotIdx)}
-                className="px-3 py-1.5 bg-[#3d75f2] hover:bg-[#3d75f2]/90 text-white rounded shadow-lg flex items-center gap-2 text-[10px] font-bold transition-all hover:scale-105 active:scale-95 group"
+                className="px-3 py-1.5 bg-(--color-secondary-accent) hover:bg-(--color-secondary-accent)/90 text-white rounded shadow-lg flex items-center gap-2 text-[10px] font-bold transition-all hover:scale-105 active:scale-95 group"
             >
                 <Sparkles className="w-3.5 h-3.5 group-hover:animate-pulse" />
                 <span>Select Subject</span>
@@ -1032,7 +1049,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 }}
                 className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#2B2B2B] text-white/80 rounded shadow-lg flex items-center gap-2 text-[10px] font-bold border border-white/5 transition-all"
             >
-                <Wand2 className="w-3.5 h-3.5 text-[#3d75f2]" />
+                <Wand2 className="w-3.5 h-3.5 text-(--color-secondary-accent)" />
                 <span>Generative Fill</span>
             </button>
             <button 
@@ -1095,8 +1112,8 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             { id: 'layers', label: 'Layers Panel', icon: LayersIcon, action: () => { setActiveTool('layers'); setIsCommandPaletteOpen(false); } },
             { id: 'eyedropper', label: 'Eyedropper', icon: Pipette, action: () => { setActiveTool('eyedropper'); setIsCommandPaletteOpen(false); } },
             { id: 'save', label: 'Save Project', icon: Save, action: () => { if (activeSlotIdx !== null) handleSaveSlot(activeSlotIdx); setIsCommandPaletteOpen(false); } },
-            { id: 'undo', label: 'Undo Action', icon: Undo2, action: () => { undo(); setIsCommandPaletteOpen(false); } },
-            { id: 'redo', label: 'Redo Action', icon: Redo2, action: () => { redo(); setIsCommandPaletteOpen(false); } },
+            { id: 'undo', label: 'Undo Action', icon: Undo2, action: () => { history.undo(); setIsCommandPaletteOpen(false); } },
+            { id: 'redo', label: 'Redo Action', icon: Redo2, action: () => { history.redo(); setIsCommandPaletteOpen(false); } },
             { id: 'grid', label: 'Toggle Grid', icon: Grid, action: () => { setShowGrid(!showGrid); setIsCommandPaletteOpen(false); } },
             { id: 'rulers', label: 'Toggle Rulers', icon: Maximize2, action: () => { setShowRulers(!showRulers); setIsCommandPaletteOpen(false); } },
             { id: 'help', label: 'Open Help', icon: HelpCircle, action: () => { setShowHelp(true); setIsCommandPaletteOpen(false); } },
@@ -1130,7 +1147,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                             <button 
                                 key={cmd.id}
                                 onClick={cmd.action}
-                                className="w-full flex items-center gap-3 p-3 hover:bg-[#3d75f2] rounded-lg group transition-colors text-left"
+                                className="w-full flex items-center gap-3 p-3 hover:bg-(--color-secondary-accent) rounded-lg group transition-colors text-left"
                             >
                                 <cmd.icon className="w-4 h-4 text-white/40 group-hover:text-white" />
                                 <span className="text-[13px] text-white/80 group-hover:text-white font-medium">{cmd.label}</span>
@@ -1165,7 +1182,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
             >
                 {contextMenu.type === 'layer' ? (
                     <>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer flex justify-between" onClick={() => {
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer flex justify-between" onClick={() => {
                             const layer = project.globalLayers.find(l => l.id === contextMenu.id);
                             if (layer) {
                                 const dup = { ...layer, id: Math.random().toString(36).substr(2, 9), zIndex: (layer.zIndex || 5) + 1, x: (layer.x || 0) + 2, y: (layer.y || 0) + 2 };
@@ -1175,7 +1192,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                             <span>Duplicate Layer</span>
                             <span className="opacity-30">Cmd+J</span>
                         </div>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
                             const layer = project.globalLayers.find(l => l.id === contextMenu.id);
                             if (layer) {
                                 setProject(s => ({
@@ -1184,9 +1201,9 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                                 }));
                             }
                         }}>Lock/Unlock Layer</div>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => setRenamingId(contextMenu.id!)}>Rename Layer</div>
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => setRenamingId(contextMenu.id!)}>Rename Layer</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
                             const layer = project.globalLayers.find(l => l.id === contextMenu.id);
                             if (layer) {
                                 setProject(s => ({
@@ -1195,7 +1212,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                                 }));
                             }
                         }}>Flip Horizontal</div>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
                             const layer = project.globalLayers.find(l => l.id === contextMenu.id);
                             if (layer) {
                                 setProject(s => ({
@@ -1205,7 +1222,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                             }
                         }}>Flip Vertical</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => {
                             // Rasterize logic
                         }}>Rasterize Layer</div>
                         <div className="h-[1px] bg-white/5 my-1" />
@@ -1216,10 +1233,10 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                     </>
                 ) : (
                     <>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer">New Artboard...</div>
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => handlePaste(activeSlotIdx || 0)}>Paste</div>
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer">New Artboard...</div>
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer" onClick={() => handlePaste(activeSlotIdx || 0)}>Paste</div>
                         <div className="h-[1px] bg-white/5 my-1" />
-                        <div className="px-3 py-1.5 hover:bg-[#3d75f2] text-[10px] text-white/80 hover:text-white cursor-pointer">Canvas Size...</div>
+                        <div className="px-3 py-1.5 hover:bg-(--color-secondary-accent) text-[10px] text-white/80 hover:text-white cursor-pointer">Canvas Size...</div>
                     </>
                 )}
             </motion.div>
@@ -1531,7 +1548,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 >
                     <div className="w-4 h-4 bg-[#2B2B2B] border-r border-white/10 shrink-0" />
                     <div className="flex-1 relative">
-                        {Array.from({ length: 40 }).map((_, i) => (
+                        {RULER_TICKS_H.map((_, i) => (
                             <div key={i} className="absolute h-full flex flex-col justify-end" style={{ left: `${i * 2.5}%` }}>
                                 <div className={cn("w-[1px] bg-white/20", i % 4 === 0 ? "h-2" : "h-1")} />
                                 {i % 4 === 0 && <span className="text-[6px] text-white/30 absolute -top-0.5 left-0.5">{i * 50}</span>}
@@ -1545,7 +1562,7 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 >
                     <div className="w-4 h-4 bg-[#2B2B2B] border-b border-white/10 shrink-0" />
                     <div className="flex-1 relative">
-                        {Array.from({ length: 20 }).map((_, i) => (
+                        {RULER_TICKS_V.map((_, i) => (
                             <div key={i} className="absolute w-full flex justify-end" style={{ top: `${i * 5}%` }}>
                                 <div className={cn("h-[1px] bg-white/20", i % 4 === 0 ? "w-2" : "w-1")} />
                                 {i % 4 === 0 && <span className="text-[6px] text-white/30 absolute -left-0 top-0.5 rotate-90">{i * 50}</span>}
@@ -1555,54 +1572,6 @@ toast({ type: 'error', title: 'Style failed', message: err instanceof Error ? er
                 </div>
             </>
         );
-    };
-
-    const pushToHistory = useCallback((label: string = "Manual Edit") => {
-        setProject(s => {
-            const data = {
-                localTexts: JSON.parse(JSON.stringify(s.localTexts)),
-                adjustments: { ...s.adjustments },
-                globalLayers: JSON.parse(JSON.stringify(s.globalLayers))
-            };
-            const newUndo = [...s.undoStack, { data, label }].slice(-20); 
-            return { ...s, undoStack: newUndo, redoStack: [] };
-        });
-    }, [setProject]);
-
-    const undo = () => {
-        setProject(s => {
-            if (s.undoStack.length === 0) return s;
-            const previous = s.undoStack[s.undoStack.length - 1];
-            const currentData = {
-                localTexts: JSON.parse(JSON.stringify(s.localTexts)),
-                adjustments: { ...s.adjustments },
-                globalLayers: JSON.parse(JSON.stringify(s.globalLayers))
-            };
-            return {
-                ...s,
-                ...(previous.data as any),
-                undoStack: s.undoStack.slice(0, -1),
-                redoStack: [{ data: currentData, label: previous.label }, ...s.redoStack]
-            } as EditStudioProject;
-        });
-    };
-
-    const redo = () => {
-        setProject(s => {
-            if (s.redoStack.length === 0) return s;
-            const next = s.redoStack[0];
-            const currentData = {
-                localTexts: JSON.parse(JSON.stringify(s.localTexts)),
-                adjustments: { ...s.adjustments },
-                globalLayers: JSON.parse(JSON.stringify(s.globalLayers))
-            };
-            return {
-                ...s,
-                ...(next.data as any),
-                undoStack: [...s.undoStack, { data: currentData, label: next.label }],
-                redoStack: s.redoStack.slice(1)
-            } as EditStudioProject;
-        });
     };
 
     const aiRetouch = async (idx: number) => {
@@ -1877,7 +1846,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
     const alignLayers = (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
         if (!activeSlotIdx && activeSlotIdx !== 0) return;
-        pushToHistory();
+        history.pushSnapshot('Align Layers');
         setProject(s => {
             const updateLayerPositions = (layers: GlobalLayer[]) => layers.map(l => {
                 if (!selectedLayerIds.includes(l.id) && l.id !== selectedLayerId) return l;
@@ -1915,7 +1884,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
     };
 
     const addTextToSlot = useCallback((slotIdx: number, customText?: LocalText) => {
-        pushToHistory();
+        history.pushSnapshot('Add Text');
         const newText = customText ? { ...customText, id: Math.random().toString(36).substr(2, 9) } : createNewText();
         setProject(s => {
             const currentTexts = s.localTexts[slotIdx] || [];
@@ -1926,7 +1895,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
         });
         setSelectedTextId(newText.id);
         setActiveSlotIdx(slotIdx);
-    }, [setProject]);
+    }, [setProject, history.pushSnapshot]);
 
     const handleCopy = useCallback((obj: LocalText | GlobalLayer) => {
         setClipboard({ ...obj });
@@ -1934,7 +1903,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
     const handlePaste = useCallback((slotIdx: number) => {
         if (!clipboard) return;
-        pushToHistory();
+        history.pushSnapshot('Paste');
         if ('content' in clipboard) {
             const pastedText = { ...clipboard, x: clipboard.x + 2, y: clipboard.y + 2 };
             addTextToSlot(slotIdx, pastedText);
@@ -1948,7 +1917,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
             };
             setProject(s => ({ ...s, globalLayers: [...s.globalLayers, newLayer] }));
         }
-    }, [clipboard, addTextToSlot, project.globalLayers.length]);
+    }, [clipboard, addTextToSlot, project.globalLayers.length, history.pushSnapshot]);
 
     const handleSaveSlot = (idx: number) => {
         setProject(s => ({
@@ -2006,7 +1975,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
             if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
                 e.preventDefault();
-                if (e.shiftKey) { redo(); } else { undo(); }
+                if (e.shiftKey) { history.redo(); } else { history.undo(); }
                 return;
             }
 
@@ -2077,7 +2046,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeSlotIdx, selectedTextId, project.localTexts, clipboard, handleCopy, handlePaste, undo, redo, renamingId]);
+    }, [activeSlotIdx, selectedTextId, project.localTexts, clipboard, handleCopy, handlePaste, history.undo, history.redo, renamingId]);
 
     const handleUpload = async (files: File[]) => {
         if (!files || files.length === 0) return;
@@ -2366,7 +2335,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
     const selectedText = activeSlotTexts.find(t => t.id === selectedTextId) || null;
 
     return (
-        <main className="w-full h-[calc(100vh-120px)] flex flex-col bg-[#1A1A1A] overflow-hidden text-[#cccccc] font-sans selection:bg-[#3d75f2] selection:text-white" onContextMenu={(e) => e.preventDefault()} onClick={() => setContextMenu(null)}>
+        <main className="w-full h-[calc(100vh-120px)] flex flex-col bg-[#1A1A1A] overflow-hidden text-[#cccccc] font-sans selection:bg-(--color-secondary-accent) selection:text-white" onContextMenu={(e) => e.preventDefault()} onClick={() => setContextMenu(null)}>
             {ContextMenu()}
             {CommandPalette()}
             <AnimatePresence>
@@ -2425,12 +2394,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         >
                             <div className="space-y-6">
                                 <div className="flex items-center gap-3 mb-8">
-                                    <HelpCircle className="w-8 h-8 text-[#3d75f2]" />
+                                    <HelpCircle className="w-8 h-8 text-(--color-secondary-accent)" />
                                     <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Photoshop Studio Guide</h2>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <h3 className="text-[#3d75f2] text-[11px] font-black uppercase tracking-widest">Tools</h3>
+                                        <h3 className="text-(--color-secondary-accent) text-[11px] font-black uppercase tracking-widest">Tools</h3>
                                         <div className="space-y-1 text-[11px] text-white/60">
                                             <div className="flex justify-between"><span>V</span><span className="font-mono text-[9px] bg-white/5 px-1 rounded">Move Tool</span></div>
                                             <div className="flex justify-between"><span>T</span><span className="font-mono text-[9px] bg-white/5 px-1 rounded">Text Tool</span></div>
@@ -2440,7 +2409,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <h3 className="text-[#3d75f2] text-[11px] font-black uppercase tracking-widest">Canvas</h3>
+                                        <h3 className="text-(--color-secondary-accent) text-[11px] font-black uppercase tracking-widest">Canvas</h3>
                                         <div className="space-y-1 text-[11px] text-white/60">
                                             <div className="flex justify-between"><span>G</span><span className="font-mono text-[9px] bg-white/5 px-1 rounded">Toggle Grid</span></div>
                                             <div className="flex justify-between"><span>⌘+Z</span><span className="font-mono text-[9px] bg-white/5 px-1 rounded">Undo</span></div>
@@ -2480,7 +2449,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                     <p>• <b>Icon Forge:</b> Drop-in vector library with 50,000+ searchable icons.</p>
                                 </div>
                                 <div className="mt-8 pt-8 border-t border-white/5">
-                                    <button onClick={() => setShowHelp(false)} className="w-full py-3 bg-[#3d75f2] text-white font-black uppercase tracking-widest text-[11px] rounded hover:shadow-[0_0_20px_rgba(61,117,242,0.4)] transition-all">Understood</button>
+                                    <button onClick={() => setShowHelp(false)} className="w-full py-3 bg-(--color-secondary-accent) text-white font-black uppercase tracking-widest text-[11px] rounded hover:shadow-[0_0_20px_rgba(61,117,242,0.4)] transition-all">Understood</button>
                                 </div>
                             </div>
                         </motion.div>
@@ -2493,11 +2462,11 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center animate-in fade-in duration-300">
                     <div className="w-64 h-64 relative flex items-center justify-center">
                         <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-[#3d75f2] rounded-full border-t-transparent animate-spin" />
-                        <Sparkles className="w-12 h-12 text-[#3d75f2] animate-pulse" />
+                        <div className="absolute inset-0 border-4 border-(--color-secondary-accent) rounded-full border-t-transparent animate-spin" />
+                        <Sparkles className="w-12 h-12 text-(--color-secondary-accent) animate-pulse" />
                     </div>
                     <div className="mt-8 text-center space-y-2">
-                        <h3 className="text-xl font-black uppercase tracking-widest text-[#3d75f2]">Generative Selection</h3>
+                        <h3 className="text-xl font-black uppercase tracking-widest text-(--color-secondary-accent)">Generative Selection</h3>
                         <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest animate-pulse">Analyzing subject boundaries...</p>
                     </div>
                     <button onClick={() => setProject(s => ({ ...s, isProcessingAI: false }))} className="mt-12 px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-wider transition-all">Cancel</button>
@@ -2538,7 +2507,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                             }}
                             className={cn(
                                 "p-2 rounded hover:bg-white/5 transition-all relative group shrink-0",
-                                activeTool === tool.id ? "bg-[#3d75f2] text-white shadow-inner" : "text-white/60 hover:text-white"
+                                activeTool === tool.id ? "bg-(--color-secondary-accent) text-white shadow-inner" : "text-white/60 hover:text-white"
                             )}
                             title={tool.tooltip}
                         >
@@ -2572,7 +2541,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                     </div>
                                     <div className="w-[1px] h-4 bg-white/10" />
                                     <button className="flex items-center gap-2" onClick={() => updateSlotText(activeSlotIdx!, selectedText.id, { isUppercase: !selectedText.isUppercase })}>
-                                        <div className={cn("w-4 h-4 rounded border border-white/20 flex items-center justify-center", selectedText.isUppercase && "bg-[#3d75f2] border-[#3d75f2]")}>
+                                        <div className={cn("w-4 h-4 rounded border border-white/20 flex items-center justify-center", selectedText.isUppercase && "bg-(--color-secondary-accent) border-(--color-secondary-accent)")}>
                                             <span className="text-[8px] font-black">TT</span>
                                         </div>
                                     </button>
@@ -2596,7 +2565,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             onClick={() => setShapeToolType(sub.id as any)}
                                             className={cn(
                                                 "p-1.5 rounded transition-all",
-                                                shapeToolType === sub.id ? "bg-[#3d75f2] text-white" : "text-white/40 hover:text-white hover:bg-white/5"
+                                                shapeToolType === sub.id ? "bg-(--color-secondary-accent) text-white" : "text-white/40 hover:text-white hover:bg-white/5"
                                             )}
                                             title={sub.label}
                                         >
@@ -2618,7 +2587,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             type="range" min="1" max="500" 
                                             value={brushSize} 
                                             onChange={e => setBrushSize(parseInt(e.target.value))}
-                                            className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-[#3d75f2]" 
+                                            className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-(--color-secondary-accent)" 
                                         />
                                         <span className="text-[10px] text-white/50 w-8 font-mono">{brushSize}px</span>
                                      </div>
@@ -2629,7 +2598,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             type="range" min="0" max="1" step="0.1" 
                                             value={brushOpacity} 
                                             onChange={e => setBrushOpacity(parseFloat(e.target.value))}
-                                            className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-[#3d75f2]" 
+                                            className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-(--color-secondary-accent)" 
                                         />
                                         <span className="text-[10px] text-white/50 w-8 font-mono">{Math.round(brushOpacity * 100)}%</span>
                                      </div>
@@ -2647,7 +2616,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 onClick={() => setBrushColor(c)}
                                                 className={cn(
                                                     "w-3 h-3 rounded-full border border-white/10 transition-transform hover:scale-125",
-                                                    brushColor === c && "ring-1 ring-[#3d75f2]"
+                                                    brushColor === c && "ring-1 ring-(--color-secondary-accent)"
                                                 )} 
                                                 style={{ backgroundColor: c }} 
                                             />
@@ -2693,7 +2662,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                  });
                                              }
                                          }}
-                                         className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                         className="px-3 py-1.5 bg-(--color-secondary-accent) hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
                                       >
                                          <Zap className="w-3 h-3" /> Bake
                                       </button>
@@ -2711,7 +2680,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                          <input type="range" min="1" max="500"
                                              value={brushSize}
                                              onChange={e => setBrushSize(parseInt(e.target.value))}
-                                             className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-[#3d75f2]"
+                                             className="w-24 h-0.5 bg-white/10 appearance-none rounded-full accent-(--color-secondary-accent)"
                                          />
                                          <span className="text-[10px] text-white/50 w-8 font-mono">{brushSize}px</span>
                                      </div>
@@ -2768,7 +2737,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                           });
                                                       }
                                                   }}
-                                                  className="px-3 py-1.5 bg-[#3d75f2] hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
+                                                  className="px-3 py-1.5 bg-(--color-secondary-accent) hover:brightness-110 text-[9px] font-black uppercase tracking-widest text-white rounded-lg transition-all flex items-center gap-1.5"
                                               >
                                                  <Zap className="w-3 h-3" /> Bake
                                              </button>
@@ -2816,12 +2785,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             <FlipVertical className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
-                                    <button onClick={undo} disabled={project.undoStack.length === 0} className="p-1 hover:bg-white/5 rounded disabled:opacity-20 transition-all"><Undo2 className="w-3 h-3" /></button>
-                                    <button onClick={redo} disabled={project.redoStack.length === 0} className="p-1 hover:bg-white/5 rounded disabled:opacity-20 transition-all"><Redo2 className="w-3 h-3" /></button>
+                                    <button onClick={history.undo} disabled={!history.canUndo} className="p-1 hover:bg-white/5 rounded disabled:opacity-20 transition-all"><Undo2 className="w-3 h-3" /></button>
+                                    <button onClick={history.redo} disabled={!history.canRedo} className="p-1 hover:bg-white/5 rounded disabled:opacity-20 transition-all"><Redo2 className="w-3 h-3" /></button>
                                     <div className="w-[1px] h-4 bg-white/10 mx-2" />
                                     <button 
                                         onClick={() => setIsExportOpen(true)}
-                                        className="flex items-center gap-1.5 px-3 py-1 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded text-[10px] font-black uppercase transition-all"
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded text-[10px] font-black uppercase transition-all"
                                     >
                                         <Download className="w-3 h-3" />
                                         Export
@@ -2829,7 +2798,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                     <div className="w-[1px] h-4 bg-white/10 mx-2" />
                                     <button onClick={() => { project.baseImages.forEach((_, i) => handleSaveSlot(i)); }} className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400/80 hover:text-emerald-400 rounded text-[9px] font-black uppercase transition-all"><Save className="w-2.5 h-2.5" /> Bake All</button>
                                     <button onClick={() => { setGuideLines([]); }} className="flex items-center gap-1 px-2 py-1 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded text-[9px] font-black uppercase transition-all"><X className="w-2.5 h-2.5" /> Clear Guides</button>
-                                    <button onClick={() => setGuideLocked(s => !s)} className={cn("flex items-center gap-1 px-2 py-1 rounded text-[9px] font-black uppercase transition-all", guideLocked ? "bg-[#3d75f2]/20 text-[#3d75f2]" : "bg-white/5 text-white/40 hover:text-white")}><Unlock className="w-2.5 h-2.5" /> {guideLocked ? 'Locked' : 'Guides'}</button>
+                                    <button onClick={() => setGuideLocked(s => !s)} className={cn("flex items-center gap-1 px-2 py-1 rounded text-[9px] font-black uppercase transition-all", guideLocked ? "bg-(--color-secondary-accent)/20 text-(--color-secondary-accent)" : "bg-white/5 text-white/40 hover:text-white")}><Unlock className="w-2.5 h-2.5" /> {guideLocked ? 'Locked' : 'Guides'}</button>
                                 </div>
                             </div>
                         )}
@@ -2888,8 +2857,8 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                                         className="flex flex-col items-center justify-center w-[800px] h-[600px] bg-[#1a1a1a] border-2 border-dashed border-white/5 rounded-3xl gap-6"
                                     >
-                                        <div className="w-20 h-20 bg-[#3d75f2]/10 rounded-full flex items-center justify-center">
-                                            <Zap className="w-10 h-10 text-[#3d75f2] animate-pulse" />
+                                        <div className="w-20 h-20 bg-(--color-secondary-accent)/10 rounded-full flex items-center justify-center">
+                                            <Zap className="w-10 h-10 text-(--color-secondary-accent) animate-pulse" />
                                         </div>
                                         <div className="text-center space-y-2">
                                             <h3 className="text-xl font-bold text-white tracking-tight">ابدأ مروعك الان</h3>
@@ -2898,7 +2867,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                         <div className="flex gap-3">
                                             <button 
                                                 onClick={() => setIsNewProjectModalOpen(true)}
-                                                className="px-8 py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-[#3d75f2]/20 transition-all flex items-center gap-2"
+                                                className="px-8 py-4 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-(--color-secondary-accent)/20 transition-all flex items-center gap-2"
                                             >
                                                 <Plus className="w-4 h-4" />
                                                 New Artboard
@@ -2911,9 +2880,9 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                     className="hidden" 
                                                     multiple 
                                                     accept="image/*" 
-                                                    onChange={(e) => {
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                         if (e.target.files) {
-                                                            Array.from(e.target.files).forEach(file => {
+                                                            Array.from(e.target.files).forEach((file: File) => {
                                                                 const reader = new FileReader();
                                                                 reader.onload = async (re) => {
                                                                     if (!mountedRef.current) return;
@@ -2955,7 +2924,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                             <div className="flex justify-between items-center px-1 opacity-0 group-hover/studio:opacity-100 transition-opacity">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Artboard 0{idx + 1}</span>
-                                                    {img.base64 && (() => { const w = new Image(); w.src = img.base64; return <span className="text-[8px] text-white/20 font-mono">{w.naturalWidth || img.mimeType?.split('/')[1]?.toUpperCase() || ''}</span>; })()}
+                                                    {img.base64 && <span className="text-[8px] text-white/20 font-mono">{img.mimeType?.split('/')[1]?.toUpperCase() || ''}</span>}
                                                 </div>
                                                 <div className="flex gap-1">
                                                     <button onClick={() => {
@@ -2993,7 +2962,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                     if (activeTool === 'text') {
                                                         addTextToSlot(idx);
                                                     } else if (activeTool === 'shapes') {
-                                                        pushToHistory();
+                                                        history.pushSnapshot('Add Shape');
                                                         const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
                                                         if (!rect) return;
                                                         const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -3033,7 +3002,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                     if (activeTool === 'text') {
                                                         addTextToSlot(idx);
                                                     } else if (activeTool === 'shapes') {
-                                                        pushToHistory();
+                                                        history.pushSnapshot('Add Shape');
                                                         const rect = imageWrapperRefs.current[idx]?.getBoundingClientRect();
                                                         if (!rect) return;
                                                         const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -3049,7 +3018,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 }}
                                                 className={cn(
                                                     "relative overflow-hidden transition-shadow duration-300 border border-black shadow-2xl",
-                                                    activeSlotIdx === idx ? "ring-1 ring-[#3d75f2] border-[#3d75f2]" : "border-black/50 cursor-pointer",
+                                                    activeSlotIdx === idx ? "ring-1 ring-(--color-secondary-accent) border-(--color-secondary-accent)" : "border-black/50 cursor-pointer",
                                                     activeTool === 'text' ? 'cursor-text' : activeTool === 'shapes' ? 'cursor-crosshair' : 'cursor-default'
                                                 )}
                                                 style={{ width: '800px', height: '1000px', backgroundColor: '#fff' }}
@@ -3091,10 +3060,10 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                  )}
                                                  {activeTool === 'stamp' && cloneSource && activeSlotIdx === idx && (
                                                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-[170]">
-                                                         <circle cx={cloneSource.x} cy={cloneSource.y} r={brushSize / 2} stroke="#3d75f2" strokeWidth="1.5" fill="none" strokeDasharray="4 2" opacity="0.8" />
-                                                         <line x1={cloneSource.x - 12} y1={cloneSource.y} x2={cloneSource.x + 12} y2={cloneSource.y} stroke="#3d75f2" strokeWidth="1.5" opacity="0.8" />
-                                                         <line x1={cloneSource.x} y1={cloneSource.y - 12} x2={cloneSource.x} y2={cloneSource.y + 12} stroke="#3d75f2" strokeWidth="1.5" opacity="0.8" />
-                                                         <text x={cloneSource.x + 14} y={cloneSource.y + 4} fill="#3d75f2" fontSize="9" fontFamily="monospace" fontWeight="bold">Src</text>
+                                                         <circle cx={cloneSource.x} cy={cloneSource.y} r={brushSize / 2} stroke="var(--color-secondary-accent)" strokeWidth="1.5" fill="none" strokeDasharray="4 2" opacity="0.8" />
+                                                         <line x1={cloneSource.x - 12} y1={cloneSource.y} x2={cloneSource.x + 12} y2={cloneSource.y} stroke="var(--color-secondary-accent)" strokeWidth="1.5" opacity="0.8" />
+                                                         <line x1={cloneSource.x} y1={cloneSource.y - 12} x2={cloneSource.x} y2={cloneSource.y + 12} stroke="var(--color-secondary-accent)" strokeWidth="1.5" opacity="0.8" />
+                                                         <text x={cloneSource.x + 14} y={cloneSource.y + 4} fill="var(--color-secondary-accent)" fontSize="9" fontFamily="monospace" fontWeight="bold">Src</text>
                                                      </svg>
                                                  )}
                                                 
@@ -3208,13 +3177,13 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                 {/* Marquee Selection */}
                                                 {selectionMarquee && (
                                                     <div 
-                                                        className="absolute border border-dashed border-[#3d75f2] bg-[#3d75f2]/10 z-[200] pointer-events-none"
+                                                        className="absolute border border-dashed border-(--color-secondary-accent) bg-(--color-secondary-accent)/10 z-[200] pointer-events-none"
                                                         style={{
                                                             left: `${Math.min(selectionMarquee.x, selectionMarquee.x + selectionMarquee.w)}%`,
                                                             top: `${Math.min(selectionMarquee.y, selectionMarquee.y + selectionMarquee.h)}%`,
                                                             width: `${Math.abs(selectionMarquee.w)}%`,
                                                             height: `${Math.abs(selectionMarquee.h)}%`,
-                                                            backgroundImage: 'linear-gradient(45deg, #3d75f2 25%, transparent 25%, transparent 50%, #3d75f2 50%, #3d75f2 75%, transparent 75%, transparent)',
+                                                            backgroundImage: 'linear-gradient(45deg, var(--color-secondary-accent) 25%, transparent 25%, transparent 50%, var(--color-secondary-accent) 50%, var(--color-secondary-accent) 75%, transparent 75%, transparent)',
                                                             backgroundSize: '10px 10px',
                                                             opacity: 0.5
                                                         }}
@@ -3229,12 +3198,12 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                         <path 
                                                             d={`M ${activePenPath.points.map(p => `${p.x} ${p.y}`).join(' L ')}`} 
                                                             fill="none" 
-                                                            stroke="#3d75f2" 
+                                                            stroke="var(--color-secondary-accent)" 
                                                             strokeWidth="2" 
                                                             vectorEffect="non-scaling-stroke"
                                                         />
                                                         {activePenPath.points.map((p, i) => (
-                                                            <rect key={i} x={p.x} y={p.y} width="1" height="1" className="fill-white stroke-[#3d75f2]" style={{ transform: 'translate(-0.5%, -0.5%)' }} />
+                                                            <rect key={i} x={p.x} y={p.y} width="1" height="1" className="fill-white stroke-(--color-secondary-accent)" style={{ transform: 'translate(-0.5%, -0.5%)' }} />
                                                         ))}
                                                     </svg>
                                                 )}
@@ -3249,7 +3218,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                         {cropRect && Math.abs(cropRect.w) > 1 && Math.abs(cropRect.h) > 1 && (
                                                             <>
                                                                 <div className="absolute inset-0 bg-black/50 pointer-events-none" style={{ clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cropRect.x}% ${cropRect.y}%, ${cropRect.x}% ${cropRect.y + cropRect.h}%, ${cropRect.x + cropRect.w}% ${cropRect.y + cropRect.h}%, ${cropRect.x + cropRect.w}% ${cropRect.y}%, ${cropRect.x}% ${cropRect.y}%)` }} />
-                                                                <div className="absolute border-2 border-[#3d75f2] pointer-events-none" style={{ left: `${cropRect.x}%`, top: `${cropRect.y}%`, width: `${cropRect.w}%`, height: `${cropRect.h}%` }}>
+                                                                <div className="absolute border-2 border-(--color-secondary-accent) pointer-events-none" style={{ left: `${cropRect.x}%`, top: `${cropRect.y}%`, width: `${cropRect.w}%`, height: `${cropRect.h}%` }}>
                                                                     <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                                                                         <div className="border-r border-b border-white/30" />
                                                                         <div className="border-r border-b border-white/30" />
@@ -3292,7 +3261,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                                             setCropRect(null);
                                                                             setActiveTool('select');
                                                                         }}
-                                                                        className="absolute -bottom-10 right-0 px-4 py-2 bg-[#3d75f2] text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:brightness-110 transition-all"
+                                                                        className="absolute -bottom-10 right-0 px-4 py-2 bg-(--color-secondary-accent) text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:brightness-110 transition-all"
                                                                     >
                                                                         Crop
                                                                     </button>
@@ -3318,7 +3287,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                     {/* Smart Guides Rendering */}
                                                 {SmartGuides()}
                                                 {/* Layers Rendering - Images & Shapes */}
-                                                {project.globalLayers.slice().sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).map(layer => (
+                                                {sortedLayers.map(layer => (
                                                     layer.isVisible && (
                                                         <div 
                                                             key={layer.id} 
@@ -3391,7 +3360,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                             }}
                                                             className={cn(
                                                                 "group/layer",
-                                                                selectedLayerId === layer.id && "ring-1 ring-[#3d75f2] ring-offset-2 ring-offset-transparent outline-none"
+                                                                selectedLayerId === layer.id && "ring-1 ring-(--color-secondary-accent) ring-offset-2 ring-offset-transparent outline-none"
                                                             )}
                                                         >
                                                             {layer.type === 'shape' ? (
@@ -3421,16 +3390,16 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                             {/* Transform Handles UI */}
                                                             {selectedLayerId === layer.id && (
                                                                 <>
-                                                                    <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#3d75f2] border-2 border-white rounded-full z-50 shadow-sm" />
-                                                                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-[#3d75f2] border-2 border-white rounded-full z-50 shadow-sm" />
-                                                                    <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-[#3d75f2] border-2 border-white rounded-full z-50 shadow-sm" />
-                                                                    <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#3d75f2] border-2 border-white rounded-full z-50 shadow-sm" />
+                                                                    <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-(--color-secondary-accent) border-2 border-white rounded-full z-50 shadow-sm" />
+                                                                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-(--color-secondary-accent) border-2 border-white rounded-full z-50 shadow-sm" />
+                                                                    <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-(--color-secondary-accent) border-2 border-white rounded-full z-50 shadow-sm" />
+                                                                    <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-(--color-secondary-accent) border-2 border-white rounded-full z-50 shadow-sm" />
                                                                 </>
                                                             )}
                                                         </div>
                                                     )
                                                 ))}
-                                                {currentTexts.slice().sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).map(text => (
+                                                {sortedTextsBySlot[idx]?.map(text => (
                                                     text.isVisible && (
                                                         <div 
                                                             key={text.id}
@@ -3489,17 +3458,17 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                                             }}
                                                             className={cn(
                                                                 "p-2 border cursor-move select-none transition-all group/text",
-                                                                selectedTextId === text.id ? "border-[#3d75f2] bg-[#3d75f2]/10" : "border-transparent hover:border-white/20"
+                                                                selectedTextId === text.id ? "border-(--color-secondary-accent) bg-(--color-secondary-accent)/10" : "border-transparent hover:border-white/20"
                                                             )}
                                                         >
                                                             {text.content}
                                                             {/* Transform Handles UI */}
                                                             {selectedTextId === text.id && (
                                                                 <>
-                                                                    <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#3d75f2] border border-white" />
-                                                                    <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#3d75f2] border border-white" />
-                                                                    <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-[#3d75f2] border border-white" />
-                                                                    <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#3d75f2] border border-white" />
+                                                                    <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-(--color-secondary-accent) border border-white" />
+                                                                    <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-(--color-secondary-accent) border border-white" />
+                                                                    <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-(--color-secondary-accent) border border-white" />
+                                                                    <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-(--color-secondary-accent) border border-white" />
                                                                 </>
                                                             )}
                                                         </div>
@@ -3526,7 +3495,7 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                     </div>
                     <div className="flex items-center gap-4">
                         {selectionMarquee && (
-                            <span className="flex items-center gap-1 text-[#3d75f2]/60">
+                            <span className="flex items-center gap-1 text-(--color-secondary-accent)/60">
                                 <Crop className="w-3 h-3" />
                                 {Math.round(selectionMarquee.w)} × {Math.round(selectionMarquee.h)}
                             </span>
@@ -3535,7 +3504,8 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                         <div className="w-24 h-2 bg-black/40 rounded-full overflow-hidden flex items-center px-0.5">
                             <motion.div 
                                 animate={{ width: '40%' }}
-                                className="h-0.5 bg-[#3d75f2] shadow-[0_0_8px_#3d75f2]" 
+                                className="h-0.5 bg-(--color-secondary-accent)" 
+                                style={{ boxShadow: '0 0 8px var(--color-secondary-accent)' }}
                             />
                         </div>
                     </div>
@@ -3563,8 +3533,8 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
                                     rightPanelTab === tab.id ? "bg-[#2B2B2B] text-white" : "text-white/30 hover:bg-white/5 hover:text-white/50"
                                 )}
                             >
-                                <tab.icon className={cn("w-3.5 h-3.5", rightPanelTab === tab.id ? "text-[#3d75f2]" : "text-white/20")} />
-                                {rightPanelTab === tab.id && <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3d75f2]" />}
+                                <tab.icon className={cn("w-3.5 h-3.5", rightPanelTab === tab.id ? "text-(--color-secondary-accent)" : "text-white/20")} />
+                                {rightPanelTab === tab.id && <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-(--color-secondary-accent)" />}
                             </button>
                         ))}
                     </div>
@@ -3606,7 +3576,8 @@ toast({ type: 'error', title: 'Upscale failed', message: err instanceof Error ? 
 
 // --- Modal Components ---
 
-const AIGeneratorModal = ({ isOpen, onClose, onGenerate, aiOverride, onAiChange }: { isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void, aiOverride?: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig }, onAiChange?: (v: { provider: string; modelId: string; externalServiceConfig?: ExternalServiceConfig } | null) => void }) => {
+const AIGeneratorModal = ({ isOpen, onClose, onGenerate, aiOverride, onAiChange }: { 
+isOpen: boolean, onClose: () => void, onGenerate: (prompt: string) => void, aiOverride?: AIConfig, onAiChange?: (v: AIConfig | null) => void }) => {
     const [prompt, setPrompt] = useState('');
     return (
         <motion.div 
@@ -3620,16 +3591,14 @@ const AIGeneratorModal = ({ isOpen, onClose, onGenerate, aiOverride, onAiChange 
                 <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <Palette className="w-5 h-5 text-[#3d75f2]" />
+                            <Palette className="w-5 h-5 text-(--color-secondary-accent)" />
                             <h3 className="text-xl font-bold text-white tracking-tight text-right">AI Image Creator</h3>
                         </div>
                         <div className="flex items-center gap-2">
                             {onAiChange && aiOverride && (
                                 <MiniAISelector
-                                    provider={aiOverride.provider}
-                                    modelId={aiOverride.modelId}
-                                    externalServiceConfig={aiOverride.externalServiceConfig}
-                                    onChange={(p, m, esc) => onAiChange({ provider: p, modelId: m, externalServiceConfig: esc })}
+                                    config={aiOverride}
+                                    onChange={(cfg) => onAiChange(cfg)}
                                 />
                             )}
                             <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
@@ -3640,12 +3609,12 @@ const AIGeneratorModal = ({ isOpen, onClose, onGenerate, aiOverride, onAiChange 
                         value={prompt}
                         onChange={e => setPrompt(e.target.value)}
                         placeholder="e.g., 'a futuristic city with neon lights and flying cars'..."
-                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-(--color-secondary-accent)/50 transition-all resize-none"
                     />
                     
                     <button 
                         onClick={() => onGenerate(prompt)}
-                        className="w-full py-3 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#3d75f2]/20 transition-all"
+                        className="w-full py-3 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-(--color-secondary-accent)/20 transition-all"
                     >
                         Generate New Image
                     </button>
@@ -3669,7 +3638,7 @@ const GenerativeFillModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean,
                 <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-[#3d75f2]" />
+                            <Sparkles className="w-5 h-5 text-(--color-secondary-accent)" />
                             <h3 className="text-xl font-bold text-white tracking-tight">Generative Fill</h3>
                         </div>
                         <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
@@ -3679,12 +3648,12 @@ const GenerativeFillModal = ({ isOpen, onClose, onGenerate }: { isOpen: boolean,
                         value={prompt}
                         onChange={e => setPrompt(e.target.value)}
                         placeholder="e.g., 'a cinematic mountain range at sunset'..."
-                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] text-white outline-none focus:border-(--color-secondary-accent)/50 transition-all resize-none"
                     />
                     
                     <button 
                         onClick={() => onGenerate(prompt)}
-                        className="w-full py-3 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#3d75f2]/20 transition-all"
+                        className="w-full py-3 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-(--color-secondary-accent)/20 transition-all"
                     >
                         Apply Generative Fill
                     </button>
@@ -3709,7 +3678,7 @@ const ExportModal = ({ isOpen, onClose, onExport }: { isOpen: boolean, onClose: 
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-black uppercase tracking-widest text-[#3d75f2]">Export Advanced</h3>
+                    <h3 className="text-xl font-black uppercase tracking-widest text-(--color-secondary-accent)">Export Advanced</h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-white/20 hover:text-white" /></button>
                 </div>
                 
@@ -3721,7 +3690,7 @@ const ExportModal = ({ isOpen, onClose, onExport }: { isOpen: boolean, onClose: 
                                 <button 
                                     key={f}
                                     onClick={() => setFormat(f as any)}
-                                    className={cn("py-2 text-[10px] font-black uppercase rounded border transition-all", format === f ? "bg-[#3d75f2] border-[#3d75f2] text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white")}
+                                    className={cn("py-2 text-[10px] font-black uppercase rounded border transition-all", format === f ? "bg-(--color-secondary-accent) border-(--color-secondary-accent) text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white")}
                                 >
                                     {f}
                                 </button>
@@ -3733,7 +3702,7 @@ const ExportModal = ({ isOpen, onClose, onExport }: { isOpen: boolean, onClose: 
                         <div className="space-y-2">
                             <label className="text-[10px] text-white/40 uppercase font-black flex justify-between">
                                 <span>Quality</span>
-                                <span className="text-[#3d75f2]">{quality}%</span>
+                                <span className="text-(--color-secondary-accent)">{quality}%</span>
                             </label>
                             <input 
                                 type="range" min="10" max="100" value={quality}
@@ -3746,7 +3715,7 @@ const ExportModal = ({ isOpen, onClose, onExport }: { isOpen: boolean, onClose: 
                     <div className="space-y-2 pt-4 border-t border-white/5">
                         <button 
                             onClick={() => onExport('4k', format, quality / 100)}
-                            className="w-full py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                            className="w-full py-4 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                         >
                             Export High-Res (4K)
                         </button>
@@ -3785,7 +3754,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
                 <div className="p-8 space-y-6">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
-                            <Box className="w-6 h-6 text-[#3d75f2]" />
+                            <Box className="w-6 h-6 text-(--color-secondary-accent)" />
                             <h2 className="text-2xl font-black text-white uppercase tracking-tighter">New Artboard</h2>
                         </div>
                         <button onClick={onClose}><X className="w-5 h-5 text-white/40 hover:text-white" /></button>
@@ -3798,7 +3767,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
                                 onClick={() => setActiveTab(tab)}
                                 className={cn(
                                     "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
-                                    activeTab === tab ? "bg-[#3d75f2] text-white" : "text-white/40 hover:text-white/60"
+                                    activeTab === tab ? "bg-(--color-secondary-accent) text-white" : "text-white/40 hover:text-white/60"
                                 )}
                             >
                                 {tab === 'blank' ? 'Blank Canvas' : tab === 'ai' ? 'AI Generated' : 'Template'}
@@ -3815,7 +3784,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
                                         <input 
                                             type="number" value={width} 
                                             onChange={e => setWidth(parseInt(e.target.value))}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-[#3d75f2]/50"
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-(--color-secondary-accent)/50"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -3823,7 +3792,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
                                         <input 
                                             type="number" value={height} 
                                             onChange={e => setHeight(parseInt(e.target.value))}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-[#3d75f2]/50"
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white text-sm outline-none focus:border-(--color-secondary-accent)/50"
                                         />
                                     </div>
                                 </div>
@@ -3854,7 +3823,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
                                     value={aiPrompt}
                                     onChange={e => setAiPrompt(e.target.value)}
                                     placeholder="e.g., 'a cinematic cyberpunk city street at rainy night, highly detailed'..."
-                                    className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none focus:border-[#3d75f2]/50 transition-all resize-none"
+                                    className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white outline-none focus:border-(--color-secondary-accent)/50 transition-all resize-none"
                                 />
                             </div>
                         )}
@@ -3868,7 +3837,7 @@ const NewProjectModal = ({ isOpen, onClose, onCreate }: {
 
                     <button 
                         onClick={() => onCreate({ type: activeTab, width, height, prompt: aiPrompt })}
-                        className="w-full py-4 bg-[#3d75f2] hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-[#3d75f2]/20 transition-all font-sans"
+                        className="w-full py-4 bg-(--color-secondary-accent) hover:bg-[#4d85ff] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-(--color-secondary-accent)/20 transition-all font-sans"
                     >
                         {activeTab === 'ai' ? 'Generate artboard' : 'Create artboard'}
                     </button>

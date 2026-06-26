@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { UnifiedProject } from '../types';
 import { fetchUnifiedProjects, batchUpdateProjects, deleteUnifiedProject } from '../lib/admin';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     Folder, PieChart, Download, ExternalLink,
     MoreVertical, Trash2, CheckCircle2, Clock,

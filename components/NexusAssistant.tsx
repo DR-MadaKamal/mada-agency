@@ -29,7 +29,7 @@ const MODELS = [
     { id: 'gemini-1.5-pro', name: 'Pro (Reasoning)', icon: Brain, color: 'text-[var(--color-accent)]', provider: 'google' },
 ];
 
-const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProject }) => {
+const NexusAssistant: React.FC<NexusAssistantProps> = React.memo((({ currentView, activeProject }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState('');
@@ -42,7 +42,9 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        nexusAgent('health').healthCheck().then(setAgentConnected).catch(() => setAgentConnected(false));
+        let mounted = true;
+        nexusAgent('health').healthCheck().then(r => { if (mounted) setAgentConnected(r); }).catch(() => { if (mounted) setAgentConnected(false); });
+        return () => { mounted = false; };
     }, []);
 
     useEffect(() => {
@@ -419,6 +421,5 @@ const NexusAssistant: React.FC<NexusAssistantProps> = ({ currentView, activeProj
             </AnimatePresence>
         </>
     );
-};
-
+}));
 export default NexusAssistant;

@@ -49,7 +49,7 @@ import {
     Copy,
     Star
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import GlobalHistoryPanel from './GlobalHistoryPanel';
 import AssetLibraryPanel from './AssetLibraryPanel';
 import ProjectHubPanel from './ProjectHubPanel';
@@ -444,7 +444,19 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
 
             {/* Neural Insights (Smart Suggestions) */}
             <div className="mb-10">
-                <SmartSuggestions />
+                <SmartSuggestions onAction={(actionId) => {
+                    switch (actionId) {
+                        case 'optimize_routing':
+                            setActiveTab('integrations');
+                            break;
+                        case 'review_users':
+                            setActiveTab('users');
+                            break;
+                        case 'rebuild_index':
+                            setActiveTab('models');
+                            break;
+                    }
+                }} />
             </div>
 
             <AnimatePresence mode="wait">

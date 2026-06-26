@@ -4,6 +4,12 @@ import { createPortal } from 'react-dom';
 import { BrandingResult, ImageFile } from '../types';
 import { FileText } from 'lucide-react';
 
+const resultImgSrc = (image: string | ImageFile | null): string | null => {
+    if (!image) return null;
+    if (typeof image === 'string') return image;
+    return `data:${image.mimeType};base64,${image.base64}`;
+};
+
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
@@ -22,10 +28,11 @@ const ImageResultCard: React.FC<{
     const id = String(result.category || 'Asset');
 
     const handleDownload = (resolution: '2k' | '4k') => {
-        if (!result.image) return;
+        const imgSrc = resultImgSrc(result.image);
+        if (!imgSrc) return;
         setIsDownloading(true);
         const img = new Image();
-        img.src = `data:${result.image.mimeType};base64,${result.image.base64}`;
+        img.src = imgSrc;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -64,7 +71,7 @@ const ImageResultCard: React.FC<{
                     </div>
                 ) : result.image ? (
                     <img 
-                        src={`data:${result.image.mimeType};base64,${result.image.base64}`} 
+                        src={resultImgSrc(result.image) || ''} 
                         alt={id} 
                         className="object-contain w-full h-full cursor-pointer transition-transform duration-700 group-hover/card:scale-105"
                         onClick={() => setIsFullViewOpen(true)}
@@ -108,7 +115,7 @@ const ImageResultCard: React.FC<{
 
             {isFullViewOpen && result.image && createPortal(
                 <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-[99999] p-4 animate-in fade-in cursor-zoom-out" onClick={() => setIsFullViewOpen(false)}>
-                    <img src={`data:${result.image.mimeType};base64,${result.image.base64}`} className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl" />
+                    <img src={resultImgSrc(result.image) || ''} className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl" />
                 </div>,
                 document.body
             )}

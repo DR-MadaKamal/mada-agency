@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService, ExternalServiceConfig, Integration } from '../types';
 import { db, collection, query, where, onSnapshot, orderBy } from '../lib/firebase';
 import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock, Image, Eye, Search, Bot, Star, Mail, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { EXTERNAL_SERVICES } from '../services/aiLibrary';
 
 interface AISelectorProps {

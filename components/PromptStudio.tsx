@@ -6,7 +6,7 @@ import { resizeImage } from '../utils';
 import { logHistory } from '../lib/admin';
 import ImageWorkspace from './ImageWorkspace';
 import AISelector from './AISelector';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     Copy, Check, Sparkles, Image as ImageIcon, Cpu, Target,
     Camera, Zap, Settings2, History, Trash2, Send, Wand2,

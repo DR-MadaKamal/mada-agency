@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { GlobalHistoryItem, AppView } from '../types';
 import { fetchGlobalHistory } from '../lib/admin';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     History, ImageIcon, Mic, Video, FileText, Search, Filter,
     Download, ExternalLink, Calendar, Trash2, Clock,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 const STUDIO_INFO: Record<AppView, { label: string; icon: any; color: string }> = {
+    home: { label: 'Home', icon: History, color: 'text-white' },
     creator_studio: { label: 'Creator', icon: Zap, color: 'text-orange-400' },
     photoshoot_director: { label: 'Photoshoot', icon: ImageIcon, color: 'text-pink-400' },
     prompt_studio: { label: 'Engineer', icon: Terminal, color: 'text-cyan-400' },
@@ -29,6 +30,8 @@ const STUDIO_INFO: Record<AppView, { label: string; icon: any; color: string }> 
     command_center: { label: 'Command', icon: Zap, color: 'text-amber-400' },
     calendar: { label: 'Calendar', icon: Calendar, color: 'text-sky-400' },
     pre_pilot_studio: { label: 'PrePilot', icon: Rocket, color: 'text-blue-500' },
+    batch_image_studio: { label: 'Batch', icon: Layers, color: 'text-green-400' },
+    bg_remover_studio: { label: 'BG Remover', icon: ImageIcon, color: 'text-violet-400' },
 };
 
 const GlobalHistoryPanel: React.FC = () => {

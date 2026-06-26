@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
-import { 
+import React, { useCallback, useRef, useMemo, useReducer, useState, useEffect, Suspense, lazy } from 'react';
+import {
   AppView, 
   CreatorStudioProject, 
   PhotoshootDirectorProject, 
@@ -15,7 +15,8 @@ import {
   ControllerStudioProject,
   AdminStudioProject,
   PrePilotAgencySuiteProject,
-  BatchImageStudioProject
+  BatchImageStudioProject,
+  BGStudioProject
 } from './types';
 
 import NexusAssistant from './components/NexusAssistant';
@@ -36,12 +37,12 @@ const MarketingStudio = lazy(() => import('./components/MarketingStudio'));
 const ControllerStudio = lazy(() => import('./components/ControllerStudio'));
 const PrePilotAgencySuite = lazy(() => import('./components/PrePilotAgencySuite'));
 const BatchImageStudio = lazy(() => import('./components/BatchImageStudio'));
+const BGStudio = lazy(() => import('./components/BGStudio'));
 const AdminStudio = lazy(() => import('./components/AdminStudio'));
 const GlobalHistoryPanel = lazy(() => import('./components/GlobalHistoryPanel'));
 const NexusVault = lazy(() => import('./components/NexusVault'));
 const NexusControlCenter = lazy(() => import('./components/NexusControlCenter'));
-import { CalendarStudio } from './components/CalendarStudio';
-import { CalendarEvent } from './components/CalendarStudio';
+import { CalendarStudio, CalendarEvent } from './components/CalendarStudio';
 
 import TabBar from './components/TabBar';
 import { LIGHTING_STYLES, CAMERA_PERSPECTIVES, VOICES, LOGO_IMAGE_URL } from './constants';
@@ -49,9 +50,31 @@ import GlobalSettings from './components/GlobalSettings';
 import OmniSearch from './components/OmniSearch';
 import PresenceSystem from './components/PresenceSystem';
 import { ErrorBoundary } from './lib/ErrorBoundary';
-import { ToastProvider } from './lib/useToast';
+import { ErrorService } from './lib/errorService';
+import ErrorDashboard from './components/ErrorDashboard';
+import StudioGrid from './components/StudioGrid';
+import { ToastProvider, useToast } from './lib/useToast';
 import { cn } from './lib/utils';
 import Sidebar from './components/Sidebar';
+
+function ErrorGlobalListener() {
+  const { toast } = useToast();
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { message, severity, source } = (e as CustomEvent).detail;
+      toast({
+        type: severity === 'critical' ? 'error' : 'warning',
+        title: `${severity.toUpperCase()}${source ? ` [${source}]` : ''}`,
+        message: message?.substring(0, 120),
+        action: { label: 'View', onClick: () => window.dispatchEvent(new CustomEvent('studio-open-errors')) },
+      });
+    };
+    window.addEventListener('error-global', handler);
+    return () => window.removeEventListener('error-global', handler);
+  }, [toast]);
+  return null;
+}
+import { appReducer, createInitialState, StudioType, studioProjectKeys } from './lib/studioReducer';
 
 const STUDIO_METADATA: Record<string, { label: string; icon: any }> = {
   creator_studio: { label: 'Creative', icon: null },
@@ -72,13 +95,8 @@ const STUDIO_METADATA: Record<string, { label: string; icon: any }> = {
   asset_library: { label: 'Vault', icon: null },
   command_center: { label: 'Command', icon: null },
   batch_image_studio: { label: 'Batch Images', icon: null },
+  bg_remover_studio: { label: 'BG Remover', icon: null },
 };
-
-const ArrowRightIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-    </svg>
-);
 
 const SettingsIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -86,103 +104,6 @@ const SettingsIcon = () => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
 );
-
-const Typewriter = () => {
-    const words = ["DESIGN", "STORYBOARD", "PHOTOSHOOT", "VOICE OVER"];
-    const [currentWordIndex, setCurrentWordIndex] = useState(0);
-    const [currentText, setCurrentText] = useState("");
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [typingSpeed, setTypingSpeed] = useState(150);
-
-    useEffect(() => {
-        const handleType = () => {
-            const fullWord = words[currentWordIndex % words.length];
-
-            setCurrentText(prev => {
-                if (isDeleting) {
-                    return fullWord.substring(0, prev.length - 1);
-                } else {
-                    return fullWord.substring(0, prev.length + 1);
-                }
-            });
-
-            if (isDeleting) {
-                setTypingSpeed(75);
-            } else {
-                setTypingSpeed(150);
-            }
-
-            if (!isDeleting && currentText === fullWord) {
-                setTypingSpeed(2000);
-                setIsDeleting(true);
-            } else if (isDeleting && currentText === "") {
-                setIsDeleting(false);
-                setCurrentWordIndex(prev => prev + 1);
-                setTypingSpeed(500);
-            }
-        };
-
-        const timer = setTimeout(handleType, typingSpeed);
-        return () => clearTimeout(timer);
-    }, [currentText, isDeleting, currentWordIndex, words, typingSpeed]);
-
-    return (
-        <span className="text-[var(--color-accent)] inline-flex items-center">
-            {currentText}
-            <span className="animate-pulse ml-1 text-[var(--color-accent)] font-light">|</span>
-        </span>
-    );
-};
-
-const InteractiveLogo = () => {
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const ref = useRef<HTMLDivElement>(null);
-  
-    useEffect(() => {
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!ref.current) return;
-        const rect = ref.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-  
-        const dx = e.clientX - centerX;
-        const dy = e.clientY - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxDist = 400;
-  
-        if (dist < maxDist) {
-          const force = (maxDist - dist) / maxDist;
-          const moveX = -(dx / dist) * 120 * force;
-          const moveY = -(dy / dist) * 120 * force;
-          setOffset({ x: moveX, y: moveY });
-        } else {
-          setOffset({ x: 0, y: 0 });
-        }
-      };
-  
-      window.addEventListener('mousemove', handleMouseMove);
-      return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
-  
-    return (
-      <div
-        ref={ref}
-        style={{
-          transform: `translate(${offset.x}px, ${offset.y}px)`,
-          transition: 'transform 0.1s ease-out',
-        }}
-        className="relative z-0"
-      >
-          <div className="animate-float">
-                <img
-                src="/logo.png"
-                alt="Mada Agency"
-                className="w-72 md:w-[32rem] object-contain drop-shadow-2xl opacity-90 hover:opacity-100 transition-opacity"
-                />
-          </div>
-      </div>
-    );
-  };
 
 const createNewCreatorProject = (projectCount: number, ownerId: string): CreatorStudioProject => ({
   id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -711,103 +632,96 @@ const createNewBatchImageProject = (projectCount: number, ownerId: string): Batc
   aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
 });
 
+const createNewBGProject = (projectCount: number, ownerId: string): BGStudioProject => ({
+  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  name: `BG Remover ${projectCount + 1}`,
+  ownerId,
+  studioType: 'bg_remover_studio',
+  status: 'active',
+  progress: 0,
+  priority: 'medium',
+  sourceImages: [],
+  results: [],
+  replacementType: 'transparent',
+  replacementColor: '#ffffff',
+  gradientStart: '#ff6b6b',
+  gradientEnd: '#6b6bff',
+  gradientAngle: 45,
+  replacementImage: null,
+  featherRadius: 0,
+  edgeThreshold: 50,
+  maskMode: 'subject',
+  isProcessing: false,
+  selectedResultIds: [],
+  error: null,
+  activeTab: 'upload',
+  zoomLevel: 100,
+  showOriginal: false,
+  aiConfig: { provider: 'google', modelId: 'gemini-2.1-flash-image' },
+  aiBackgroundPrompt: '',
+  brushStrokes: [],
+  isBrushMode: false,
+  brushRadius: 10,
+  comparePosition: 50,
+  upscaleEnabled: false,
+  upscaleFactor: 2,
+  shadowSettings: { type: 'none', blur: 10, offsetX: 5, offsetY: 5, opacity: 0.4, color: '#000000' },
+  edgeGlow: { enabled: false, width: 2, color: '#ffffff', opacity: 0.5 },
+  smartCrop: { enabled: false, padding: 10, maintainAspectRatio: true },
+  backgroundBlur: 0,
+  bokehShape: 'circle',
+  colorMatchBg: false,
+  undoStack: [],
+  redoStack: [],
+  editHistory: [],
+  compositeLayers: [],
+  selectedPresetId: null,
+  viewMode: 'grid',
+  galleryIndex: 0,
+  colorHistory: [],
+  queueItems: [],
+  renamePattern: '',
+  exportFormat: 'png',
+  exportQuality: 90,
+  imageGroupName: '',
+  autoTagging: false,
+  showMask: false,
+});
+
 function App() {
-  const [view, setView] = useState<AppView>('creator_studio');
-  const [isBannerManagerOpen, setIsBannerManagerOpen] = useState(false);
-  const [isOmniSearchOpen, setIsOmniSearchOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [state, dispatch] = useReducer(appReducer, null, createInitialState);
+  const {
+    view, isBannerManagerOpen, isOmniSearchOpen, isErrorDashboardOpen, sidebarCollapsed, theme,
+    creatorProjects, activeCreatorIndex,
+    photoshootProjects, activePhotoshootIndex,
+    promptStudioProjects, activePromptStudioIndex,
+    voiceOverProjects, activeVoiceOverIndex,
+    brandingProjects, activeBrandingIndex,
+    campaignProjects, activeCampaignIndex,
+    planProjects, activePlanIndex,
+    storyboardProjects, activeStoryboardIndex,
+    marketingProjects, activeMarketingIndex,
+    editProjects, activeEditIndex,
+    controllerProjects, activeControllerIndex,
+    batchImageProjects, activeBatchImageIndex,
+    bgProjects, activeBGIndex,
+    prePilotProjects, activePrePilotIndex,
+    systemConfig, branding, calendarEvents,
+  } = state;
 
-  const [theme, setTheme] = useState('dark');
   const contentRef = useRef<HTMLDivElement>(null);
+  const isAdminUser = true;
 
-  const [creatorProjects, setCreatorProjects] = useState<CreatorStudioProject[]>([]);
-  const [activeCreatorIndex, setActiveCreatorIndex] = useState(0);
-
-  const [photoshootProjects, setPhotoshootProjects] = useState<PhotoshootDirectorProject[]>([]);
-  const [activePhotoshootIndex, setActivePhotoshootIndex] = useState(0);
-
-  const [promptStudioProjects, setPromptStudioProjects] = useState<PromptStudioProject[]>([]);
-  const [activePromptStudioIndex, setActivePromptStudioIndex] = useState(0);
-
-  const [voiceOverProjects, setVoiceOverProjects] = useState<VoiceOverStudioProject[]>([]);
-  const [activeVoiceOverIndex, setActiveVoiceOverIndex] = useState(0);
-
-  const [brandingProjects, setBrandingProjects] = useState<BrandingStudioProject[]>([]);
-  const [activeBrandingIndex, setActiveBrandingIndex] = useState(0);
-
-  const [campaignProjects, setCampaignProjects] = useState<CampaignStudioProject[]>([]);
-  const [activeCampaignIndex, setActiveCampaignIndex] = useState(0);
-
-  const [planProjects, setPlanProjects] = useState<PlanStudioProject[]>([]);
-  const [activePlanIndex, setActivePlanIndex] = useState(0);
-
-  const [storyboardProjects, setStoryboardProjects] = useState<StoryboardStudioProject[]>([]);
-  const [activeStoryboardIndex, setActiveStoryboardIndex] = useState(0);
-
-  const [marketingProjects, setMarketingProjects] = useState<MarketingStudioProject[]>([]);
-  const [activeMarketingIndex, setActiveMarketingIndex] = useState(0);
-
-  const [controllerProjects, setControllerProjects] = useState<ControllerStudioProject[]>([]);
-  const [activeControllerIndex, setActiveControllerIndex] = useState(0);
-  const [batchImageProjects, setBatchImageProjects] = useState<BatchImageStudioProject[]>([]);
-  const [activeBatchImageIndex, setActiveBatchImageIndex] = useState(0);
-
-  const [editProjects, setEditProjects] = useState<EditStudioProject[]>([]);
-  const [activeEditIndex, setActiveEditIndex] = useState(0);
-
-  const [prePilotProjects, setPrePilotProjects] = useState<PrePilotAgencySuiteProject[]>([]);
-  const [activePrePilotIndex, setActivePrePilotIndex] = useState(0);
-
-  const [systemConfig, setSystemConfig] = useState<{
-    activeStudios: string[];
-    maintenanceMode: boolean;
-    allowNewRegistrations: boolean;
-  }>({
-    activeStudios: [],
-    maintenanceMode: false,
-    allowNewRegistrations: true
-  });
-
-  const [branding, setBranding] = useState<{
-    logo: string;
-    tagline: string;
-  }>({
-    logo: "/logo.png",
-    tagline: 'Transform your imagination into the perfect design with the power of AI.'
-  });
-
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
-    try {
-      const saved = localStorage.getItem('mada_calendar_events');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
   useEffect(() => {
     localStorage.setItem('mada_calendar_events', JSON.stringify(calendarEvents));
   }, [calendarEvents]);
-
-  const handleAddCalendarEvent = (event: CalendarEvent) => {
-    setCalendarEvents(prev => [...prev, event]);
-  };
-
-  const handleUpdateCalendarEvent = (id: string, updates: Partial<CalendarEvent>) => {
-    setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-  };
-
-  const handleDeleteCalendarEvent = (id: string) => {
-    setCalendarEvents(prev => prev.filter(e => e.id !== id));
-  };
-
-  const isAdminUser = true;
 
   useEffect(() => {
     const handleRemoteNav = (e: any) => {
       if (e.detail && typeof e.detail === 'string') {
         const studioId = e.detail as AppView;
-        // Verify if the studio context is valid
         if (STUDIO_METADATA[studioId]) {
-          setView(studioId);
-          // Scroll to top for a clean transition
+          dispatch({ type: 'SET_VIEW', view: studioId });
           contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }
@@ -816,340 +730,160 @@ function App() {
     return () => window.removeEventListener('nav-studio', handleRemoteNav);
   }, []);
 
-  // Initialize first project for each studio on mount
   useEffect(() => {
-    const uid = 'local';
-    setCreatorProjects(prev => prev.length === 0 ? [createNewCreatorProject(0, uid)] : prev);
-    setPhotoshootProjects(prev => prev.length === 0 ? [createNewPhotoshootProject(0, uid)] : prev);
-    setPromptStudioProjects(prev => prev.length === 0 ? [createNewPromptStudioProject(0, uid)] : prev);
-    setVoiceOverProjects(prev => prev.length === 0 ? [createNewVoiceOverStudioProject(0, uid)] : prev);
-    setBrandingProjects(prev => prev.length === 0 ? [createNewBrandingStudioProject(0, uid)] : prev);
-    setCampaignProjects(prev => prev.length === 0 ? [createNewCampaignProject(0, uid)] : prev);
-    setPlanProjects(prev => prev.length === 0 ? [createNewPlanProject(0, uid)] : prev);
-    setStoryboardProjects(prev => prev.length === 0 ? [createNewStoryboardProject(0, uid)] : prev);
-    setMarketingProjects(prev => prev.length === 0 ? [createNewMarketingProject(0, uid)] : prev);
-    setControllerProjects(prev => prev.length === 0 ? [createNewControllerProject(0, uid)] : prev);
-    setBatchImageProjects(prev => prev.length === 0 ? [createNewBatchImageProject(0, uid)] : prev);
-    setEditProjects(prev => prev.length === 0 ? [createNewEditProject(0, uid)] : prev);
-    setPrePilotProjects(prev => prev.length === 0 ? [createNewPrePilotProject(0, uid)] : prev);
+    dispatch({ type: 'INIT_PROJECTS', factories: {
+      creator_studio: (count) => createNewCreatorProject(count, 'local'),
+      photoshoot_director: (count) => createNewPhotoshootProject(count, 'local'),
+      prompt_studio: (count) => createNewPromptStudioProject(count, 'local'),
+      voice_over_studio: (count) => createNewVoiceOverStudioProject(count, 'local'),
+      branding_studio: (count) => createNewBrandingStudioProject(count, 'local'),
+      campaign_studio: (count) => createNewCampaignProject(count, 'local'),
+      plan_studio: (count) => createNewPlanProject(count, 'local'),
+      storyboard_studio: (count) => createNewStoryboardProject(count, 'local'),
+      marketing_studio: (count) => createNewMarketingProject(count, 'local'),
+      controller_studio: (count) => createNewControllerProject(count, 'local'),
+      batch_image_studio: (count) => createNewBatchImageProject(count, 'local'),
+      bg_remover_studio: (count) => createNewBGProject(count, 'local'),
+      edit_studio: (count) => createNewEditProject(count, 'local'),
+      prepilot_agency_suite: (count) => createNewPrePilotProject(count, 'local'),
+      admin_studio: () => createNewAdminProject('local'),
+    } });
   }, []);
 
-  const handleEngageProject = (project: any) => {
-      // Switches the view and sets the active project index
-      setView(project.studioType);
-      
-      const updateIndex = (projects: any[], setProjects: any, setActiveIndex: any) => {
-          const index = projects.findIndex(p => p.id === project.id);
-          if (index !== -1) {
-              setActiveIndex(index);
-          } else {
-              setProjects((prev: any[]) => [...prev, project]);
-              setActiveIndex(projects.length);
-          }
-      };
+  const scrollToContent = useCallback(() => {
+    if (contentRef.current) {
+      const y = contentRef.current.getBoundingClientRect().top + window.scrollY - 20;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, []);
 
-      switch (project.studioType) {
-          case 'creator_studio': updateIndex(creatorProjects, setCreatorProjects, setActiveCreatorIndex); break;
-          case 'photoshoot_director': updateIndex(photoshootProjects, setPhotoshootProjects, setActivePhotoshootIndex); break;
-          case 'prompt_studio': updateIndex(promptStudioProjects, setPromptStudioProjects, setActivePromptStudioIndex); break;
-          case 'voice_over_studio': updateIndex(voiceOverProjects, setVoiceOverProjects, setActiveVoiceOverIndex); break;
-          case 'branding_studio': updateIndex(brandingProjects, setBrandingProjects, setActiveBrandingIndex); break;
-          case 'campaign_studio': updateIndex(campaignProjects, setCampaignProjects, setActiveCampaignIndex); break;
-          case 'plan_studio': updateIndex(planProjects, setPlanProjects, setActivePlanIndex); break;
-          case 'storyboard_studio': updateIndex(storyboardProjects, setStoryboardProjects, setActiveStoryboardIndex); break;
-          case 'marketing_studio': updateIndex(marketingProjects, setMarketingProjects, setActiveMarketingIndex); break;
-          case 'edit_studio': updateIndex(editProjects, setEditProjects, setActiveEditIndex); break;
-          case 'controller_studio': updateIndex(controllerProjects, setControllerProjects, setActiveControllerIndex); break;
-          case 'batch_image_studio': updateIndex(batchImageProjects, setBatchImageProjects, setActiveBatchImageIndex); break;
-          case 'prepilot_agency_suite': updateIndex(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex); break;
-          case 'calendar': break;
-      }
+  const handleEngageProject = useCallback((project: any) => {
+      dispatch({ type: 'SET_VIEW', view: project.studioType });
+      if (project.studioType === 'calendar') return;
+      const pType = project.studioType as StudioType;
+      dispatch({ type: 'ENGAGE_PROJECT', studioType: pType, project });
       scrollToContent();
-  };
+  }, [scrollToContent]);
 
   const updateSystemConfig = async (updates: any): Promise<void> => {
-    setSystemConfig(prev => ({ ...prev, ...updates }));
+    dispatch({ type: 'UPDATE_SYSTEM_CONFIG', payload: updates });
   };
 
   useEffect(() => {
     document.body.dataset.theme = theme;
   }, [theme]);
-
-  const scrollToContent = () => {
-    if (contentRef.current) {
-      const y = contentRef.current.getBoundingClientRect().top + window.scrollY - 20;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
   
-  const addTab = <T,>(
-    projects: T[],
-    setProjects: React.Dispatch<React.SetStateAction<T[]>>,
-    setActiveIndex: React.Dispatch<React.SetStateAction<number>>,
-    createFn: (count: number) => T
-  ) => {
-    setProjects(prev => {
-        const newProjects = [...prev, createFn(prev.length)];
-        setActiveIndex(newProjects.length - 1);
-        return newProjects;
-    });
-  };
-
-  const closeTab = <T,>(
-    index: number,
-    projects: T[],
-    setProjects: React.Dispatch<React.SetStateAction<T[]>>,
-    activeIndex: number,
-    setActiveIndex: React.Dispatch<React.SetStateAction<number>>,
-    createFn: (count: number) => T
-  ) => {
-     setProjects(prev => {
-         const newProjects = prev.filter((_, i) => i !== index);
-         if (newProjects.length === 0) {
-             setActiveIndex(0);
-             return [createFn(0)];
-         }
-         
-         if (index === activeIndex) {
-             setActiveIndex(curr => Math.max(0, curr - 1));
-         } else if (index < activeIndex) {
-             setActiveIndex(curr => Math.max(0, curr - 1));
-         }
-         return newProjects;
-     });
-  };
-
   const updateCreatorProject = useCallback((action: React.SetStateAction<CreatorStudioProject>) => {
-    setCreatorProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeCreatorIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeCreatorIndex] = updated;
-        return newProjects;
-    });
-  }, [activeCreatorIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'creator_studio', payload: action as any });
+  }, []);
 
   const updatePhotoshootProject = useCallback((action: React.SetStateAction<PhotoshootDirectorProject>) => {
-    setPhotoshootProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activePhotoshootIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activePhotoshootIndex] = updated;
-        return newProjects;
-    });
-  }, [activePhotoshootIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'photoshoot_director', payload: action as any });
+  }, []);
 
   const updatePromptStudioProject = useCallback((action: React.SetStateAction<PromptStudioProject>) => {
-    setPromptStudioProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activePromptStudioIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activePromptStudioIndex] = updated;
-        return newProjects;
-    });
-  }, [activePromptStudioIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'prompt_studio', payload: action as any });
+  }, []);
 
   const updateVoiceOverProject = useCallback((action: React.SetStateAction<VoiceOverStudioProject>) => {
-    setVoiceOverProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeVoiceOverIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeVoiceOverIndex] = updated;
-        return newProjects;
-    });
-  }, [activeVoiceOverIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'voice_over_studio', payload: action as any });
+  }, []);
 
   const updateBrandingProject = useCallback((action: React.SetStateAction<BrandingStudioProject>) => {
-    setBrandingProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeBrandingIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeBrandingIndex] = updated;
-        return newProjects;
-    });
-  }, [activeBrandingIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'branding_studio', payload: action as any });
+  }, []);
 
   const updateCampaignProject = useCallback((action: React.SetStateAction<CampaignStudioProject>) => {
-    setCampaignProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeCampaignIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeCampaignIndex] = updated;
-        return newProjects;
-    });
-  }, [activeCampaignIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'campaign_studio', payload: action as any });
+  }, []);
 
   const updatePlanProject = useCallback((action: React.SetStateAction<PlanStudioProject>) => {
-    setPlanProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activePlanIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activePlanIndex] = updated;
-        return newProjects;
-    });
-  }, [activePlanIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'plan_studio', payload: action as any });
+  }, []);
 
   const updateStoryboardProject = useCallback((action: React.SetStateAction<StoryboardStudioProject>) => {
-    setStoryboardProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeStoryboardIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeStoryboardIndex] = updated;
-        return newProjects;
-    });
-  }, [activeStoryboardIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'storyboard_studio', payload: action as any });
+  }, []);
 
   const updateMarketingProject = useCallback((action: React.SetStateAction<MarketingStudioProject>) => {
-    setMarketingProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeMarketingIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeMarketingIndex] = updated;
-        return newProjects;
-    });
-  }, [activeMarketingIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'marketing_studio', payload: action as any });
+  }, []);
 
   const updateEditProject = useCallback((action: React.SetStateAction<EditStudioProject>) => {
-    setEditProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeEditIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeEditIndex] = updated;
-        return newProjects;
-    });
-  }, [activeEditIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'edit_studio', payload: action as any });
+  }, []);
 
   const updateControllerProject = useCallback((action: React.SetStateAction<ControllerStudioProject>) => {
-    setControllerProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeControllerIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeControllerIndex] = updated;
-        return newProjects;
-    });
-  }, [activeControllerIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'controller_studio', payload: action as any });
+  }, []);
 
   const updateBatchImageProject = useCallback((action: React.SetStateAction<BatchImageStudioProject>) => {
-    setBatchImageProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activeBatchImageIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activeBatchImageIndex] = updated;
-        return newProjects;
-    });
-  }, [activeBatchImageIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'batch_image_studio', payload: action as any });
+  }, []);
+
+  const updateBGProject = useCallback((action: React.SetStateAction<BGStudioProject>) => {
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'bg_remover_studio', payload: action as any });
+  }, []);
 
   const updatePrePilotProject = useCallback((action: React.SetStateAction<PrePilotAgencySuiteProject>) => {
-    setPrePilotProjects(prev => {
-        const newProjects = [...prev];
-        const current = newProjects[activePrePilotIndex];
-        const updated = action instanceof Function ? action(current) : action;
-        newProjects[activePrePilotIndex] = updated;
-        return newProjects;
-    });
-  }, [activePrePilotIndex]);
+    dispatch({ type: 'UPDATE_PROJECT', studioType: 'prepilot_agency_suite', payload: action as any });
+  }, []);
+
+  const viewToStudioType: Record<string, StudioType | undefined> = {
+    creator_studio: 'creator_studio',
+    photoshoot_director: 'photoshoot_director',
+    prompt_studio: 'prompt_studio',
+    voice_over_studio: 'voice_over_studio',
+    branding_studio: 'branding_studio',
+    campaign_studio: 'campaign_studio',
+    plan_studio: 'plan_studio',
+    storyboard_studio: 'storyboard_studio',
+    marketing_studio: 'marketing_studio',
+    edit_studio: 'edit_studio',
+    controller_studio: 'controller_studio',
+    batch_image_studio: 'batch_image_studio',
+    bg_remover_studio: 'bg_remover_studio',
+    pre_pilot_studio: 'prepilot_agency_suite',
+    prepilot_agency_suite: 'prepilot_agency_suite',
+  };
 
   const handleExportToStudio = useCallback((targetView: AppView, data: any) => {
-    setView(targetView);
-    // Based on target view, we might want to update the current project or create a new one
-    switch (targetView) {
-        case 'campaign_studio':
-            setCampaignProjects(prev => {
-                const next = [...prev];
-                next[activeCampaignIndex] = { ...next[activeCampaignIndex], ...data };
-                return next;
-            });
-            break;
-        case 'marketing_studio':
-            setMarketingProjects(prev => {
-                const next = [...prev];
-                next[activeMarketingIndex] = { ...next[activeMarketingIndex], ...data };
-                return next;
-            });
-            break;
-        case 'photoshoot_director':
-            setPhotoshootProjects(prev => {
-                const next = [...prev];
-                next[activePhotoshootIndex] = { ...next[activePhotoshootIndex], ...data };
-                return next;
-            });
-            break;
-        case 'voice_over_studio':
-            setVoiceOverProjects(prev => {
-                const next = [...prev];
-                next[activeVoiceOverIndex] = { ...next[activeVoiceOverIndex], ...data };
-                return next;
-            });
-            break;
-        case 'edit_studio':
-            setEditProjects(prev => {
-                const next = [...prev];
-                next[activeEditIndex] = { ...next[activeEditIndex], ...data };
-                return next;
-            });
-            break;
-        case 'plan_studio':
-            setPlanProjects(prev => {
-                const next = [...prev];
-                next[activePlanIndex] = { ...next[activePlanIndex], ...data };
-                return next;
-            });
-            break;
-        case 'creator_studio':
-             setCreatorProjects(prev => {
-                const next = [...prev];
-                next[activeCreatorIndex] = { ...next[activeCreatorIndex], ...data };
-                return next;
-            });
-            break;
-        case 'prompt_studio':
-            setPromptStudioProjects(prev => {
-                const next = [...prev];
-                next[activePromptStudioIndex] = { ...next[activePromptStudioIndex], ...data };
-                return next;
-            });
-            break;
-        case 'branding_studio':
-            setBrandingProjects(prev => {
-                const next = [...prev];
-                next[activeBrandingIndex] = { ...next[activeBrandingIndex], ...data };
-                return next;
-            });
-            break;
-        case 'storyboard_studio':
-            setStoryboardProjects(prev => {
-                const next = [...prev];
-                next[activeStoryboardIndex] = { ...next[activeStoryboardIndex], ...data };
-                return next;
-            });
-            break;
-        case 'controller_studio':
-            setControllerProjects(prev => {
-                const next = [...prev];
-                next[activeControllerIndex] = { ...next[activeControllerIndex], ...data };
-                return next;
-            });
-            break;
-        case 'batch_image_studio':
-            setBatchImageProjects(prev => {
-                const next = [...prev];
-                next[activeBatchImageIndex] = { ...next[activeBatchImageIndex], ...data };
-                return next;
-            });
-            break;
-        case 'pre_pilot_studio':
-            setPrePilotProjects(prev => {
-                const next = [...prev];
-                next[activePrePilotIndex] = { ...next[activePrePilotIndex], ...data };
-                return next;
-            });
-            break;
-        default:
-            break;
+    dispatch({ type: 'SET_VIEW', view: targetView });
+    const pType = viewToStudioType[targetView];
+    if (pType) {
+      dispatch({ type: 'EXPORT_TO_STUDIO', studioType: pType, data });
     }
     scrollToContent();
-  }, [activeCampaignIndex, activeMarketingIndex, activePhotoshootIndex, activeVoiceOverIndex, activeEditIndex, activePlanIndex, activeCreatorIndex, activePromptStudioIndex, activeBrandingIndex, activeStoryboardIndex, activeControllerIndex, activeBatchImageIndex, activePrePilotIndex]);
+  }, [scrollToContent]);
 
+  const setActiveCreatorIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'creator_studio', index: i }), []);
+  const setActivePhotoshootIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'photoshoot_director', index: i }), []);
+  const setActivePromptStudioIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'prompt_studio', index: i }), []);
+  const setActiveVoiceOverIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'voice_over_studio', index: i }), []);
+  const setActiveBrandingIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'branding_studio', index: i }), []);
+  const setActiveCampaignIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'campaign_studio', index: i }), []);
+  const setActivePlanIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'plan_studio', index: i }), []);
+  const setActiveStoryboardIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'storyboard_studio', index: i }), []);
+  const setActiveMarketingIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'marketing_studio', index: i }), []);
+  const setActiveEditIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'edit_studio', index: i }), []);
+  const setActiveControllerIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'controller_studio', index: i }), []);
+  const setActiveBatchImageIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'batch_image_studio', index: i }), []);
+  const setActiveBGIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'bg_remover_studio', index: i }), []);
+  const setActivePrePilotIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', studioType: 'prepilot_agency_suite', index: i }), []);
+
+  const setView = (v: AppView) => dispatch({ type: 'SET_VIEW', view: v });
+  const setTheme = (t: string) => dispatch({ type: 'SET_THEME', theme: t });
+  const setIsOmniSearchOpen = (open: boolean) => dispatch({ type: 'SET_OMNI_SEARCH', open });
+  const toggleSidebar = () => dispatch({ type: 'TOGGLE_SIDEBAR' });
+  const closeSettings = useCallback(() => dispatch({ type: 'SET_BANNER_MANAGER', open: false }), []);
+  const navigateToView = useCallback((v: AppView) => { setView(v); scrollToContent(); }, [scrollToContent]);
+  const openSearch = useCallback(() => setIsOmniSearchOpen(true), []);
+  const closeSearch = useCallback(() => setIsOmniSearchOpen(false), []);
+  const changeTheme = useCallback((t: string) => setTheme(t), []);
+  const handleNavigate = useCallback((v: AppView) => { setView(v); scrollToContent(); }, [scrollToContent]);
+  const handleAddCalendarEvent = (event: CalendarEvent) => dispatch({ type: 'ADD_CALENDAR_EVENT', event });
+  const handleUpdateCalendarEvent = (id: string, updates: Partial<CalendarEvent>) => dispatch({ type: 'UPDATE_CALENDAR_EVENT', id, updates });
+  const handleDeleteCalendarEvent = (id: string) => dispatch({ type: 'DELETE_CALENDAR_EVENT', id });
 
   const renderContent = () => {
     return (
@@ -1189,8 +923,8 @@ function App() {
                                             projects={creatorProjects}
                                             activeProjectIndex={activeCreatorIndex}
                                             onSelectTab={setActiveCreatorIndex}
-                                            onAddTab={() => addTab(creatorProjects, setCreatorProjects, setActiveCreatorIndex, (count) => createNewCreatorProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, creatorProjects, setCreatorProjects, activeCreatorIndex, setActiveCreatorIndex, (count) => createNewCreatorProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'creator_studio', factory: (count: number) => createNewCreatorProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'creator_studio', index: idx, activeIndex: activeCreatorIndex, factory: (count: number) => createNewCreatorProject(count, 'local') })}
                                         />
                                         <CreatorStudio 
                                             project={creatorProjects[activeCreatorIndex]}
@@ -1205,8 +939,8 @@ function App() {
                                             projects={photoshootProjects}
                                             activeProjectIndex={activePhotoshootIndex}
                                             onSelectTab={setActivePhotoshootIndex}
-                                            onAddTab={() => addTab(photoshootProjects, setPhotoshootProjects, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, photoshootProjects, setPhotoshootProjects, activePhotoshootIndex, setActivePhotoshootIndex, (count) => createNewPhotoshootProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'photoshoot_director', factory: (count: number) => createNewPhotoshootProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'photoshoot_director', index: idx, activeIndex: activePhotoshootIndex, factory: (count: number) => createNewPhotoshootProject(count, 'local') })}
                                         />
                                         <PhotoshootDirector 
                                             project={photoshootProjects[activePhotoshootIndex]}
@@ -1221,8 +955,8 @@ function App() {
                                             projects={promptStudioProjects}
                                             activeProjectIndex={activePromptStudioIndex}
                                             onSelectTab={setActivePromptStudioIndex}
-                                            onAddTab={() => addTab(promptStudioProjects, setPromptStudioProjects, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, promptStudioProjects, setPromptStudioProjects, activePromptStudioIndex, setActivePromptStudioIndex, (count) => createNewPromptStudioProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'prompt_studio', factory: (count: number) => createNewPromptStudioProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'prompt_studio', index: idx, activeIndex: activePromptStudioIndex, factory: (count: number) => createNewPromptStudioProject(count, 'local') })}
                                         />
                                         <PromptStudio
                                             project={promptStudioProjects[activePromptStudioIndex]}
@@ -1238,8 +972,8 @@ function App() {
                                             projects={voiceOverProjects}
                                             activeProjectIndex={activeVoiceOverIndex}
                                             onSelectTab={setActiveVoiceOverIndex}
-                                            onAddTab={() => addTab(voiceOverProjects, setVoiceOverProjects, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, voiceOverProjects, setVoiceOverProjects, activeVoiceOverIndex, setActiveVoiceOverIndex, (count) => createNewVoiceOverStudioProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'voice_over_studio', factory: (count: number) => createNewVoiceOverStudioProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'voice_over_studio', index: idx, activeIndex: activeVoiceOverIndex, factory: (count: number) => createNewVoiceOverStudioProject(count, 'local') })}
                                         />
                                         <VoiceOverStudio
                                             project={voiceOverProjects[activeVoiceOverIndex]}
@@ -1254,8 +988,8 @@ function App() {
                                             projects={campaignProjects}
                                             activeProjectIndex={activeCampaignIndex}
                                             onSelectTab={setActiveCampaignIndex}
-                                            onAddTab={() => addTab(campaignProjects, setCampaignProjects, setActiveCampaignIndex, (count) => createNewCampaignProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, campaignProjects, setCampaignProjects, activeCampaignIndex, setActiveCampaignIndex, (count) => createNewCampaignProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'campaign_studio', factory: (count: number) => createNewCampaignProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'campaign_studio', index: idx, activeIndex: activeCampaignIndex, factory: (count: number) => createNewCampaignProject(count, 'local') })}
                                         />
                                         <CampaignStudio
                                             project={campaignProjects[activeCampaignIndex]}
@@ -1270,8 +1004,8 @@ function App() {
                                             projects={planProjects}
                                             activeProjectIndex={activePlanIndex}
                                             onSelectTab={setActivePlanIndex}
-                                            onAddTab={() => addTab(planProjects, setPlanProjects, setActivePlanIndex, (count) => createNewPlanProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, planProjects, setPlanProjects, activePlanIndex, setActivePlanIndex, (count) => createNewPlanProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'plan_studio', factory: (count: number) => createNewPlanProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'plan_studio', index: idx, activeIndex: activePlanIndex, factory: (count: number) => createNewPlanProject(count, 'local') })}
                                         />
                                         <PlanStudio
                                             project={planProjects[activePlanIndex]}
@@ -1288,8 +1022,8 @@ function App() {
                                             projects={storyboardProjects}
                                             activeProjectIndex={activeStoryboardIndex}
                                             onSelectTab={setActiveStoryboardIndex}
-                                            onAddTab={() => addTab(storyboardProjects, setStoryboardProjects, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, storyboardProjects, setStoryboardProjects, activeStoryboardIndex, setActiveStoryboardIndex, (count) => createNewStoryboardProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'storyboard_studio', factory: (count: number) => createNewStoryboardProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'storyboard_studio', index: idx, activeIndex: activeStoryboardIndex, factory: (count: number) => createNewStoryboardProject(count, 'local') })}
                                         />
                                         <StoryboardStudio
                                             project={storyboardProjects[activeStoryboardIndex]}
@@ -1304,8 +1038,8 @@ function App() {
                                             projects={marketingProjects}
                                             activeProjectIndex={activeMarketingIndex}
                                             onSelectTab={setActiveMarketingIndex}
-                                            onAddTab={() => addTab(marketingProjects, setMarketingProjects, setActiveMarketingIndex, (count) => createNewMarketingProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, marketingProjects, setMarketingProjects, activeMarketingIndex, setActiveMarketingIndex, (count) => createNewMarketingProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'marketing_studio', factory: (count: number) => createNewMarketingProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'marketing_studio', index: idx, activeIndex: activeMarketingIndex, factory: (count: number) => createNewMarketingProject(count, 'local') })}
                                         />
                                         <MarketingStudio
                                             project={marketingProjects[activeMarketingIndex]}
@@ -1320,8 +1054,8 @@ function App() {
                                             projects={brandingProjects}
                                             activeProjectIndex={activeBrandingIndex}
                                             onSelectTab={setActiveBrandingIndex}
-                                            onAddTab={() => addTab(brandingProjects, setBrandingProjects, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, brandingProjects, setBrandingProjects, activeBrandingIndex, setActiveBrandingIndex, (count) => createNewBrandingStudioProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'branding_studio', factory: (count: number) => createNewBrandingStudioProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'branding_studio', index: idx, activeIndex: activeBrandingIndex, factory: (count: number) => createNewBrandingStudioProject(count, 'local') })}
                                         />
                                         <BrandingStudio
                                             project={brandingProjects[activeBrandingIndex]}
@@ -1339,8 +1073,8 @@ function App() {
                                             projects={controllerProjects}
                                             activeProjectIndex={activeControllerIndex}
                                             onSelectTab={setActiveControllerIndex}
-                                            onAddTab={() => addTab(controllerProjects, setControllerProjects, setActiveControllerIndex, (count) => createNewControllerProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, controllerProjects, setControllerProjects, activeControllerIndex, setActiveControllerIndex, (count) => createNewControllerProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'controller_studio', factory: (count: number) => createNewControllerProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'controller_studio', index: idx, activeIndex: activeControllerIndex, factory: (count: number) => createNewControllerProject(count, 'local') })}
                                         />
                                         <ControllerStudio
                                             project={controllerProjects[activeControllerIndex]}
@@ -1355,12 +1089,28 @@ function App() {
                                             projects={batchImageProjects}
                                             activeProjectIndex={activeBatchImageIndex}
                                             onSelectTab={setActiveBatchImageIndex}
-                                            onAddTab={() => addTab(batchImageProjects, setBatchImageProjects, setActiveBatchImageIndex, (count) => createNewBatchImageProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, batchImageProjects, setBatchImageProjects, activeBatchImageIndex, setActiveBatchImageIndex, (count) => createNewBatchImageProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'batch_image_studio', factory: (count: number) => createNewBatchImageProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'batch_image_studio', index: idx, activeIndex: activeBatchImageIndex, factory: (count: number) => createNewBatchImageProject(count, 'local') })}
                                         />
                                         <BatchImageStudio
                                             project={batchImageProjects[activeBatchImageIndex]}
                                             setProject={updateBatchImageProject}
+                                        />
+                                    </div>
+                                );
+                            case 'bg_remover_studio':
+                                return (
+                                    <div className="flex flex-col w-full gap-4">
+                                        <TabBar
+                                            projects={bgProjects}
+                                            activeProjectIndex={activeBGIndex}
+                                            onSelectTab={setActiveBGIndex}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'bg_remover_studio', factory: (count: number) => createNewBGProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'bg_remover_studio', index: idx, activeIndex: activeBGIndex, factory: (count: number) => createNewBGProject(count, 'local') })}
+                                        />
+                                        <BGStudio
+                                            project={bgProjects[activeBGIndex]}
+                                            setProject={updateBGProject}
                                         />
                                     </div>
                                 );
@@ -1371,8 +1121,8 @@ function App() {
                                             projects={editProjects}
                                             activeProjectIndex={activeEditIndex}
                                             onSelectTab={setActiveEditIndex}
-                                            onAddTab={() => addTab(editProjects, setEditProjects, setActiveEditIndex, (count) => createNewEditProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, editProjects, setEditProjects, activeEditIndex, setActiveEditIndex, (count) => createNewEditProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'edit_studio', factory: (count: number) => createNewEditProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'edit_studio', index: idx, activeIndex: activeEditIndex, factory: (count: number) => createNewEditProject(count, 'local') })}
                                         />
                                         <EditStudio
                                             project={editProjects[activeEditIndex]}
@@ -1382,7 +1132,9 @@ function App() {
                                 );
                             case 'video_studio':
                                 return (
-                                    <VideoStudio />
+                                    <div className="flex flex-col w-full gap-4">
+                                        <VideoStudio />
+                                    </div>
                                 );
                             case 'prepilot_agency_suite':
                                 return (
@@ -1391,8 +1143,8 @@ function App() {
                                             projects={prePilotProjects}
                                             activeProjectIndex={activePrePilotIndex}
                                             onSelectTab={setActivePrePilotIndex}
-                                            onAddTab={() => addTab(prePilotProjects, setPrePilotProjects, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, 'local'))}
-                                            onCloseTab={(idx) => closeTab(idx, prePilotProjects, setPrePilotProjects, activePrePilotIndex, setActivePrePilotIndex, (count) => createNewPrePilotProject(count, 'local'))}
+                                            onAddTab={() => dispatch({ type: 'ADD_PROJECT', studioType: 'prepilot_agency_suite', factory: (count: number) => createNewPrePilotProject(count, 'local') })}
+                                            onCloseTab={(idx: number) => dispatch({ type: 'REMOVE_PROJECT', studioType: 'prepilot_agency_suite', index: idx, activeIndex: activePrePilotIndex, factory: (count: number) => createNewPrePilotProject(count, 'local') })}
                                         />
                                         <PrePilotAgencySuite 
                                             project={prePilotProjects[activePrePilotIndex]}
@@ -1463,7 +1215,7 @@ function App() {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === 'k') {
         e.preventDefault();
-        setIsOmniSearchOpen(prev => !prev);
+        setIsOmniSearchOpen(!state.isOmniSearchOpen);
         return;
       }
       if (mod && ((e.key >= '1' && e.key <= '9') || e.key === '0')) {
@@ -1491,21 +1243,67 @@ function App() {
         window.dispatchEvent(new CustomEvent('studio-redo'));
         return;
       }
+      if (mod && e.shiftKey && e.key === 'e') {
+        e.preventDefault();
+        dispatch({ type: 'TOGGLE_ERROR_DASHBOARD' });
+        return;
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => {
+      ErrorService.log(event.error || event.message, 'high', { source: 'window.onerror' });
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      ErrorService.log(event.reason, 'medium', { source: 'unhandledrejection' });
+    };
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    const onOpenErrors = () => dispatch({ type: 'SET_ERROR_DASHBOARD', open: true });
+    window.addEventListener('studio-open-errors', onOpenErrors);
+    ErrorService.init();
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+      window.removeEventListener('studio-open-errors', onOpenErrors);
+    };
+  }, []);
+
+
+
+  const activeProject = useMemo(() => {
+    switch(view) {
+      case 'creator_studio': return creatorProjects[activeCreatorIndex];
+      case 'photoshoot_director': return photoshootProjects[activePhotoshootIndex];
+      case 'prompt_studio': return promptStudioProjects[activePromptStudioIndex];
+      case 'voice_over_studio': return voiceOverProjects[activeVoiceOverIndex];
+      case 'branding_studio': return brandingProjects[activeBrandingIndex];
+      case 'campaign_studio': return campaignProjects[activeCampaignIndex];
+      case 'plan_studio': return planProjects[activePlanIndex];
+      case 'storyboard_studio': return storyboardProjects[activeStoryboardIndex];
+      case 'marketing_studio': return marketingProjects[activeMarketingIndex];
+      case 'edit_studio': return editProjects[activeEditIndex];
+      case 'controller_studio': return controllerProjects[activeControllerIndex];
+      case 'bg_remover_studio': return bgProjects[activeBGIndex];
+      default: return null;
+    }
+  }, [view, creatorProjects, activeCreatorIndex, photoshootProjects, activePhotoshootIndex, promptStudioProjects, activePromptStudioIndex, voiceOverProjects, activeVoiceOverIndex, brandingProjects, activeBrandingIndex, campaignProjects, activeCampaignIndex, planProjects, activePlanIndex, storyboardProjects, activeStoryboardIndex, marketingProjects, activeMarketingIndex, editProjects, activeEditIndex, controllerProjects, activeControllerIndex, bgProjects, activeBGIndex]);
+
   return (
     <ToastProvider>
+    <ErrorGlobalListener />
     <div className="min-h-screen w-full flex flex-col items-center relative font-tajawal bg-[var(--color-background-base)]">
       <OmniSearch 
           isOpen={isOmniSearchOpen} 
-          onClose={() => setIsOmniSearchOpen(false)} 
-          onNavigate={(v) => {
-            setView(v);
-            scrollToContent();
-          }} 
+          onClose={closeSearch}
+          onNavigate={handleNavigate}
+      />
+      <ErrorDashboard
+          isOpen={isErrorDashboardOpen}
+          onClose={() => dispatch({ type: 'SET_ERROR_DASHBOARD', open: false })}
       />
       {systemConfig.maintenanceMode && isAdminUser && (
           <div className="w-full bg-amber-500 py-2 px-4 flex items-center justify-center gap-3 font-black text-[10px] text-black uppercase tracking-[0.4em] z-[100] animate-pulse sticky top-0 italic">
@@ -1519,42 +1317,28 @@ function App() {
 
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+        onToggleCollapse={toggleSidebar}
         activeView={view}
-        onNavigate={(v) => { setView(v); scrollToContent(); }}
-        onOpenSearch={() => setIsOmniSearchOpen(true)}
+        onNavigate={navigateToView}
+        onOpenSearch={openSearch}
+        onOpenErrorDashboard={() => dispatch({ type: 'SET_ERROR_DASHBOARD', open: true })}
         theme={theme}
-        onThemeChange={(t) => setTheme(t as any)}
+        onThemeChange={changeTheme}
         isAdmin={isAdminUser}
       />
 
-      <section className="w-full max-w-7xl mx-auto px-4 pt-4 md:pt-8 pb-12 flex flex-col justify-center min-h-[50vh] relative">
-           <div className="max-w-4xl relative z-10">
-              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight leading-[0.9] text-[var(--color-text-base)]">
-                 EASY & FAST<br/>
-                 WAY TO<br/>
-                 <Typewriter />
-              </h1>
-              <div className="mt-8 pl-4 border-l-4 border-[var(--color-accent)]">
-                  <p className="text-lg sm:text-xl text-[var(--color-text-secondary)] max-w-xl leading-relaxed">
-                    {branding.tagline}
-                  </p>
-              </div>
-              <div className="mt-10 flex flex-wrap gap-4">
-                 <button 
-                    onClick={scrollToContent}
-                    className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 flex items-center shadow-lg shadow-[var(--color-accent)]/20"
-                 >
-                    START CREATING <ArrowRightIcon />
-                 </button>
-              </div>
-           </div>
-            <div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 pr-12 xl:pr-24 pointer-events-none">
-                <div className="pointer-events-auto">
-                    <InteractiveLogo />
-                </div>
-           </div>
-      </section>
+      <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-10 pb-4">
+        <button onClick={() => setView('home')} className="flex items-center gap-4 mb-8 hover:opacity-80 transition-opacity text-left">
+          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+            <img src="/logo.png" alt="Mada Agency" className="w-7 h-7 object-contain" />
+          </div>
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-white">Mada Agency</h1>
+            <p className="text-[10px] text-[var(--color-accent)] font-bold uppercase tracking-[0.3em] opacity-60">{branding.tagline}</p>
+          </div>
+        </button>
+        <StudioGrid onNavigate={navigateToView} />
+      </div>
       
       <div ref={contentRef} className={cn(
         'flex-grow pt-8 pb-20 px-2 sm:px-4 z-10 min-w-0 overflow-x-hidden transition-all duration-300',
@@ -1565,32 +1349,15 @@ function App() {
 
       <GlobalSettings 
         isOpen={isBannerManagerOpen}
-        onClose={() => setIsBannerManagerOpen(false)}
+        onClose={closeSettings}
         isAdmin={isAdminUser}
         systemConfig={systemConfig}
         onUpdateSystemConfig={updateSystemConfig}
       />
 
-      {/* Toast notifications rendered by ToastProvider */}
-
       <NexusAssistant 
         currentView={view} 
-        activeProject={(() => {
-            switch(view) {
-                case 'creator_studio': return creatorProjects[activeCreatorIndex];
-                case 'photoshoot_director': return photoshootProjects[activePhotoshootIndex];
-                case 'prompt_studio': return promptStudioProjects[activePromptStudioIndex];
-                case 'voice_over_studio': return voiceOverProjects[activeVoiceOverIndex];
-                case 'branding_studio': return brandingProjects[activeBrandingIndex];
-                case 'campaign_studio': return campaignProjects[activeCampaignIndex];
-                case 'plan_studio': return planProjects[activePlanIndex];
-                case 'storyboard_studio': return storyboardProjects[activeStoryboardIndex];
-                case 'marketing_studio': return marketingProjects[activeMarketingIndex];
-                case 'edit_studio': return editProjects[activeEditIndex];
-                case 'controller_studio': return controllerProjects[activeControllerIndex];
-                default: return null;
-            }
-        })()}
+        activeProject={activeProject}
       />
     </div>
     </ToastProvider>
