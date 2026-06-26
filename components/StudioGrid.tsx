@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Layout, PenTool, Camera, BarChart3, ShoppingCart, Edit3,
@@ -85,76 +85,113 @@ interface StudioGridProps {
   onNavigate: (view: AppView) => void;
 }
 
+function getCardCSS(studioColor: string) {
+  return {
+    '--tilt-x': '0deg',
+    '--tilt-y': '0deg',
+    '--mouse-x': '50%',
+    '--mouse-y': '50%',
+    '--card-color': studioColor,
+  } as React.CSSProperties;
+}
+
 function StudioCard({ studio, index, onNavigate }: { studio: StudioInfo; index: number; onNavigate: (view: AppView) => void }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const cardRef = useRef<HTMLButtonElement>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const animFrame = useRef(0);
   const Icon = studio.icon;
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: y * -8, y: x * 8 });
-  };
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = cardRef.current;
+    if (!el) return;
+    cancelAnimationFrame(animFrame.current);
+    animFrame.current = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const px = ((e.clientX - rect.left) / rect.width) * 100;
+      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      const tx = ((e.clientY - rect.top) / rect.height - 0.5) * -10;
+      const ty = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
+      el.style.setProperty('--mouse-x', `${px}%`);
+      el.style.setProperty('--mouse-y', `${py}%`);
+      el.style.setProperty('--tilt-x', `${tx}deg`);
+      el.style.setProperty('--tilt-y', `${ty}deg`);
+    });
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
-    setTilt({ x: 0, y: 0 });
-  };
+    setIsFocused(false);
+    cancelAnimationFrame(animFrame.current);
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.setProperty('--tilt-x', `0deg`);
+    el.style.setProperty('--tilt-y', `0deg`);
+    el.style.setProperty('--mouse-x', `50%`);
+    el.style.setProperty('--mouse-y', `50%`);
+  }, []);
 
   return (
     <motion.button
       ref={cardRef}
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.04, ease: [0.25, 0.4, 0.25, 1] }}
+      transition={{ duration: 0.5, delay: index * 0.04, ease: [0.25, 0.4, 0.25, 1] }}
       onClick={() => onNavigate(studio.id)}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => { setIsHovered(true); setIsFocused(true); }}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      layout
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={getCardCSS(studio.color)}
       className={cn(
-        'relative rounded-2xl border overflow-hidden text-left cursor-pointer',
-        'bg-white/[0.03] hover:bg-white/[0.06]',
-        'transition-colors duration-300',
-        isHovered ? 'border-white/25' : 'border-white/5',
+        'studio-tilt relative rounded-2xl border overflow-hidden text-left cursor-pointer',
+        'bg-white/[0.03]',
+        isFocused ? 'border-white/25' : 'border-white/5',
+        'transition-[border-color,background] duration-300',
       )}
-      style={{
-        transformStyle: 'preserve-3d',
-        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-        transition: isHovered ? 'none' : 'transform 0.4s ease',
-      }}
     >
       <div
-        className="absolute inset-0 opacity-0 transition-opacity duration-500"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
         style={{
-          background: `radial-gradient(500px circle at 50% 50%, ${studio.color}20, transparent 60%)`,
+          background: `radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--card-color)12, transparent 60%)`,
           opacity: isHovered ? 1 : 0,
         }}
       />
       <div
-        className="absolute inset-0 opacity-0 transition-opacity duration-300"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
         style={{
-          background: `radial-gradient(200px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${studio.color}15, transparent 50%)`,
+          background: `radial-gradient(300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--card-color)08, transparent 50%)`,
           opacity: isHovered ? 1 : 0,
         }}
       />
-      <div className="relative p-4 md:p-5">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all duration-500"
-          style={{
-            backgroundColor: `${studio.color}18`,
-            color: studio.color,
-            boxShadow: isHovered ? `0 0 24px ${studio.color}25` : 'none',
-            transform: isHovered ? 'scale(1.1)' : 'scale(1)',
-          }}
-        >
-          <Icon className="w-5 h-5" />
+      <div
+        className="absolute -inset-px rounded-2xl pointer-events-none opacity-0 transition-opacity duration-500"
+        style={{
+          background: `radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--card-color)15, transparent 50%)`,
+          opacity: isHovered ? 1 : 0,
+        }}
+      />
+      <div
+        className="relative p-4 md:p-5"
+        style={{ transform: 'translateZ(20px)', transformStyle: 'preserve-3d' }}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ease-out"
+            style={{
+              backgroundColor: `${studio.color}18`,
+              color: studio.color,
+              boxShadow: isHovered ? `0 0 20px ${studio.color}20` : 'none',
+            }}
+          >
+            <Icon className="w-5 h-5 transition-transform duration-300" style={{ transform: isHovered ? 'scale(1.15)' : 'scale(1)' }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">{studio.label}</h3>
+            <p className="text-[10px] text-white/30 leading-relaxed line-clamp-1">{studio.brief}</p>
+          </div>
         </div>
-        <h3 className="text-sm font-bold text-white mb-1">{studio.label}</h3>
-        <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2">{studio.brief}</p>
       </div>
       <AnimatePresence>
         {isHovered && (
@@ -162,7 +199,7 @@ function StudioCard({ studio, index, onNavigate }: { studio: StudioInfo; index: 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="overflow-hidden"
           >
             <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-white/5 pt-3">
@@ -173,7 +210,7 @@ function StudioCard({ studio, index, onNavigate }: { studio: StudioInfo; index: 
                     key={i}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: i * 0.04, duration: 0.2 }}
                     className="flex items-center gap-2 text-[9px] text-white/50"
                   >
                     <span

@@ -136,3 +136,12 @@ body::before {
 
 .suggestions-scrollbar::-webkit-scrollbar { display: none; }
 .suggestions-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.studio-tilt {
+  transform-style: preserve-3d;
+  transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.4s cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.studio-tilt:hover {
+  transition-duration: 0.08s;
+}
