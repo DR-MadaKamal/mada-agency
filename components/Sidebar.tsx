@@ -7,6 +7,7 @@ import {
   Sun, Moon, Monitor, SquareDashed, Command,
   Clock, Star, Plus, PanelLeftClose, PanelLeft,
   CalendarDays, Grid3x3, ImageDown, AlertTriangle,
+  Home,
 } from 'lucide-react';
 import { AppView } from '../types';
 import { cn } from '../lib/utils';
@@ -135,6 +136,30 @@ const Sidebar: React.FC<SidebarProps> = React.memo((({ collapsed, onToggleCollap
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto suggestions-scrollbar px-2 py-3 space-y-4">
+        {/* Home */}
+        <div>
+          <button
+            onClick={() => { onNavigate('home'); setMobileOpen(false); }}
+            className={cn(
+              'flex items-center gap-3 w-full rounded-xl transition-all group',
+              collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
+              activeView === 'home'
+                ? 'text-white bg-[var(--color-accent)]/10'
+                : 'text-white/40 hover:text-white/80 hover:bg-white/5',
+            )}
+            title={collapsed ? 'Home' : undefined}
+          >
+            <Home className={cn('w-4 h-4 shrink-0', activeView === 'home' && 'text-[var(--color-accent)]')} />
+            {!collapsed && (
+              <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
+            )}
+            {activeView === 'home' && !collapsed && (
+              <motion.div layoutId="sidebar-active" className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[var(--color-accent)] rounded-full" />
+            )}
+          </button>
+        </div>
+        <hr className="border-white/[0.03]" />
+
         {/* Favorites */}
         {!collapsed && (
           <div>
