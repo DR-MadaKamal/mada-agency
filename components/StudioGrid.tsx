@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Layout, PenTool, Camera, BarChart3, ShoppingCart, Edit3,
@@ -85,80 +85,126 @@ interface StudioGridProps {
   onNavigate: (view: AppView) => void;
 }
 
-export default function StudioGrid({ onNavigate }: StudioGridProps) {
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+function StudioCard({ studio, index, onNavigate }: { studio: StudioInfo; index: number; onNavigate: (view: AppView) => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const Icon = studio.icon;
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: y * -8, y: x * 8 });
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-        {STUDIOS.map(studio => {
-          const Icon = studio.icon;
-          const isHovered = hoveredId === studio.id;
-          return (
-            <motion.button
-              key={studio.id}
-              onClick={() => onNavigate(studio.id)}
-              onMouseEnter={() => setHoveredId(studio.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              layout
-              className={cn(
-                'relative rounded-2xl border overflow-hidden text-left transition-all',
-                'bg-white/[0.03] hover:bg-white/[0.06]',
-                isHovered ? 'border-white/20 shadow-xl shadow-black/20' : 'border-white/5',
-              )}
-              style={{ transformStyle: 'preserve-3d' }}
-            >
-              <div
-                className="absolute inset-0 opacity-0 transition-opacity duration-300"
-                style={{
-                  background: `radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${studio.color}15, transparent 40%)`,
-                  opacity: isHovered ? 1 : 0,
-                }}
-              />
-              <div className="relative p-4 md:p-5">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all duration-300"
-                  style={{
-                    backgroundColor: `${studio.color}15`,
-                    color: studio.color,
-                    boxShadow: isHovered ? `0 0 20px ${studio.color}20` : 'none',
-                  }}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold text-white mb-1">{studio.label}</h3>
-                <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2">{studio.brief}</p>
-              </div>
-              <AnimatePresence>
-                {isHovered && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-white/5 pt-3">
-                      <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider mb-2">Capabilities</p>
-                      <ul className="space-y-1">
-                        {studio.features.map((f, i) => (
-                          <li key={i} className="flex items-center gap-2 text-[9px] text-white/50">
-                            <span
-                              className="w-1 h-1 rounded-full shrink-0"
-                              style={{ backgroundColor: studio.color }}
-                            />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          );
-        })}
+    <motion.button
+      ref={cardRef}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.04, ease: [0.25, 0.4, 0.25, 1] }}
+      onClick={() => onNavigate(studio.id)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      onMouseMove={handleMouseMove}
+      layout
+      className={cn(
+        'relative rounded-2xl border overflow-hidden text-left cursor-pointer',
+        'bg-white/[0.03] hover:bg-white/[0.06]',
+        'transition-colors duration-300',
+        isHovered ? 'border-white/25' : 'border-white/5',
+      )}
+      style={{
+        transformStyle: 'preserve-3d',
+        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+        transition: isHovered ? 'none' : 'transform 0.4s ease',
+      }}
+    >
+      <div
+        className="absolute inset-0 opacity-0 transition-opacity duration-500"
+        style={{
+          background: `radial-gradient(500px circle at 50% 50%, ${studio.color}20, transparent 60%)`,
+          opacity: isHovered ? 1 : 0,
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-0 transition-opacity duration-300"
+        style={{
+          background: `radial-gradient(200px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${studio.color}15, transparent 50%)`,
+          opacity: isHovered ? 1 : 0,
+        }}
+      />
+      <div className="relative p-4 md:p-5">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all duration-500"
+          style={{
+            backgroundColor: `${studio.color}18`,
+            color: studio.color,
+            boxShadow: isHovered ? `0 0 24px ${studio.color}25` : 'none',
+            transform: isHovered ? 'scale(1.1)' : 'scale(1)',
+          }}
+        >
+          <Icon className="w-5 h-5" />
+        </div>
+        <h3 className="text-sm font-bold text-white mb-1">{studio.label}</h3>
+        <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2">{studio.brief}</p>
       </div>
-    </div>
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-white/5 pt-3">
+              <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider mb-2">Capabilities</p>
+              <ul className="space-y-1">
+                {studio.features.map((f, i) => (
+                  <motion.li
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center gap-2 text-[9px] text-white/50"
+                  >
+                    <span
+                      className="w-1 h-1 rounded-full shrink-0"
+                      style={{ backgroundColor: studio.color }}
+                    />
+                    {f}
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+}
+
+export default function StudioGrid({ onNavigate }: StudioGridProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="w-full"
+    >
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+        {STUDIOS.map((studio, i) => (
+          <StudioCard key={studio.id} studio={studio} index={i} onNavigate={onNavigate} />
+        ))}
+      </div>
+    </motion.div>
   );
 }

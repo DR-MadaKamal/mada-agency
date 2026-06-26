@@ -1173,6 +1173,70 @@ function App() {
                                 );
                             case 'command_center':
                                 return <NexusControlCenter />;
+                            case 'home':
+                                return (
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key="home"
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -20 }}
+                                            transition={{ duration: 0.4, ease: 'easeOut' }}
+                                            className="w-full relative"
+                                        >
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] pointer-events-none -z-10">
+                                                <div className="absolute top-20 left-1/4 w-72 h-72 rounded-full bg-[var(--color-accent)]/8 blur-[100px] animate-orb" />
+                                                <div className="absolute top-40 right-1/4 w-48 h-48 rounded-full bg-[var(--color-accent)]/5 blur-[80px] animate-orb" style={{ animationDelay: '-7s', animationDuration: '25s' }} />
+                                            </div>
+                                            <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-10 pb-4">
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 30 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
+                                                    className="flex flex-col items-center text-center mb-10 md:mb-14"
+                                                >
+                                                    <motion.div
+                                                        initial={{ scale: 0.8, opacity: 0 }}
+                                                        animate={{ scale: 1, opacity: 1 }}
+                                                        transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
+                                                        className="relative mb-6"
+                                                    >
+                                                        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden backdrop-blur-xl">
+                                                            <img src="/logo.png" alt="Mada Agency" className="w-11 h-11 object-contain" />
+                                                        </div>
+                                                        <div className="absolute -inset-4 rounded-3xl bg-[var(--color-accent)]/5 blur-2xl animate-pulse" />
+                                                    </motion.div>
+                                                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white mb-3">
+                                                        <span className="animate-shimmer-text bg-gradient-to-r from-white via-[var(--color-accent)] to-white bg-clip-text text-transparent">
+                                                            Mada Agency
+                                                        </span>
+                                                    </h1>
+                                                    <motion.p
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: 0.2, duration: 0.5 }}
+                                                        className="text-sm md:text-base text-white/40 font-medium max-w-xl leading-relaxed"
+                                                    >
+                                                        Transform your imagination into the perfect design with the power of AI
+                                                    </motion.p>
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: 0.35, duration: 0.5 }}
+                                                        className="flex items-center gap-6 mt-6 text-[11px] text-white/25 font-bold uppercase tracking-[0.15em]"
+                                                    >
+                                                        <span>20 Studios</span>
+                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                                                        <span>AI-Powered</span>
+                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                                                        <span>Real-time</span>
+                                                    </motion.div>
+                                                </motion.div>
+                                                <StudioGrid onNavigate={navigateToView} />
+                                            </div>
+                                        </motion.div>
+                                    </AnimatePresence>
+                                );
                             default:
                                 return null;
                         }
@@ -1327,18 +1391,19 @@ function App() {
         isAdmin={isAdminUser}
       />
 
-      <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-10 pb-4">
-        <button onClick={() => setView('home')} className="flex items-center gap-4 mb-8 hover:opacity-80 transition-opacity text-left">
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-            <img src="/logo.png" alt="Mada Agency" className="w-7 h-7 object-contain" />
-          </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-white">Mada Agency</h1>
-            <p className="text-[10px] text-[var(--color-accent)] font-bold uppercase tracking-[0.3em] opacity-60">{branding.tagline}</p>
-          </div>
-        </button>
-        <StudioGrid onNavigate={navigateToView} />
-      </div>
+      {view !== 'home' && (
+        <div className="w-full max-w-7xl mx-auto px-4 pt-4 md:pt-6 pb-0">
+          <button onClick={() => setView('home')} className="group flex items-center gap-3 hover:opacity-80 transition-all text-left">
+            <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/5 flex items-center justify-center shrink-0 overflow-hidden group-hover:border-white/10 transition-colors">
+              <img src="/logo.png" alt="Home" className="w-5 h-5 object-contain" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">Mada Agency</p>
+              <p className="text-[8px] text-white/20 uppercase tracking-[0.2em]">Back to Home</p>
+            </div>
+          </button>
+        </div>
+      )}
       
       <div ref={contentRef} className={cn(
         'flex-grow pt-8 pb-20 px-2 sm:px-4 z-10 min-w-0 overflow-x-hidden transition-all duration-300',
