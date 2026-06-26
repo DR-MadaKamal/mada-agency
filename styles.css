@@ -137,11 +137,27 @@ body::before {
 .suggestions-scrollbar::-webkit-scrollbar { display: none; }
 .suggestions-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.studio-tilt {
-  transform-style: preserve-3d;
-  transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
-  transition: transform 0.4s cubic-bezier(0.25, 0.4, 0.25, 1);
+.studio-card {
+  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
-.studio-tilt:hover {
-  transition-duration: 0.08s;
+.studio-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.studio-card:hover::after {
+  opacity: 1;
+}
+
+.hero-glass-panel {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }

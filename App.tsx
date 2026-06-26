@@ -1188,74 +1188,81 @@ function App() {
                                             transition={{ duration: 0.4, ease: 'easeOut' }}
                                             className="w-full relative"
                                         >
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] pointer-events-none -z-10">
-                                                <div className="absolute top-10 left-1/5 w-80 h-80 rounded-full bg-gradient-to-br from-[var(--color-accent)]/10 to-purple-600/10 blur-[120px] animate-orb" />
-                                                <div className="absolute top-32 right-1/5 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-500/8 to-cyan-500/8 blur-[100px] animate-orb" style={{ animationDelay: '-7s', animationDuration: '25s' }} />
-                                            </div>
-                                            <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-10 pb-4">
+                                            <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-12 pb-4">
                                                 <motion.div
                                                     initial={{ opacity: 0, y: 30 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
-                                                    className="flex flex-col items-center text-center mb-8 md:mb-12"
+                                                    transition={{ duration: 0.6, ease: [0.25, 0.4, 0.25, 1] }}
+                                                    className="flex flex-col lg:flex-row items-start gap-8 lg:gap-16 mb-10 md:mb-14"
                                                 >
-                                                    <motion.div
-                                                        initial={{ scale: 0.8, opacity: 0 }}
-                                                        animate={{ scale: 1, opacity: 1 }}
-                                                        transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
-                                                        className="relative mb-5"
-                                                    >
-                                                        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden backdrop-blur-xl">
-                                                            <img src="/logo.png" alt="Mada Agency" className="w-11 h-11 object-contain" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <motion.div
+                                                            initial={{ scale: 0.9, opacity: 0 }}
+                                                            animate={{ scale: 1, opacity: 1 }}
+                                                            transition={{ delay: 0.1, duration: 0.5 }}
+                                                            className="flex items-center gap-3 mb-5"
+                                                        >
+                                                            <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/8 flex items-center justify-center overflow-hidden">
+                                                                <img src="/logo.png" alt="" className="w-6 h-6 object-contain" />
+                                                            </div>
+                                                            <span className="text-[11px] font-bold text-white/20 uppercase tracking-[0.25em]">Mada Agency</span>
+                                                        </motion.div>
+                                                        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.1] mb-4">
+                                                            AI Creative Suite<br />
+                                                            <span className="text-white/40">for Modern Brands</span>
+                                                        </h1>
+                                                        <motion.p
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: 0.2, duration: 0.5 }}
+                                                            className="text-sm text-white/35 leading-relaxed max-w-md mb-6"
+                                                        >
+                                                            Generate, edit, and scale brand assets with AI.
+                                                            One platform, infinite possibilities.
+                                                        </motion.p>
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: 0.3, duration: 0.5 }}
+                                                            className="flex flex-wrap items-center gap-3 mb-6"
+                                                        >
+                                                            <button
+                                                                onClick={scrollToGrid}
+                                                                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all duration-200"
+                                                            >
+                                                                Explore Studios
+                                                                <ArrowRight className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={scrollToGrid}
+                                                                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-white/5 text-white/30 hover:text-white/50 hover:border-white/10 text-xs font-medium transition-all duration-200"
+                                                            >
+                                                                <SparklesIcon className="w-3.5 h-3.5" />
+                                                                Get Started
+                                                            </button>
+                                                        </motion.div>
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: 0.4, duration: 0.5 }}
+                                                            className="flex items-center gap-4 text-[10px] text-white/20 font-medium uppercase tracking-[0.15em]"
+                                                        >
+                                                            <span>20 Studios</span>
+                                                            <span className="w-px h-3 bg-white/10" />
+                                                            <span>AI-Powered</span>
+                                                            <span className="w-px h-3 bg-white/10" />
+                                                            <span>Real-time</span>
+                                                        </motion.div>
+                                                    </div>
+                                                    <div className="hidden lg:block w-80 xl:w-96 shrink-0">
+                                                        <div className="relative h-72 xl:h-80 w-full">
+                                                            <div className="absolute top-0 right-0 w-48 h-48 rounded-2xl hero-glass-panel rotate-3" />
+                                                            <div className="absolute top-12 right-16 w-40 h-40 rounded-2xl hero-glass-panel -rotate-2" style={{ borderColor: 'rgba(167,139,250,0.15)' }} />
+                                                            <div className="absolute bottom-0 right-8 w-36 h-36 rounded-2xl hero-glass-panel rotate-6" style={{ borderColor: 'rgba(52,211,153,0.15)' }} />
+                                                            <div className="absolute top-20 right-8 w-24 h-24 rounded-xl hero-glass-panel -rotate-6" style={{ borderColor: 'rgba(251,191,36,0.15)' }} />
+                                                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent)]/3 to-purple-600/3 blur-3xl rounded-full" />
                                                         </div>
-                                                        <div className="absolute -inset-4 rounded-3xl bg-[var(--color-accent)]/5 blur-2xl animate-pulse" />
-                                                    </motion.div>
-                                                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
-                                                        <span className="animate-shimmer-text bg-gradient-to-r from-white via-[var(--color-accent)] to-white bg-clip-text text-transparent">
-                                                            Mada Agency
-                                                        </span>
-                                                    </h1>
-                                                    <motion.p
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: 0.2, duration: 0.5 }}
-                                                        className="text-sm md:text-base text-white/40 font-medium max-w-xl leading-relaxed"
-                                                    >
-                                                        Your AI-powered creative suite — generate, edit, and manage brand assets at scale
-                                                    </motion.p>
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: 0.3, duration: 0.5 }}
-                                                        className="flex flex-wrap items-center justify-center gap-3 mt-6"
-                                                    >
-                                                        <button
-                                                            onClick={scrollToGrid}
-                                                            className="group inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition-all duration-200"
-                                                        >
-                                                            Explore Studios
-                                                            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={scrollToGrid}
-                                                            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border border-white/5 text-white/40 hover:text-white/60 hover:border-white/10 text-sm font-medium transition-all duration-200"
-                                                        >
-                                                            <SparklesIcon className="w-4 h-4" />
-                                                            Start Creating
-                                                        </button>
-                                                    </motion.div>
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: 0.4, duration: 0.5 }}
-                                                        className="flex items-center gap-6 mt-6 text-[11px] text-white/25 font-bold uppercase tracking-[0.15em]"
-                                                    >
-                                                        <span>20 Studios</span>
-                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                        <span>AI-Powered</span>
-                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                        <span>Real-time</span>
-                                                    </motion.div>
+                                                    </div>
                                                 </motion.div>
                                                 <div ref={homeGridRef}>
                                                     <StudioGrid onNavigate={navigateToView} />
