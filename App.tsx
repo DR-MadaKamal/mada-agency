@@ -20,7 +20,7 @@ import {
 } from './types';
 
 import NexusAssistant from './components/NexusAssistant';
-import { AlertTriangle, Rocket, Briefcase, Loader2 } from 'lucide-react';
+import { AlertTriangle, Rocket, Briefcase, Loader2, ArrowRight, Sparkles as SparklesIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const CreatorStudio = lazy(() => import('./components/CreatorStudio'));
@@ -710,6 +710,7 @@ function App() {
   } = state;
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const homeGridRef = useRef<HTMLDivElement>(null);
   const isAdminUser = true;
 
   useEffect(() => {
@@ -1174,6 +1175,9 @@ function App() {
                             case 'command_center':
                                 return <NexusControlCenter />;
                             case 'home':
+                                const scrollToGrid = () => {
+                                    homeGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                };
                                 return (
                                     <AnimatePresence mode="wait">
                                         <motion.div
@@ -1184,29 +1188,29 @@ function App() {
                                             transition={{ duration: 0.4, ease: 'easeOut' }}
                                             className="w-full relative"
                                         >
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] pointer-events-none -z-10">
-                                                <div className="absolute top-20 left-1/4 w-72 h-72 rounded-full bg-[var(--color-accent)]/8 blur-[100px] animate-orb" />
-                                                <div className="absolute top-40 right-1/4 w-48 h-48 rounded-full bg-[var(--color-accent)]/5 blur-[80px] animate-orb" style={{ animationDelay: '-7s', animationDuration: '25s' }} />
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] pointer-events-none -z-10">
+                                                <div className="absolute top-10 left-1/5 w-80 h-80 rounded-full bg-gradient-to-br from-[var(--color-accent)]/10 to-purple-600/10 blur-[120px] animate-orb" />
+                                                <div className="absolute top-32 right-1/5 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-500/8 to-cyan-500/8 blur-[100px] animate-orb" style={{ animationDelay: '-7s', animationDuration: '25s' }} />
                                             </div>
                                             <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-10 pb-4">
                                                 <motion.div
                                                     initial={{ opacity: 0, y: 30 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
-                                                    className="flex flex-col items-center text-center mb-10 md:mb-14"
+                                                    className="flex flex-col items-center text-center mb-8 md:mb-12"
                                                 >
                                                     <motion.div
                                                         initial={{ scale: 0.8, opacity: 0 }}
                                                         animate={{ scale: 1, opacity: 1 }}
                                                         transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
-                                                        className="relative mb-6"
+                                                        className="relative mb-5"
                                                     >
                                                         <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden backdrop-blur-xl">
                                                             <img src="/logo.png" alt="Mada Agency" className="w-11 h-11 object-contain" />
                                                         </div>
                                                         <div className="absolute -inset-4 rounded-3xl bg-[var(--color-accent)]/5 blur-2xl animate-pulse" />
                                                     </motion.div>
-                                                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white mb-3">
+                                                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
                                                         <span className="animate-shimmer-text bg-gradient-to-r from-white via-[var(--color-accent)] to-white bg-clip-text text-transparent">
                                                             Mada Agency
                                                         </span>
@@ -1217,12 +1221,33 @@ function App() {
                                                         transition={{ delay: 0.2, duration: 0.5 }}
                                                         className="text-sm md:text-base text-white/40 font-medium max-w-xl leading-relaxed"
                                                     >
-                                                        Transform your imagination into the perfect design with the power of AI
+                                                        Your AI-powered creative suite — generate, edit, and manage brand assets at scale
                                                     </motion.p>
                                                     <motion.div
                                                         initial={{ opacity: 0, y: 10 }}
                                                         animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: 0.35, duration: 0.5 }}
+                                                        transition={{ delay: 0.3, duration: 0.5 }}
+                                                        className="flex flex-wrap items-center justify-center gap-3 mt-6"
+                                                    >
+                                                        <button
+                                                            onClick={scrollToGrid}
+                                                            className="group inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition-all duration-200"
+                                                        >
+                                                            Explore Studios
+                                                            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={scrollToGrid}
+                                                            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border border-white/5 text-white/40 hover:text-white/60 hover:border-white/10 text-sm font-medium transition-all duration-200"
+                                                        >
+                                                            <SparklesIcon className="w-4 h-4" />
+                                                            Start Creating
+                                                        </button>
+                                                    </motion.div>
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: 0.4, duration: 0.5 }}
                                                         className="flex items-center gap-6 mt-6 text-[11px] text-white/25 font-bold uppercase tracking-[0.15em]"
                                                     >
                                                         <span>20 Studios</span>
@@ -1232,7 +1257,9 @@ function App() {
                                                         <span>Real-time</span>
                                                     </motion.div>
                                                 </motion.div>
-                                                <StudioGrid onNavigate={navigateToView} />
+                                                <div ref={homeGridRef}>
+                                                    <StudioGrid onNavigate={navigateToView} />
+                                                </div>
                                             </div>
                                         </motion.div>
                                     </AnimatePresence>
