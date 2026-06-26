@@ -138,7 +138,11 @@ body::before {
 .suggestions-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .studio-card {
-  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.35s ease, background 0.35s ease, box-shadow 0.35s ease, transform 0.35s cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.studio-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
 }
 .studio-card::after {
   content: '';
@@ -160,4 +164,17 @@ body::before {
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+@keyframes panelFloat {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(-8px) rotate(var(--r, 0deg)); }
+}
+.hero-panel-float {
+  animation: panelFloat 6s ease-in-out infinite;
+}
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
 }

@@ -134,7 +134,7 @@ function StudioCard({ studio, index, onNavigate }: StudioCardProps) {
     <motion.button
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.025, ease: [0.25, 0.4, 0.25, 1] }}
+      transition={{ duration: 0.45, delay: index * 0.02, ease: [0.2, 0.45, 0.15, 1] }}
       onClick={() => onNavigate(studio.id)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -144,7 +144,6 @@ function StudioCard({ studio, index, onNavigate }: StudioCardProps) {
         'studio-card relative rounded-2xl border overflow-hidden text-left cursor-pointer group',
         'bg-white/[0.03]',
         isHovered ? 'border-white/15' : 'border-white/5',
-        'transition-all duration-300',
       )}
     >
       <div
@@ -175,11 +174,11 @@ function StudioCard({ studio, index, onNavigate }: StudioCardProps) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              transition={{ duration: 0.25, ease: [0.25, 0.4, 0.25, 1] }}
               className="overflow-hidden"
             >
               <div className="border-t border-white/[0.04] pt-3 mt-3">
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {studio.features.map((f, i) => (
                     <motion.li
                       key={i}
@@ -206,8 +205,8 @@ function SectionHeader({ category }: { category: StudioCategory }) {
   const meta = CATEGORY_META[category];
   return (
     <div className="flex items-baseline gap-3 mb-4">
-      <h2 className="text-xs font-bold text-white/30 uppercase tracking-[0.2em]">{meta.label}</h2>
-      <span className="text-[10px] text-white/15 font-mono">/ {meta.description}</span>
+      <h2 className="text-xs font-semibold text-white/25 uppercase tracking-[0.25em]">{meta.label}</h2>
+      <span className="text-[10px] text-white/12 font-mono tracking-normal">/ {meta.description}</span>
     </div>
   );
 }
@@ -267,7 +266,7 @@ export default function StudioGrid({ onNavigate }: { onNavigate: (view: AppView)
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="w-full space-y-8"
+      className="w-full space-y-10"
     >
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1 max-w-xs">
@@ -314,7 +313,7 @@ export default function StudioGrid({ onNavigate }: { onNavigate: (view: AppView)
             <h2 className="text-xs font-bold text-white/30 uppercase tracking-[0.2em]">Recent</h2>
             <span className="text-[10px] text-white/15 font-mono">/ quickly resume</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
             {recentStudios.map((studio, i) => (
               <StudioCard key={studio.id} studio={studio} index={i} onNavigate={trackAndNavigate} />
             ))}
@@ -324,14 +323,15 @@ export default function StudioGrid({ onNavigate }: { onNavigate: (view: AppView)
       )}
 
       {grouped ? (
-        (Object.entries(grouped) as [StudioCategory, StudioInfo[]][]).map(([cat, studios]) => (
+        (Object.entries(grouped) as [StudioCategory, StudioInfo[]][]).map(([cat, studios], gi, arr) => (
           <section key={cat}>
             <SectionHeader category={cat} />
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5">
               {studios.map((studio, i) => (
                 <StudioCard key={studio.id} studio={studio} index={i} onNavigate={trackAndNavigate} />
               ))}
             </div>
+            {gi < arr.length - 1 && <div className="section-divider mt-10" />}
           </section>
         ))
       ) : (
@@ -347,7 +347,7 @@ export default function StudioGrid({ onNavigate }: { onNavigate: (view: AppView)
               <p className="text-sm text-white/25">No studios match your search</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5">
               {filtered.map((studio, i) => (
                 <StudioCard key={studio.id} studio={studio} index={i} onNavigate={trackAndNavigate} />
               ))}

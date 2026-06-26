@@ -1189,77 +1189,82 @@ function App() {
                                             className="w-full relative"
                                         >
                                             <div className="w-full max-w-7xl mx-auto px-4 pt-6 md:pt-12 pb-4">
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 30 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ duration: 0.6, ease: [0.25, 0.4, 0.25, 1] }}
-                                                    className="flex flex-col lg:flex-row items-start gap-8 lg:gap-16 mb-10 md:mb-14"
-                                                >
-                                                    <div className="flex-1 min-w-0">
-                                                        <motion.div
-                                                            initial={{ scale: 0.9, opacity: 0 }}
-                                                            animate={{ scale: 1, opacity: 1 }}
-                                                            transition={{ delay: 0.1, duration: 0.5 }}
-                                                            className="flex items-center gap-3 mb-5"
-                                                        >
-                                                            <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/8 flex items-center justify-center overflow-hidden">
-                                                                <img src="/logo.png" alt="" className="w-6 h-6 object-contain" />
-                                                            </div>
-                                                            <span className="text-[11px] font-bold text-white/20 uppercase tracking-[0.25em]">Mada Agency</span>
-                                                        </motion.div>
-                                                        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.1] mb-4">
-                                                            AI Creative Suite<br />
-                                                            <span className="text-white/40">for Modern Brands</span>
-                                                        </h1>
-                                                        <motion.p
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: 0.2, duration: 0.5 }}
-                                                            className="text-sm text-white/35 leading-relaxed max-w-md mb-6"
-                                                        >
-                                                            Generate, edit, and scale brand assets with AI.
-                                                            One platform, infinite possibilities.
-                                                        </motion.p>
-                                                        <motion.div
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: 0.3, duration: 0.5 }}
-                                                            className="flex flex-wrap items-center gap-3 mb-6"
-                                                        >
-                                                            <button
-                                                                onClick={scrollToGrid}
-                                                                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all duration-200"
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 24 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.6, ease: [0.2, 0.45, 0.15, 1] }}
+                                                        className="flex flex-col lg:flex-row items-start gap-8 lg:gap-16 mb-10 md:mb-14"
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <motion.div
+                                                                initial={{ scale: 0.92, opacity: 0 }}
+                                                                animate={{ scale: 1, opacity: 1 }}
+                                                                transition={{ delay: 0.08, duration: 0.45, ease: [0.25, 0.4, 0.25, 1] }}
+                                                                className="flex items-center gap-3 mb-5"
                                                             >
-                                                                Explore Studios
-                                                                <ArrowRight className="w-3.5 h-3.5" />
-                                                            </button>
-                                                            <button
-                                                                onClick={scrollToGrid}
-                                                                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-white/5 text-white/30 hover:text-white/50 hover:border-white/10 text-xs font-medium transition-all duration-200"
+                                                                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/8 flex items-center justify-center overflow-hidden">
+                                                                    <img src="/logo.png" alt="" className="w-6 h-6 object-contain" />
+                                                                </div>
+                                                                <span className="text-[11px] font-bold text-white/20 uppercase tracking-[0.25em]">Mada Agency</span>
+                                                            </motion.div>
+                                                            <motion.h1
+                                                                initial={{ opacity: 0, y: 14 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ delay: 0.15, duration: 0.5, ease: [0.2, 0.45, 0.15, 1] }}
+                                                                className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.1] mb-4"
                                                             >
-                                                                <SparklesIcon className="w-3.5 h-3.5" />
-                                                                Get Started
-                                                            </button>
-                                                        </motion.div>
-                                                        <motion.div
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: 0.4, duration: 0.5 }}
-                                                            className="flex items-center gap-4 text-[10px] text-white/20 font-medium uppercase tracking-[0.15em]"
-                                                        >
-                                                            <span>20 Studios</span>
-                                                            <span className="w-px h-3 bg-white/10" />
-                                                            <span>AI-Powered</span>
-                                                            <span className="w-px h-3 bg-white/10" />
-                                                            <span>Real-time</span>
-                                                        </motion.div>
-                                                    </div>
+                                                                AI Creative Suite<br />
+                                                                <span className="text-white/40">for Modern Brands</span>
+                                                            </motion.h1>
+                                                            <motion.p
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ delay: 0.22, duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
+                                                                className="text-sm text-white/35 leading-relaxed max-w-md mb-6"
+                                                            >
+                                                                Generate, edit, and scale brand assets with AI.
+                                                                One platform, infinite possibilities.
+                                                            </motion.p>
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ delay: 0.3, duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
+                                                                className="flex flex-wrap items-center gap-3 mb-6"
+                                                            >
+                                                                <button
+                                                                    onClick={scrollToGrid}
+                                                                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all duration-200"
+                                                                >
+                                                                    Explore Studios
+                                                                    <ArrowRight className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={scrollToGrid}
+                                                                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-white/5 text-white/30 hover:text-white/50 hover:border-white/10 text-xs font-medium transition-all duration-200"
+                                                                >
+                                                                    <SparklesIcon className="w-3.5 h-3.5" />
+                                                                    Get Started
+                                                                </button>
+                                                            </motion.div>
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ delay: 0.38, duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
+                                                                className="flex items-center gap-4 text-[10px] text-white/20 font-medium uppercase tracking-[0.15em]"
+                                                            >
+                                                                <span>20 Studios</span>
+                                                                <span className="w-px h-3 bg-white/10" />
+                                                                <span>AI-Powered</span>
+                                                                <span className="w-px h-3 bg-white/10" />
+                                                                <span>Real-time</span>
+                                                            </motion.div>
+                                                        </div>
                                                     <div className="hidden lg:block w-80 xl:w-96 shrink-0">
                                                         <div className="relative h-72 xl:h-80 w-full">
-                                                            <div className="absolute top-0 right-0 w-48 h-48 rounded-2xl hero-glass-panel rotate-3" />
-                                                            <div className="absolute top-12 right-16 w-40 h-40 rounded-2xl hero-glass-panel -rotate-2" style={{ borderColor: 'rgba(167,139,250,0.15)' }} />
-                                                            <div className="absolute bottom-0 right-8 w-36 h-36 rounded-2xl hero-glass-panel rotate-6" style={{ borderColor: 'rgba(52,211,153,0.15)' }} />
-                                                            <div className="absolute top-20 right-8 w-24 h-24 rounded-xl hero-glass-panel -rotate-6" style={{ borderColor: 'rgba(251,191,36,0.15)' }} />
+                                                            <div className="absolute top-0 right-0 w-48 h-48 rounded-2xl hero-glass-panel hero-panel-float rotate-3" style={{ '--r': '3deg' } as React.CSSProperties} />
+                                                            <div className="absolute top-12 right-16 w-40 h-40 rounded-2xl hero-glass-panel hero-panel-float -rotate-2" style={{ borderColor: 'rgba(167,139,250,0.15)', animationDelay: '-1.5s', '--r': '-2deg' } as React.CSSProperties} />
+                                                            <div className="absolute bottom-0 right-8 w-36 h-36 rounded-2xl hero-glass-panel hero-panel-float rotate-6" style={{ borderColor: 'rgba(52,211,153,0.15)', animationDelay: '-3s', '--r': '6deg' } as React.CSSProperties} />
+                                                            <div className="absolute top-20 right-8 w-24 h-24 rounded-xl hero-glass-panel hero-panel-float -rotate-6" style={{ borderColor: 'rgba(251,191,36,0.15)', animationDelay: '-4.5s', '--r': '-6deg' } as React.CSSProperties} />
                                                             <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent)]/3 to-purple-600/3 blur-3xl rounded-full" />
                                                         </div>
                                                     </div>
