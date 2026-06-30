@@ -11,7 +11,7 @@ export class IntegrationService {
     /**
      * Finds the first active integration for a specific provider
      */
-    static async getActiveIntegration(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral') {
+    static async getActiveIntegration(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen') {
         const q = query(
             collection(db, 'integrations'), 
             where('provider', '==', provider),
@@ -65,7 +65,7 @@ export class IntegrationService {
      * Intelligent fallback: Tries user-configured integrations first,
      * then falls back to internal environment variables if configured.
      */
-    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'custom' | 'external', params: AiCallParams, customConfig?: any) {
+    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen' | 'custom' | 'external', params: AiCallParams, customConfig?: any) {
         if ((provider === 'custom' || provider === 'external') && customConfig) {
             console.log(`Using custom integration: ${customConfig.name || 'unnamed'}`);
             return this.callAi('custom_' + Date.now(), params, customConfig);

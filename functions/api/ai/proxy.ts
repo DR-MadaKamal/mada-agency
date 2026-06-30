@@ -11,10 +11,11 @@ interface Env {
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   MISTRAL_API_KEY?: string;
+  QWEN_API_KEY?: string;
 }
 
 interface ProxyPayload {
-  provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral';
+  provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen';
   modelId: string;
   body?: any;
   prompt?: string;
@@ -30,6 +31,7 @@ const PROVIDER_URLS: Record<string, (model: string) => string> = {
   groq: () => 'https://api.groq.com/openai/v1/chat/completions',
   openrouter: () => 'https://openrouter.ai/api/v1/chat/completions',
   mistral: () => 'https://api.mistral.ai/v1/chat/completions',
+  qwen: () => 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
 };
 
 const PROVIDER_HEADERS: Record<string, (key: string, accessToken?: string) => Record<string, string>> = {
@@ -51,6 +53,7 @@ const PROVIDER_HEADERS: Record<string, (key: string, accessToken?: string) => Re
   groq: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
   openrouter: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
   mistral: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+  qwen: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
 };
 
 function buildBody(provider: string, modelId: string, prompt: string): any {
@@ -62,6 +65,7 @@ function buildBody(provider: string, modelId: string, prompt: string): any {
     case 'groq':
     case 'openrouter':
     case 'mistral':
+    case 'qwen':
       return { model: modelId, messages: [{ role: 'user', content: prompt }] };
     case 'anthropic':
       return { model: modelId, max_tokens: 4096, messages: [{ role: 'user', content: prompt }] };
@@ -79,6 +83,7 @@ function extractText(provider: string, data: any): string {
     case 'groq':
     case 'openrouter':
     case 'mistral':
+    case 'qwen':
       return data.choices?.[0]?.message?.content || '';
     case 'anthropic':
       return data.content?.[0]?.text || '';

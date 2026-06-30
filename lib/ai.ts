@@ -5,11 +5,11 @@ interface AIOptions {
   modelId?: string;
   signal?: AbortSignal;
   onProgress?: (chunk: string) => void;
-  fallbackProviders?: ('google' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral')[];
+  fallbackProviders?: ('google' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen')[];
   externalServiceConfig?: ExternalServiceConfig;
 }
 
-type AIOptionsProvider = 'google' | 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'custom' | 'external';
+type AIOptionsProvider = 'google' | 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen' | 'custom' | 'external';
 
 const PAGES_FUNCTION_URL = '/api/ai/proxy';
 const PAGES_CALL_URL = '/api/ai/call';
@@ -23,6 +23,7 @@ function getDefaultModel(provider: string): string {
     case 'groq': return 'llama3-70b-8192';
     case 'openrouter': return 'openai/gpt-4o';
     case 'mistral': return 'mistral-large-latest';
+    case 'qwen': return 'qwen-max';
     default: return 'gemini-2.5-flash';
   }
 }

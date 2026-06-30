@@ -58,6 +58,8 @@ export class NexusAssistant extends Agent<Env, State> {
         response = await this.callOpenRouter(msg, history);
       } else if (selectedProvider === "mistral") {
         response = await this.callMistral(msg, history);
+      } else if (selectedProvider === "qwen") {
+        response = await this.callQwen(msg, history);
       } else {
         response = await this.callGemini(msg, history);
       }
@@ -200,6 +202,10 @@ Core Directives:
 
   private async callMistral(prompt: string, history: ChatMessage[]): Promise<string> {
     return this.callOpenAICompatible(this.env.MISTRAL_API_KEY, "mistral-large-latest", prompt, history, "https://api.mistral.ai/v1/chat/completions", "MISTRAL_API_KEY");
+  }
+
+  private async callQwen(prompt: string, history: ChatMessage[]): Promise<string> {
+    return this.callOpenAICompatible(this.env.QWEN_API_KEY, "qwen-max", prompt, history, "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", "QWEN_API_KEY");
   }
 
   private async callOpenAICompatible(apiKey: string | undefined, defaultModel: string, prompt: string, history: ChatMessage[], baseUrl: string, envKey: string): Promise<string> {

@@ -38,7 +38,12 @@ const BUILTIN_OPTIONS: ProviderOption[] = [
   { provider: 'groq', modelId: 'llama3-70b-8192', label: 'Llama 3 70B', group: 'Groq', icon: Zap, color: '#F97316' },
   { provider: 'groq', modelId: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', group: 'Groq', icon: Zap, color: '#F97316' },
   { provider: 'openrouter', modelId: 'openai/gpt-4o', label: 'GPT-4o (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
-  { provider: 'openrouter', modelId: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'google/gemini-2.0-flash', label: 'Gemini 2.0 Flash (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'meta-llama/llama-3.1-70b', label: 'Llama 3.1 70B (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'qwen/qwen-plus', label: 'Qwen Plus (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'deepseek/deepseek-chat', label: 'DeepSeek V3 (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
   { provider: 'mistral', modelId: 'mistral-large-latest', label: 'Mistral Large', group: 'Mistral', icon: Wind, color: '#3B82F6' },
   { provider: 'mistral', modelId: 'mistral-small-latest', label: 'Mistral Small', group: 'Mistral', icon: Wind, color: '#3B82F6' },
 ];

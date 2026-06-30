@@ -1,5 +1,5 @@
 
-export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'external';
+export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen' | 'external';
 
 export interface ExternalAIService {
   id: string;
@@ -69,6 +69,7 @@ export const KNOWN_AI_ENDPOINTS: Record<string, { url: string; authType: 'header
   groq: { url: 'https://api.groq.com/openai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768'] },
   deepseek: { url: 'https://api.deepseek.com/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['deepseek-chat', 'deepseek-coder'] },
   openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-2.0-flash'] },
+  qwen: { url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['qwen-max', 'qwen-plus', 'qwen-turbo'] },
   xai: { url: 'https://api.x.ai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['grok-beta', 'grok-2'] },
   mistral: { url: 'https://api.mistral.ai/v1/chat/completions', authType: 'bearer', authHeaderName: 'Authorization', models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'] },
   cohere: { url: 'https://api.cohere.ai/v1/generate', authType: 'bearer', authHeaderName: 'Authorization', models: ['command-r', 'command-r-plus'] },
@@ -249,7 +250,7 @@ export interface GlobalHistoryItem {
 export interface Integration {
     id: string;
     name: string;
-    provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'custom' | 'google';
+    provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral' | 'qwen' | 'custom' | 'google';
     apiKeys: string[];
     endpoint: string;
     authType?: 'header' | 'bearer' | 'api-key';

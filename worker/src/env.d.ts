@@ -6,6 +6,7 @@ interface Env {
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   MISTRAL_API_KEY?: string;
+  QWEN_API_KEY?: string;
   SYNC_API_KEY?: string;
   StrategicOrchestrator: DurableObjectNamespace;
   KnowledgeMiner: DurableObjectNamespace;

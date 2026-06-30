@@ -11,6 +11,7 @@ interface Env {
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   MISTRAL_API_KEY?: string;
+  QWEN_API_KEY?: string;
 }
 
 interface IntegrationConfig {
@@ -38,6 +39,7 @@ function getDefaultModel(provider: string): string {
     case 'groq': return 'llama3-70b-8192';
     case 'openrouter': return 'openai/gpt-4o';
     case 'mistral': return 'mistral-large-latest';
+    case 'qwen': return 'qwen-max';
     default: return 'gemini-2.0-flash';
   }
 }
@@ -81,6 +83,10 @@ function callOpenRouter(apiKey: string, modelId: string, payload: AiPayload): Pr
 
 function callMistral(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
   return callOpenAICompatible(apiKey, modelId || 'mistral-large-latest', payload, 'https://api.mistral.ai/v1/chat/completions', 'Mistral');
+}
+
+function callQwen(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'qwen-max', payload, 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', 'Qwen');
 }
 
 async function callAnthropic(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
@@ -274,6 +280,8 @@ export const onRequest: any = async (context: any) => {
       messageContent = await callOpenRouter(apiKey, modelId, payload);
     } else if (provider === 'mistral') {
       messageContent = await callMistral(apiKey, modelId, payload);
+    } else if (provider === 'qwen') {
+      messageContent = await callQwen(apiKey, modelId, payload);
     } else if (provider === 'custom' && config?.endpoint) {
       messageContent = await callCustom(config, apiKey, modelId, payload);
     } else {
