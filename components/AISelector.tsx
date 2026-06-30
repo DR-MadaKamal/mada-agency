@@ -23,6 +23,21 @@ const SERVICE_ICONS: Record<string, any> = {
   Zap, Image, Eye, Search, Bot, Star, Mail,
 };
 
+const BUILTIN_MODELS: AIModel[] = [
+  { id: 'builtin-gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', modelId: 'gemini-2.5-flash', description: 'Google\'s fastest multimodal model', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', modelId: 'gemini-2.0-flash', description: 'Legacy Gemini flash', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-gpt-4o', name: 'GPT-4o', provider: 'openai', modelId: 'gpt-4o', description: 'OpenAI\'s most capable model', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', modelId: 'gpt-4o-mini', description: 'Smaller, faster GPT-4o', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', modelId: 'deepseek-chat', description: 'DeepSeek\'s general-purpose model', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-llama3-70b', name: 'Llama 3 70B', provider: 'groq', modelId: 'llama3-70b-8192', description: 'Groq\'s fastest Llama 3 70B', isFree: true, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-mixtral-8x7b', name: 'Mixtral 8x7B', provider: 'groq', modelId: 'mixtral-8x7b-32768', description: 'Groq-hosted Mixtral', isFree: true, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-or-gpt-4o', name: 'GPT-4o (OpenRouter)', provider: 'openrouter', modelId: 'openai/gpt-4o', description: 'GPT-4o via OpenRouter', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-or-claude-3.5', name: 'Claude 3.5 Sonnet (OpenRouter)', provider: 'openrouter', modelId: 'anthropic/claude-3.5-sonnet', description: 'Claude 3.5 via OpenRouter', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-or-gemini-2.0', name: 'Gemini 2.0 Flash (OpenRouter)', provider: 'openrouter', modelId: 'google/gemini-2.0-flash', description: 'Gemini via OpenRouter', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-mistral-large', name: 'Mistral Large', provider: 'mistral', modelId: 'mistral-large-latest', description: 'Mistral\'s flagship model', isFree: false, studios: [] as AppView[], status: 'active' },
+  { id: 'builtin-mistral-small', name: 'Mistral Small', provider: 'mistral', modelId: 'mistral-small-latest', description: 'Mistral\'s lightweight model', isFree: true, studios: [] as AppView[], status: 'active' },
+];
+
 const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, className = '' }) => {
     const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -63,8 +78,14 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
         );
 
         const unsub = onSnapshot(q, (snap) => {
-            const allModels = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIModel));
-            const filtered = allModels.filter(m => m.studios.includes(studioId));
+            const firestoreModels = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIModel));
+            const firestoreProviders = new Set(firestoreModels.map(m => m.provider));
+            const fallbackModels = BUILTIN_MODELS.filter(m => !firestoreProviders.has(m.provider));
+            const merged = [...firestoreModels, ...fallbackModels];
+            const filtered = merged.filter(m => {
+                if (m.studios.length === 0) return true; // fallback models available everywhere
+                return m.studios.includes(studioId);
+            });
             setAvailableModels(filtered);
             setIsLoading(false);
         });
