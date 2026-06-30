@@ -11,7 +11,7 @@ export class IntegrationService {
     /**
      * Finds the first active integration for a specific provider
      */
-    static async getActiveIntegration(provider: 'gemini' | 'openai' | 'anthropic') {
+    static async getActiveIntegration(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek') {
         const q = query(
             collection(db, 'integrations'), 
             where('provider', '==', provider),
@@ -28,9 +28,16 @@ export class IntegrationService {
     static async callAi(integrationId: string, params: AiCallParams, config?: any) {
         const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : '';
         
+        let accessToken: string | undefined;
+        try {
+            const { getAccessToken: getGoogleToken } = await import('../lib/googleAuth');
+            accessToken = getGoogleToken() || undefined;
+        } catch {}
+        
         const body: any = {
             integrationId,
-            payload: params
+            payload: params,
+            accessToken,
         };
         if (config) {
             body.config = config;
@@ -58,7 +65,7 @@ export class IntegrationService {
      * Intelligent fallback: Tries user-configured integrations first,
      * then falls back to internal environment variables if configured.
      */
-    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic' | 'custom' | 'external', params: AiCallParams, customConfig?: any) {
+    static async smartCall(provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'external', params: AiCallParams, customConfig?: any) {
         if ((provider === 'custom' || provider === 'external') && customConfig) {
             console.log(`Using custom integration: ${customConfig.name || 'unnamed'}`);
             return this.callAi('custom_' + Date.now(), params, customConfig);

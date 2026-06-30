@@ -7,30 +7,41 @@ interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
 }
 
 interface ProxyPayload {
-  provider: 'gemini' | 'openai' | 'anthropic';
+  provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek';
   modelId: string;
   body?: any;
   prompt?: string;
   systemInstruction?: string;
+  accessToken?: string;
 }
 
 const PROVIDER_URLS: Record<string, (model: string) => string> = {
   gemini: (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
   openai: () => 'https://api.openai.com/v1/chat/completions',
   anthropic: () => 'https://api.anthropic.com/v1/messages',
+  deepseek: () => 'https://api.deepseek.com/chat/completions',
 };
 
-const PROVIDER_HEADERS: Record<string, (key: string) => Record<string, string>> = {
-  gemini: (key) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key }),
+const PROVIDER_HEADERS: Record<string, (key: string, accessToken?: string) => Record<string, string>> = {
+  gemini: (key, accessToken) => {
+    if (accessToken) return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` };
+    const oauthPrefixes = ['ya29.', 'YA29.', 'AQ.', 'aq.'];
+    if (oauthPrefixes.some(p => key.startsWith(p))) {
+      return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
+    }
+    return { 'Content-Type': 'application/json', 'x-goog-api-key': key };
+  },
   openai: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
   anthropic: (key) => ({
     'Content-Type': 'application/json',
     'x-api-key': key,
     'anthropic-version': '2023-06-01',
   }),
+  deepseek: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
 };
 
 function buildBody(provider: string, modelId: string, prompt: string): any {
@@ -38,6 +49,7 @@ function buildBody(provider: string, modelId: string, prompt: string): any {
     case 'gemini':
       return { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
     case 'openai':
+    case 'deepseek':
       return { model: modelId, messages: [{ role: 'user', content: prompt }] };
     case 'anthropic':
       return { model: modelId, max_tokens: 4096, messages: [{ role: 'user', content: prompt }] };
@@ -51,6 +63,7 @@ function extractText(provider: string, data: any): string {
     case 'gemini':
       return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     case 'openai':
+    case 'deepseek':
       return data.choices?.[0]?.message?.content || '';
     case 'anthropic':
       return data.content?.[0]?.text || '';
@@ -88,7 +101,7 @@ export const onRequest: any = async (context: any) => {
 
     const isSimpleMode = !!(parsed.prompt);
     const body = parsed.body || buildBody(normalizedProvider, modelId, parsed.prompt || '');
-    const headers = PROVIDER_HEADERS[normalizedProvider]?.(apiKey) || {};
+    const headers = PROVIDER_HEADERS[normalizedProvider]?.(apiKey, parsed.accessToken) || {};
     const res = await fetch(url, {
       method: 'POST',
       headers,

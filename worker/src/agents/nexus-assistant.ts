@@ -50,6 +50,8 @@ export class NexusAssistant extends Agent<Env, State> {
         response = await this.callOpenAI(msg, history);
       } else if (selectedProvider === "anthropic") {
         response = await this.callAnthropic(msg, history);
+      } else if (selectedProvider === "deepseek") {
+        response = await this.callDeepSeek(msg, history);
       } else {
         response = await this.callGemini(msg, history);
       }
@@ -176,6 +178,26 @@ Core Directives:
     const data: any = await res.json();
     if (!res.ok) throw new Error(data.error?.message || "Anthropic call failed");
     return data.content?.[0]?.text || "";
+  }
+
+  private async callDeepSeek(prompt: string, history: ChatMessage[]): Promise<string> {
+    const apiKey = this.env.DEEPSEEK_API_KEY;
+    if (!apiKey) return "DEEPSEEK_API_KEY not configured. Set it in Cloudflare secrets.";
+
+    const messages = [
+      { role: "system", content: this.buildSystemPrompt() },
+      ...history.slice(-20).filter(h => h.role !== "system").map(h => ({ role: h.role, content: h.content })),
+      { role: "user", content: prompt },
+    ];
+
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: "deepseek-chat", messages }),
+    });
+    const data: any = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "DeepSeek call failed");
+    return data.choices?.[0]?.message?.content || "";
   }
 
   async fetch(request: Request): Promise<Response> {

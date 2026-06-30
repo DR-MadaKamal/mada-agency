@@ -527,9 +527,9 @@ export function ContentTools({ project, setProject, brandName, specialty, goal, 
       const override = toolProvider || aiConfig;
       const isCustom = override.provider === 'custom';
       const result = await call(prompt, {
-        provider: isCustom ? 'custom' : override.provider as 'google' | 'openai' | 'anthropic',
+        provider: isCustom ? 'custom' : override.provider as 'google' | 'openai' | 'anthropic' | 'deepseek',
         modelId: override.modelId,
-        ...(isCustom ? { externalServiceConfig: override.externalServiceConfig } : { fallbackProviders: ['google', 'openai', 'anthropic'].filter(p => p !== override.provider) as ('google' | 'openai' | 'anthropic')[] }),
+        ...(isCustom ? { externalServiceConfig: override.externalServiceConfig } : { fallbackProviders: ['google', 'openai', 'anthropic', 'deepseek'].filter(p => p !== override.provider) as ('google' | 'openai' | 'anthropic' | 'deepseek')[] }),
       });
       setProject(p => ({ ...p, contentResults: { ...(p.contentResults || {}), [t.id]: result }, contentSubTab: t.id }));
       toast({ type: 'success', title: `${t.label} generated` });

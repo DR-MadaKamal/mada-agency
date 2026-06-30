@@ -1,5 +1,5 @@
 
-export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini' | 'external';
+export type AIProvider = 'google' | 'openai' | 'anthropic' | 'custom' | 'gemini' | 'deepseek' | 'external';
 
 export interface ExternalAIService {
   id: string;
@@ -248,7 +248,7 @@ export interface GlobalHistoryItem {
 export interface Integration {
     id: string;
     name: string;
-    provider: 'gemini' | 'openai' | 'anthropic' | 'custom' | 'google';
+    provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'google';
     apiKeys: string[];
     endpoint: string;
     authType?: 'header' | 'bearer' | 'api-key';

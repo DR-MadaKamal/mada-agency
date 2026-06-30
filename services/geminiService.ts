@@ -18,10 +18,12 @@ async function googleAICall(modelId: string, contents: any, config: any = {}, si
       }
     }
   }
+  const { getAccessToken } = await import('../lib/googleAuth');
+  const accessToken = getAccessToken() || undefined;
   const res = await fetch('/api/ai/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider: 'gemini', modelId, body }),
+    body: JSON.stringify({ provider: 'gemini', modelId, body, accessToken }),
     signal,
   });
   if (!res.ok) {

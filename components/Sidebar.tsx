@@ -1,4 +1,4 @@
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Image, Layout, Camera, Edit3, PenTool, Volume2, BarChart3,
@@ -7,12 +7,13 @@ import {
   Sun, Moon, Monitor, SquareDashed, Command,
   Clock, Star, Plus, PanelLeftClose, PanelLeft,
   CalendarDays, Grid3x3, ImageDown, AlertTriangle,
-  Home,
+  Home, LogIn, LogOut, User,
 } from 'lucide-react';
 import { AppView } from '../types';
 import { cn } from '../lib/utils';
 import { LOGO_IMAGE_URL } from '../constants';
 import { ErrorService } from '../lib/errorService';
+import { subscribe as onGoogleAuthChange, getStatus as getGoogleStatus, signInWithGoogle, signOut as googleSignOut } from '../lib/googleAuth';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -68,6 +69,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo((({ collapsed, onToggleCollap
     cb => ErrorService.subscribe(cb),
     () => ErrorService.getMetrics().unresolvedCount,
   );
+  const googleStatus = useSyncExternalStore(onGoogleAuthChange, getGoogleStatus);
 
   const renderStudioItem = (studio: StudioEntry) => {
     const isActive = activeView === studio.id;
@@ -240,6 +242,32 @@ const Sidebar: React.FC<SidebarProps> = React.memo((({ collapsed, onToggleCollap
             </span>
           )}
         </button>
+
+        {/* Google Sign-In */}
+        {googleStatus !== 'unavailable' && (
+          <button
+            onClick={async () => {
+              if (googleStatus === 'signed-in') {
+                googleSignOut();
+              } else {
+                await signInWithGoogle();
+              }
+            }}
+            className={cn(
+              'flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+              collapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+              googleStatus === 'signed-in'
+                ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
+                : 'text-white/30 hover:text-white/60 hover:bg-white/5',
+            )}
+            title={collapsed ? (googleStatus === 'signed-in' ? 'Sign Out' : 'Sign in with Google') : undefined}
+          >
+            {googleStatus === 'signed-in' ? <LogOut className="w-3.5 h-3.5 shrink-0" /> : <User className="w-3.5 h-3.5 shrink-0" />}
+            {!collapsed && (
+              <span className="flex-1 text-left">{googleStatus === 'signed-in' ? 'Sign Out' : 'Google Sign-In'}</span>
+            )}
+          </button>
+        )}
 
         {/* Theme */}
         <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between px-2 py-1')}>

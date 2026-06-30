@@ -7,6 +7,7 @@ interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
 }
 
 interface IntegrationConfig {
@@ -30,19 +31,20 @@ function getDefaultModel(provider: string): string {
     case 'gemini': return 'gemini-2.0-flash';
     case 'openai': return 'gpt-4o';
     case 'anthropic': return 'claude-3-5-sonnet-20240620';
+    case 'deepseek': return 'deepseek-chat';
     default: return 'gemini-2.0-flash';
   }
 }
 
-async function callOpenAI(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callOpenAICompatible(apiKey: string, modelId: string, payload: AiPayload, baseUrl: string, label: string): Promise<string> {
+  const res = await fetch(baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: modelId || 'gpt-4o',
+      model: modelId,
       messages: [
         ...(payload.systemInstruction ? [{ role: 'system', content: payload.systemInstruction }] : []),
         ...(payload.history || []).map((h) => ({ role: h.role, content: h.content })),
@@ -51,8 +53,16 @@ async function callOpenAI(apiKey: string, modelId: string, payload: AiPayload): 
     }),
   });
   const data: any = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'OpenAI call failed');
+  if (!res.ok) throw new Error(data.error?.message || `${label} call failed`);
   return data.choices?.[0]?.message?.content || '';
+}
+
+function callOpenAI(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'gpt-4o', payload, 'https://api.openai.com/v1/chat/completions', 'OpenAI');
+}
+
+function callDeepSeek(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'deepseek-chat', payload, 'https://api.deepseek.com/chat/completions', 'DeepSeek');
 }
 
 async function callAnthropic(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
@@ -81,7 +91,7 @@ async function callAnthropic(apiKey: string, modelId: string, payload: AiPayload
   return data.content?.[0]?.text || '';
 }
 
-async function callGemini(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+async function callGemini(apiKey: string, modelId: string, payload: AiPayload, accessToken?: string): Promise<string> {
   const contents: any[] = [];
   if (payload.systemInstruction) {
     contents.push({ role: 'user', parts: [{ text: `System Instruction: ${payload.systemInstruction}` }] });
@@ -94,9 +104,25 @@ async function callGemini(apiKey: string, modelId: string, payload: AiPayload): 
   }
   contents.push({ role: 'user', parts: [{ text: payload.prompt }] });
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`, {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  let url: string;
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId || 'gemini-2.0-flash'}:generateContent`;
+  } else {
+    const oauthPrefixes = ['ya29.', 'YA29.', 'AQ.', 'aq.'];
+    if (oauthPrefixes.some(p => apiKey.startsWith(p))) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId || 'gemini-2.0-flash'}:generateContent`;
+    } else {
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`;
+    }
+  }
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ contents }),
   });
   const data: any = await res.json();
@@ -177,10 +203,11 @@ export const onRequest: any = async (context: any) => {
   }
 
   try {
-    const { integrationId, payload, config } = await request.json() as {
+    const { integrationId, payload, config, accessToken } = await request.json() as {
       integrationId: string;
       payload: AiPayload;
       config?: IntegrationConfig;
+      accessToken?: string;
     };
 
     let provider = '';
@@ -220,7 +247,9 @@ export const onRequest: any = async (context: any) => {
     } else if (provider === 'anthropic') {
       messageContent = await callAnthropic(apiKey, modelId, payload);
     } else if (provider === 'gemini' || provider === 'google') {
-      messageContent = await callGemini(apiKey, modelId, payload);
+      messageContent = await callGemini(apiKey, modelId, payload, accessToken);
+    } else if (provider === 'deepseek') {
+      messageContent = await callDeepSeek(apiKey, modelId, payload);
     } else if (provider === 'custom' && config?.endpoint) {
       messageContent = await callCustom(config, apiKey, modelId, payload);
     } else {

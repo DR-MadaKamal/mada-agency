@@ -5,11 +5,11 @@ interface AIOptions {
   modelId?: string;
   signal?: AbortSignal;
   onProgress?: (chunk: string) => void;
-  fallbackProviders?: ('google' | 'openai' | 'anthropic')[];
+  fallbackProviders?: ('google' | 'openai' | 'anthropic' | 'deepseek')[];
   externalServiceConfig?: ExternalServiceConfig;
 }
 
-type AIOptionsProvider = 'google' | 'gemini' | 'openai' | 'anthropic' | 'custom' | 'external';
+type AIOptionsProvider = 'google' | 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'external';
 
 const PAGES_FUNCTION_URL = '/api/ai/proxy';
 const PAGES_CALL_URL = '/api/ai/call';
@@ -19,6 +19,7 @@ function getDefaultModel(provider: string): string {
     case 'google': case 'gemini': return 'gemini-2.5-flash';
     case 'openai': return 'gpt-4o';
     case 'anthropic': return 'claude-3-5-sonnet-20240620';
+    case 'deepseek': return 'deepseek-chat';
     default: return 'gemini-2.5-flash';
   }
 }

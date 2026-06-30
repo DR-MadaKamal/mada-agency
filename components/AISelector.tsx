@@ -80,6 +80,7 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
             case 'google': return Sparkles;
             case 'openai': return Brain;
             case 'anthropic': return ShieldCheck;
+            case 'deepseek': return Zap;
             case 'external': return ExternalLink;
             default: return Cpu;
         }
@@ -173,7 +174,7 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
                                     }`}
                                 >
                                     <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'text-[var(--color-accent)] scale-110' : ''}`} />
-                                    <span className={`text-[10px] font-bold tracking-tight uppercase ${isActive ? 'text-white' : ''}`}>{p === 'google' ? 'Google' : p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : 'Custom'}</span>
+                                    <span className={`text-[10px] font-bold tracking-tight uppercase ${isActive ? 'text-white' : ''}`}>{p === 'google' ? 'Google' : p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : p === 'deepseek' ? 'DeepSeek' : 'Custom'}</span>
                                     
                                     {isActive && (
                                         <motion.div 
