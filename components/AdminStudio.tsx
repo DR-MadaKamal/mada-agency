@@ -47,13 +47,15 @@ import {
     Layout,
     ExternalLink,
     Copy,
-    Star
+    Star,
+    Gauge
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import GlobalHistoryPanel from './GlobalHistoryPanel';
 import AssetLibraryPanel from './AssetLibraryPanel';
 import ProjectHubPanel from './ProjectHubPanel';
 import SmartSuggestions from './SmartSuggestions';
+import QuotaPanel from './QuotaPanel';
 
 const EcosystemCard: React.FC<{ title: string, desc: string, icon: any, onClick: () => void }> = ({ title, desc, icon: Icon, onClick }) => (
     <div 
@@ -91,7 +93,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
     const [logs, setLogs] = useState<ApiLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
-    const [activeTab, setActiveTab] = useState<'integrations' | 'projects' | 'users' | 'logs' | 'stats' | 'infrastructure' | 'models' | 'settings' | 'external'>('integrations');
+    const [activeTab, setActiveTab] = useState<'integrations' | 'projects' | 'users' | 'logs' | 'stats' | 'infrastructure' | 'models' | 'settings' | 'external' | 'quota'>('integrations');
     const [activeSettingsView, setActiveSettingsView] = useState<'governance' | 'vault' | 'history' | 'appearance' | 'general'>('governance');
     const [history, setHistory] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
@@ -427,6 +429,7 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                         <TabItem active={activeTab === 'external'} onClick={() => setActiveTab('external')} icon={ExternalLink} label="External" />
                         <TabItem active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} icon={Terminal} label="Logs" />
                         <TabItem active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={Activity} label="Telemetry" />
+                        <TabItem active={activeTab === 'quota'} onClick={() => setActiveTab('quota')} icon={Gauge} label="Quota" />
                         <TabItem active={activeTab === 'infrastructure'} onClick={() => setActiveTab('infrastructure')} icon={Server} label="Infra" />
                         <TabItem active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setActiveSettingsView('governance'); }} icon={Settings} label="Govern" />
                     </div>
@@ -1135,6 +1138,8 @@ const AdminStudio: React.FC<AdminStudioProps> = ({ onEngageProject }) => {
                                 )}
                             </AnimatePresence>
                         </div>
+                    ) : activeTab === 'quota' ? (
+                        <QuotaPanel />
                     ) : (
                         <div className="h-full overflow-y-auto pr-2 suggestions-scrollbar space-y-8 pb-12">
                             {activeSettingsView === 'governance' ? (
