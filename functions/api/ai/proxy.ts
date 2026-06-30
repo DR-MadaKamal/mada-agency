@@ -8,10 +8,13 @@ interface Env {
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  GROQ_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  MISTRAL_API_KEY?: string;
 }
 
 interface ProxyPayload {
-  provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek';
+  provider: 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'groq' | 'openrouter' | 'mistral';
   modelId: string;
   body?: any;
   prompt?: string;
@@ -24,6 +27,9 @@ const PROVIDER_URLS: Record<string, (model: string) => string> = {
   openai: () => 'https://api.openai.com/v1/chat/completions',
   anthropic: () => 'https://api.anthropic.com/v1/messages',
   deepseek: () => 'https://api.deepseek.com/chat/completions',
+  groq: () => 'https://api.groq.com/openai/v1/chat/completions',
+  openrouter: () => 'https://openrouter.ai/api/v1/chat/completions',
+  mistral: () => 'https://api.mistral.ai/v1/chat/completions',
 };
 
 const PROVIDER_HEADERS: Record<string, (key: string, accessToken?: string) => Record<string, string>> = {
@@ -42,6 +48,9 @@ const PROVIDER_HEADERS: Record<string, (key: string, accessToken?: string) => Re
     'anthropic-version': '2023-06-01',
   }),
   deepseek: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+  groq: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+  openrouter: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+  mistral: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
 };
 
 function buildBody(provider: string, modelId: string, prompt: string): any {
@@ -50,6 +59,9 @@ function buildBody(provider: string, modelId: string, prompt: string): any {
       return { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
     case 'openai':
     case 'deepseek':
+    case 'groq':
+    case 'openrouter':
+    case 'mistral':
       return { model: modelId, messages: [{ role: 'user', content: prompt }] };
     case 'anthropic':
       return { model: modelId, max_tokens: 4096, messages: [{ role: 'user', content: prompt }] };
@@ -64,6 +76,9 @@ function extractText(provider: string, data: any): string {
       return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     case 'openai':
     case 'deepseek':
+    case 'groq':
+    case 'openrouter':
+    case 'mistral':
       return data.choices?.[0]?.message?.content || '';
     case 'anthropic':
       return data.content?.[0]?.text || '';

@@ -52,6 +52,12 @@ export class NexusAssistant extends Agent<Env, State> {
         response = await this.callAnthropic(msg, history);
       } else if (selectedProvider === "deepseek") {
         response = await this.callDeepSeek(msg, history);
+      } else if (selectedProvider === "groq") {
+        response = await this.callGroq(msg, history);
+      } else if (selectedProvider === "openrouter") {
+        response = await this.callOpenRouter(msg, history);
+      } else if (selectedProvider === "mistral") {
+        response = await this.callMistral(msg, history);
       } else {
         response = await this.callGemini(msg, history);
       }
@@ -181,22 +187,37 @@ Core Directives:
   }
 
   private async callDeepSeek(prompt: string, history: ChatMessage[]): Promise<string> {
-    const apiKey = this.env.DEEPSEEK_API_KEY;
-    if (!apiKey) return "DEEPSEEK_API_KEY not configured. Set it in Cloudflare secrets.";
+    return this.callOpenAICompatible(this.env.DEEPSEEK_API_KEY, "deepseek-chat", prompt, history, "https://api.deepseek.com/chat/completions", "DEEPSEEK_API_KEY");
+  }
+
+  private async callGroq(prompt: string, history: ChatMessage[]): Promise<string> {
+    return this.callOpenAICompatible(this.env.GROQ_API_KEY, "llama3-70b-8192", prompt, history, "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY");
+  }
+
+  private async callOpenRouter(prompt: string, history: ChatMessage[]): Promise<string> {
+    return this.callOpenAICompatible(this.env.OPENROUTER_API_KEY, "openai/gpt-4o", prompt, history, "https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY");
+  }
+
+  private async callMistral(prompt: string, history: ChatMessage[]): Promise<string> {
+    return this.callOpenAICompatible(this.env.MISTRAL_API_KEY, "mistral-large-latest", prompt, history, "https://api.mistral.ai/v1/chat/completions", "MISTRAL_API_KEY");
+  }
+
+  private async callOpenAICompatible(apiKey: string | undefined, defaultModel: string, prompt: string, history: ChatMessage[], baseUrl: string, envKey: string): Promise<string> {
+    if (!apiKey) return `${envKey} not configured. Set it in Cloudflare secrets.`;
 
     const messages = [
-      { role: "system", content: this.buildSystemPrompt() },
-      ...history.slice(-20).filter(h => h.role !== "system").map(h => ({ role: h.role, content: h.content })),
-      { role: "user", content: prompt },
+      { role: "system" as const, content: this.buildSystemPrompt() },
+      ...history.slice(-20).filter(h => h.role !== "system").map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
+      { role: "user" as const, content: prompt },
     ];
 
-    const res = await fetch("https://api.deepseek.com/chat/completions", {
+    const res = await fetch(baseUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "deepseek-chat", messages }),
+      body: JSON.stringify({ model: defaultModel, messages }),
     });
     const data: any = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || "DeepSeek call failed");
+    if (!res.ok) throw new Error(data.error?.message || `${baseUrl} call failed`);
     return data.choices?.[0]?.message?.content || "";
   }
 

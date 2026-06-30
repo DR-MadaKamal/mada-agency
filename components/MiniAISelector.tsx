@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Brain, ShieldCheck, ChevronDown, ExternalLink, CheckCircle, XCircle, Loader2, Wifi, Settings2 } from 'lucide-react';
+import { Sparkles, Brain, ShieldCheck, ChevronDown, ExternalLink, CheckCircle, XCircle, Loader2, Wifi, Settings2, Cpu, Zap, Wind, Bot } from 'lucide-react';
 import type { AIConfig, ExternalServiceConfig, ExternalAIService, AIProvider } from '../types';
 import { KNOWN_AI_ENDPOINTS } from '../types';
 import { EXTERNAL_SERVICES } from '../services/aiLibrary';
@@ -23,6 +23,9 @@ const BUILTIN_GROUPS: { group: string; color: string; icon: any }[] = [
   { group: 'Google', color: '#4285F4', icon: Sparkles },
   { group: 'OpenAI', color: '#10A37F', icon: Brain },
   { group: 'Anthropic', color: '#D97757', icon: ShieldCheck },
+  { group: 'Groq', color: '#F97316', icon: Zap },
+  { group: 'OpenRouter', color: '#8B5CF6', icon: Bot },
+  { group: 'Mistral', color: '#3B82F6', icon: Wind },
 ];
 
 const BUILTIN_OPTIONS: ProviderOption[] = [
@@ -32,6 +35,12 @@ const BUILTIN_OPTIONS: ProviderOption[] = [
   { provider: 'openai', modelId: 'gpt-4o-mini', label: 'GPT-4o Mini', group: 'OpenAI', icon: Brain, color: '#10A37F' },
   { provider: 'anthropic', modelId: 'claude-3-5-sonnet-20240620', label: 'Claude 3.5 Sonnet', group: 'Anthropic', icon: ShieldCheck, color: '#D97757' },
   { provider: 'anthropic', modelId: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', group: 'Anthropic', icon: ShieldCheck, color: '#D97757' },
+  { provider: 'groq', modelId: 'llama3-70b-8192', label: 'Llama 3 70B', group: 'Groq', icon: Zap, color: '#F97316' },
+  { provider: 'groq', modelId: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', group: 'Groq', icon: Zap, color: '#F97316' },
+  { provider: 'openrouter', modelId: 'openai/gpt-4o', label: 'GPT-4o (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'openrouter', modelId: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 (via OR)', group: 'OpenRouter', icon: Bot, color: '#8B5CF6' },
+  { provider: 'mistral', modelId: 'mistral-large-latest', label: 'Mistral Large', group: 'Mistral', icon: Wind, color: '#3B82F6' },
+  { provider: 'mistral', modelId: 'mistral-small-latest', label: 'Mistral Small', group: 'Mistral', icon: Wind, color: '#3B82F6' },
 ];
 
 export function MiniAISelector({ config, onChange }: MiniAISelectorProps) {
@@ -72,7 +81,7 @@ export function MiniAISelector({ config, onChange }: MiniAISelectorProps) {
   const allExternal: ExternalServiceConfig[] = firestoreServices.length > 0 ? firestoreServices
     : EXTERNAL_SERVICES.map(s => ({ id: s.id, name: s.name, url: s.url, description: s.description, capabilities: s.capabilities as string[], icon: s.icon, color: s.color, models: s.models, isFree: s.isFree, isActive: true, authType: 'bearer' as const, authHeaderName: 'Authorization' }));
 
-  const isBuiltin = config?.provider && ['google', 'openai', 'anthropic'].includes(config.provider);
+  const isBuiltin = config?.provider && ['google', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral'].includes(config.provider);
   const isExternal = config?.provider === 'external' || config?.provider === 'custom';
 
   const current = isBuiltin

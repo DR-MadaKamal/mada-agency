@@ -8,6 +8,9 @@ interface Env {
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  GROQ_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  MISTRAL_API_KEY?: string;
 }
 
 interface IntegrationConfig {
@@ -32,6 +35,9 @@ function getDefaultModel(provider: string): string {
     case 'openai': return 'gpt-4o';
     case 'anthropic': return 'claude-3-5-sonnet-20240620';
     case 'deepseek': return 'deepseek-chat';
+    case 'groq': return 'llama3-70b-8192';
+    case 'openrouter': return 'openai/gpt-4o';
+    case 'mistral': return 'mistral-large-latest';
     default: return 'gemini-2.0-flash';
   }
 }
@@ -63,6 +69,18 @@ function callOpenAI(apiKey: string, modelId: string, payload: AiPayload): Promis
 
 function callDeepSeek(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
   return callOpenAICompatible(apiKey, modelId || 'deepseek-chat', payload, 'https://api.deepseek.com/chat/completions', 'DeepSeek');
+}
+
+function callGroq(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'llama3-70b-8192', payload, 'https://api.groq.com/openai/v1/chat/completions', 'Groq');
+}
+
+function callOpenRouter(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'openai/gpt-4o', payload, 'https://openrouter.ai/api/v1/chat/completions', 'OpenRouter');
+}
+
+function callMistral(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
+  return callOpenAICompatible(apiKey, modelId || 'mistral-large-latest', payload, 'https://api.mistral.ai/v1/chat/completions', 'Mistral');
 }
 
 async function callAnthropic(apiKey: string, modelId: string, payload: AiPayload): Promise<string> {
@@ -250,6 +268,12 @@ export const onRequest: any = async (context: any) => {
       messageContent = await callGemini(apiKey, modelId, payload, accessToken);
     } else if (provider === 'deepseek') {
       messageContent = await callDeepSeek(apiKey, modelId, payload);
+    } else if (provider === 'groq') {
+      messageContent = await callGroq(apiKey, modelId, payload);
+    } else if (provider === 'openrouter') {
+      messageContent = await callOpenRouter(apiKey, modelId, payload);
+    } else if (provider === 'mistral') {
+      messageContent = await callMistral(apiKey, modelId, payload);
     } else if (provider === 'custom' && config?.endpoint) {
       messageContent = await callCustom(config, apiKey, modelId, payload);
     } else {

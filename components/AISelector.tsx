@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AIConfig, AIProvider, AIModel, AppView, ExternalAIService, ExternalServiceConfig, Integration } from '../types';
 import { db, collection, query, where, onSnapshot, orderBy } from '../lib/firebase';
-import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock, Image, Eye, Search, Bot, Star, Mail, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Zap, Brain, ShieldCheck, Cpu, CreditCard, Lock, Image, Eye, Search, Bot, Star, Mail, ExternalLink, Copy, CheckCircle2, Wind } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXTERNAL_SERVICES } from '../services/aiLibrary';
 
@@ -80,7 +80,10 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
             case 'google': return Sparkles;
             case 'openai': return Brain;
             case 'anthropic': return ShieldCheck;
-            case 'deepseek': return Zap;
+            case 'deepseek': return Cpu;
+            case 'groq': return Zap;
+            case 'openrouter': return Bot;
+            case 'mistral': return Wind;
             case 'external': return ExternalLink;
             default: return Cpu;
         }
@@ -174,7 +177,7 @@ const AISelector: React.FC<AISelectorProps> = ({ config, onChange, studioId, cla
                                     }`}
                                 >
                                     <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'text-[var(--color-accent)] scale-110' : ''}`} />
-                                    <span className={`text-[10px] font-bold tracking-tight uppercase ${isActive ? 'text-white' : ''}`}>{p === 'google' ? 'Google' : p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : p === 'deepseek' ? 'DeepSeek' : 'Custom'}</span>
+                                    <span className={`text-[10px] font-bold tracking-tight uppercase ${isActive ? 'text-white' : ''}`}>{p === 'google' ? 'Google' : p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : p === 'deepseek' ? 'DeepSeek' : p === 'groq' ? 'Groq' : p === 'openrouter' ? 'OpenRouter' : p === 'mistral' ? 'Mistral' : 'Custom'}</span>
                                     
                                     {isActive && (
                                         <motion.div 
