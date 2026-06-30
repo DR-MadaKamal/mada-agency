@@ -193,7 +193,7 @@ Core Directives:
   }
 
   private async callGroq(prompt: string, history: ChatMessage[]): Promise<string> {
-    return this.callOpenAICompatible(this.env.GROQ_API_KEY, "llama3-70b-8192", prompt, history, "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY");
+    return this.callOpenAICompatible(this.env.GROQ_API_KEY, "llama-3.1-8b-instant", prompt, history, "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY");
   }
 
   private async callOpenRouter(prompt: string, history: ChatMessage[]): Promise<string> {

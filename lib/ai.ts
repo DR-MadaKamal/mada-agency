@@ -20,7 +20,7 @@ function getDefaultModel(provider: string): string {
     case 'openai': return 'gpt-4o';
     case 'anthropic': return 'claude-3-5-sonnet-20240620';
     case 'deepseek': return 'deepseek-chat';
-    case 'groq': return 'llama3-70b-8192';
+    case 'groq': return 'llama-3.1-8b-instant';
     case 'openrouter': return 'openai/gpt-4o';
     case 'mistral': return 'mistral-large-latest';
     case 'qwen': return 'qwen-max';
